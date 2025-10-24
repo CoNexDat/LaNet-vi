@@ -1,0 +1,160 @@
+# LaNet-vi Configuration Template
+#
+# This template shows all available configuration options for LaNet-vi.
+# Copy this file and modify the values to customize your visualization.
+#
+# Usage:
+#   from lanet_vi.io.config_loader import load_config_from_yaml
+#   config = load_config_from_yaml("your_config.yaml")
+#   net = Network(graph, config)
+
+# ==============================================================================
+# GRAPH CONFIGURATION
+# ==============================================================================
+graph:
+  # Whether to support repeated edges between same nodes
+  multigraph: false
+
+  # Whether edges have weights
+  weighted: false
+
+  # Whether graph is directed
+  directed: false
+
+# ==============================================================================
+# DECOMPOSITION CONFIGURATION
+# ==============================================================================
+decomposition:
+  # Type of decomposition: "kcores" or "kdenses"
+  decomp_type: "kcores"
+
+  # Centrality measure: "kdense" or "mcore"
+  measure: "mcore"
+
+  # Consider graph induced from this layer upward (0 = all layers)
+  from_layer: 0
+
+  # Number of groups in weighted graphs (-1 = use max degree)
+  granularity: -1
+
+  # Method for strength intervals in weighted graphs:
+  # - "equalNodesPerInterval"
+  # - "equalIntervalSize"
+  # - "equalLogIntervalSize"
+  strength_intervals: "equalIntervalSize"
+
+  # Upper limit for strength intervals (null = auto)
+  maximum_strength: null
+
+  # Whether to omit cliques in central core
+  no_cliques: false
+
+# ==============================================================================
+# VISUALIZATION CONFIGURATION
+# ==============================================================================
+visualization:
+  # Background color: "white" or "black"
+  background: "white"
+
+  # Color scheme: "col" (color), "bw" (grayscale), "bwi" (grayscale interlaced)
+  color_scheme: "col"
+
+  # Image dimensions (pixels)
+  width: 1920
+  height: 1080
+
+  # Layout parameters
+  epsilon: 0.18  # Ring overlapping possibility
+  delta: 1.3     # Distance between components
+  gamma: 1.5     # Component diameter
+
+  # Font size multiplier for labels
+  font_zoom: 1.0
+
+  # ============================================================================
+  # EDGE CONFIGURATION
+  # ============================================================================
+
+  # Percentage of edges to show (0.0 to 1.0)
+  edges_percent: 0.25
+
+  # Minimum number of edges to display
+  min_edges: 100000
+
+  # Edge opacity for SVG/interactive renderers (0.0 to 1.0)
+  opacity: 0.2
+
+  # Whether to use gradient edge coloring (endpoint colors)
+  gradient_edges: true
+
+  # Edge transparency (0.0 = transparent, 1.0 = opaque)
+  edge_alpha: 1.0
+
+  # Edge thickness range
+  min_edge_width: 0.12
+  max_edge_width: 0.45
+
+  # ============================================================================
+  # VISUAL ELEMENTS
+  # ============================================================================
+
+  # Base unit length for scaling
+  unit_length: 1.0
+
+  # Whether to draw component border circles
+  draw_circles: true
+
+  # Whether to show k-core/k-dense legend
+  show_degree_scale: true
+
+  # Maximum value for color scale normalization (null = auto)
+  color_scale_max_value: null
+
+  # ============================================================================
+  # NODE LABELS
+  # ============================================================================
+
+  # Whether to show node labels
+  show_node_labels: false
+
+  # If true, label all nodes; if false, use k-core range filtering
+  label_all_nodes: true
+
+  # Minimum k-core for labeling (only used if label_all_nodes = false)
+  # null = no minimum
+  label_kcore_min: null
+
+  # Maximum k-core for labeling (only used if label_all_nodes = false)
+  # null = no maximum
+  label_kcore_max: null
+
+# ==============================================================================
+# LAYOUT CONFIGURATION
+# ==============================================================================
+layout:
+  # Algorithm for distributing components: "classic", "pow", or "log"
+  coord_distribution: "classic"
+
+  # Constant in component ratio formula
+  alpha: 1.0
+
+  # Exponent in component ratio formula
+  beta: 1.0
+
+  # Random seed for reproducible layouts
+  seed: 42
+
+  # Manual adjustment for node size ratio (null = auto)
+  ratio_constant: null
+
+  # Minimum component size to visualize (filters small components for performance)
+  min_component_size: 50
+
+  # Use spatial hashing for faster circle packing (O(N) instead of O(N²))
+  use_spatial_hashing: true
+
+# ==============================================================================
+# RENDERER
+# ==============================================================================
+# Rendering engine: "matplotlib", "networkx", or "plotly"
+renderer: "matplotlib"

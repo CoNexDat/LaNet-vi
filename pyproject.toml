@@ -1,0 +1,88 @@
+[project]
+name = "lanet-vi"
+version = "5.0.0"
+description = "Large scale network visualization using k-core, k-dense, and d-core decomposition with community detection"
+readme = "README.md"
+authors = [
+    { name = "Esteban Carisimo"},
+    { name = "Mariano Beiró" },
+    { name = "J. Ignacio Alvarez-Hamelin" }
+]
+requires-python = ">=3.9"
+
+[project.urls]
+Homepage = "https://github.com/conexdat/LaNet-vi"
+Repository = "https://github.com/conexdat/LaNet-vi.git"
+Documentation = "https://github.com/conexdat/LaNet-vi/tree/main/docs"
+Issues = "https://github.com/conexdat/LaNet-vi/issues"
+dependencies = [
+    "networkx>=3.0",
+    "pandas>=2.0",
+    "polars>=0.20",
+    "pydantic>=2.0",
+    "matplotlib>=3.7",
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "scikit-learn>=1.3",
+    "requests>=2.31",
+    "typer>=0.9",
+    "rich>=13.0",
+    "pyyaml>=6.0",
+]
+license = { text = "MIT" }
+keywords = ["network", "visualization", "k-core", "k-dense", "graph-analysis"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.1",
+    "mypy>=1.0",
+    "ipython>=8.0",
+    "jupyter>=1.0",
+]
+interactive = [
+    "plotly>=5.0",
+    "ipywidgets>=8.0",
+]
+
+[project.scripts]
+lanet-vi = "lanet_vi.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.8.0,<0.9"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "D"]
+ignore = ["D100", "D104"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --cov=lanet_vi --cov-report=term-missing"

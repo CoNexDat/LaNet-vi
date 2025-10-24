@@ -1,0 +1,53 @@
+TODO/*.md
+.claude
+CLAUDE.md
+legacy/*
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Output files
+*.png
+*.pov
+*.svg
+*.csv
+log/*.log
+
+# Development and temporary files
+dev_tmp/
+
+# C++ legacy build artifacts (in /legacy directory)
+legacy/*.o
+legacy/lanet
+legacy/doc/
