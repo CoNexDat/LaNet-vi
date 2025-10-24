@@ -9,12 +9,6 @@ authors = [
     { name = "J. Ignacio Alvarez-Hamelin" }
 ]
 requires-python = ">=3.9"
-
-[project.urls]
-Homepage = "https://github.com/conexdat/LaNet-vi"
-Repository = "https://github.com/conexdat/LaNet-vi.git"
-Documentation = "https://github.com/conexdat/LaNet-vi/tree/main/docs"
-Issues = "https://github.com/conexdat/LaNet-vi/issues"
 dependencies = [
     "networkx>=3.0",
     "pandas>=2.0",
@@ -41,6 +35,12 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
+
+[project.urls]
+Homepage = "https://github.com/conexdat/LaNet-vi"
+Repository = "https://github.com/conexdat/LaNet-vi.git"
+Documentation = "https://github.com/conexdat/LaNet-vi/tree/main/docs"
+Issues = "https://github.com/conexdat/LaNet-vi/issues"
 
 [project.optional-dependencies]
 dev = [
