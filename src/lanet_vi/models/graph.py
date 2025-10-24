@@ -2,7 +2,6 @@
 
 from typing import Dict, List, Optional, Tuple
 
-import numpy as np
 from pydantic import BaseModel, Field
 
 
@@ -157,8 +156,8 @@ class VisualizationLayout(BaseModel):
         Mapping from node ID to visual size/radius
     visible_edges : List[Tuple[int, int]]
         List of edges to render (source, target)
-    edge_colors : Dict[Tuple[int, int], Tuple[Tuple[float, float, float], Tuple[float, float, float]]]
-        Mapping from edge (u,v) to pair of colors (color1, color2) for gradient rendering
+    edge_colors : Dict[Tuple[int, int], Tuple[Tuple[float, ...], Tuple[float, ...]]]
+        Mapping from edge (u,v) to pair of RGB colors (color1, color2) for gradient rendering
     edge_widths : Dict[Tuple[int, int], float]
         Mapping from edge (u,v) to line width
     components : List[Component]
@@ -171,7 +170,9 @@ class VisualizationLayout(BaseModel):
     node_colors: Dict[int, Tuple[float, float, float]]
     node_sizes: Dict[int, float]
     visible_edges: List[Tuple[int, int]]
-    edge_colors: Dict[Tuple[int, int], Tuple[Tuple[float, float, float], Tuple[float, float, float]]] = Field(default_factory=dict)
+    edge_colors: Dict[
+        Tuple[int, int], Tuple[Tuple[float, float, float], Tuple[float, float, float]]
+    ] = Field(default_factory=dict)
     edge_widths: Dict[Tuple[int, int], float] = Field(default_factory=dict)
     components: List[Component]
     bounds: Tuple[float, float, float, float]

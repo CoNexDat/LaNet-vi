@@ -1,7 +1,6 @@
 """Layout algorithms for network visualization, including circle packing."""
 
 import logging
-import math
 from typing import Dict, List, Optional, Set, Tuple
 
 import networkx as nx
@@ -10,7 +9,6 @@ import numpy as np
 from lanet_vi.models.config import CoordDistributionAlgorithm, LayoutConfig
 from lanet_vi.models.graph import Component
 from lanet_vi.visualization.circular_average import calculate_phi_from_neighbors
-from lanet_vi.visualization.spiral_layout import calcular_rho
 
 # Set up debug logger for layout analysis
 logger = logging.getLogger(__name__)
@@ -532,7 +530,7 @@ def compute_hierarchical_layout(
         for pass_num in [1, 2]:
             if DEBUG_LAYOUT and pass_num == 2:
                 logger.info(f"\n{'='*80}")
-                logger.info(f"PASS 2: Refining node positions with neighbor-based phi")
+                logger.info("PASS 2: Refining node positions with neighbor-based phi")
                 logger.info(f"{'='*80}\n")
 
             for shell_index in sorted(all_nodes_by_shell.keys(), reverse=True):
@@ -547,7 +545,9 @@ def compute_hierarchical_layout(
                 shell_radius = (max_shell_or_dense - shell_index + 1) * 80.0
 
                 if DEBUG_LAYOUT and pass_num == 1:
-                    logger.info(f"\nShell {shell_index}: {n_nodes} nodes, radius={shell_radius:.2f}")
+                    logger.info(
+                        f"\nShell {shell_index}: {n_nodes} nodes, radius={shell_radius:.2f}"
+                    )
 
                 # Position nodes using neighbor-based phi calculation
                 # This creates smooth circular distributions like the C++ reference implementation
@@ -568,7 +568,9 @@ def compute_hierarchical_layout(
                     # This is the key algorithm from C++ kcores_component.cpp:397-443
 
                     if DEBUG_LAYOUT and pass_num == 1:
-                        logger.info(f"  Using neighbor-based phi calculation (smooth circular distribution)")
+                        logger.info(
+                            "  Using neighbor-based phi calculation (smooth circular distribution)"
+                        )
 
                     # Component center is at origin for shell-based layout
                     component_center = (0.0, 0.0)
@@ -589,7 +591,9 @@ def compute_hierarchical_layout(
                                 node_shells=node_shells,
                                 node_positions=node_positions,  # Positions calculated so far
                                 component_center=component_center,
-                                is_weighted=graph.is_weighted() if hasattr(graph, 'is_weighted') else False,
+                                is_weighted=(
+                                    graph.is_weighted() if hasattr(graph, "is_weighted") else False
+                                ),
                                 edge_weights=None,  # TODO: Add edge weights if needed
                                 no_cliques=no_cliques,
                                 rng=rng
@@ -604,7 +608,8 @@ def compute_hierarchical_layout(
                                 systematic_offset = (2.0 * np.pi * i) / n_nodes
                                 # Random Gaussian noise (small, ~5 degrees std dev)
                                 noise = rng.normal(0, 0.09)  # ~5 degrees
-                                phi += systematic_offset * 0.15 + noise  # 15% systematic, plus noise
+                                # 15% systematic, plus noise
+                                phi += systematic_offset * 0.15 + noise
                         else:
                             # Fallback: uniform random distribution if graph not provided
                             phi = 2.0 * np.pi * rng.uniform(0, 1)
@@ -623,7 +628,10 @@ def compute_hierarchical_layout(
                         node_positions[node] = (x, y)
 
                         if DEBUG_LAYOUT and pass_num == 1 and i < 3:
-                            logger.info(f"      Node {node}: phi={np.degrees(phi):.1f}°, rho={rho:.2f} → ({x:.2f}, {y:.2f})")
+                            logger.info(
+                                f"      Node {node}: phi={np.degrees(phi):.1f}°, "
+                                f"rho={rho:.2f} → ({x:.2f}, {y:.2f})"
+                            )
 
         # Now compute component centers for border circles (only for large components)
         # Skip circle packing if we have too many components - just use simple placement

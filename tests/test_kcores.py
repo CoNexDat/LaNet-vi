@@ -1,7 +1,6 @@
 """Tests for k-core decomposition."""
 
 import networkx as nx
-import pytest
 
 from lanet_vi.decomposition.kcores import compute_kcores
 from lanet_vi.models.config import DecompositionConfig

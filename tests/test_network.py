@@ -7,7 +7,7 @@ import networkx as nx
 import pytest
 
 from lanet_vi.core.network import Network
-from lanet_vi.models.config import DecompositionType, LaNetConfig
+from lanet_vi.models.config import DecompositionType
 
 
 def test_network_initialization():

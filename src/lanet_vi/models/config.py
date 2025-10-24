@@ -148,7 +148,8 @@ class VisualizationConfig(BaseModel):
         Maximum k-core for labeling (only if label_all_nodes=False)
     """
 
-    background: BackgroundColor = BackgroundColor.BLACK  # Changed from WHITE to match CAIDA defaults
+    # Changed from WHITE to match CAIDA defaults
+    background: BackgroundColor = BackgroundColor.BLACK
     color_scheme: ColorScheme = ColorScheme.COLOR
     width: int = Field(default=2400, gt=0)  # Changed from 800 to match CAIDA defaults
     height: int = Field(default=2400, gt=0)  # Changed from 600 to match CAIDA defaults
@@ -165,7 +166,8 @@ class VisualizationConfig(BaseModel):
     show_degree_scale: bool = True
     color_scale_max_value: Optional[int] = Field(default=None, gt=0)
     gradient_edges: bool = Field(default=True)
-    edge_alpha: float = Field(default=0.6, ge=0.0, le=1.0)  # Changed from 0.3 to 0.6 for better visibility
+    # Changed from 0.3 to 0.6 for better visibility
+    edge_alpha: float = Field(default=0.6, ge=0.0, le=1.0)
     min_edge_width: float = Field(default=0.08, gt=0.0)  # Changed from 0.05 to match CAIDA defaults
     max_edge_width: float = Field(default=0.3, gt=0.0)  # Changed from 0.2 to match CAIDA defaults
     show_node_labels: bool = Field(default=False)
@@ -174,7 +176,8 @@ class VisualizationConfig(BaseModel):
     label_kcore_max: Optional[int] = Field(default=None, ge=1)
     node_edge_color: Optional[str] = Field(default=None)
     show_size_legend: bool = Field(default=True)
-    node_size_scale: float = Field(default=0.5, gt=0.0)  # Changed from 1.0 to 0.5 for moderate node sizes
+    # Changed from 1.0 to 0.5 for moderate node sizes
+    node_size_scale: float = Field(default=0.5, gt=0.0)
 
     @field_validator("width", "height")
     @classmethod
@@ -271,7 +274,8 @@ class LayoutConfig(BaseModel):
     coord_distribution: CoordDistributionAlgorithm = CoordDistributionAlgorithm.CLASSIC
     alpha: float = Field(default=1.0, gt=0.0)
     beta: float = Field(default=1.0)
-    seed: int = Field(default=0, ge=0)  # Changed from 42 to 0 for maximum uniformity (CAIDA default)
+    # Changed from 42 to 0 for maximum uniformity (CAIDA default)
+    seed: int = Field(default=0, ge=0)
     ratio_constant: Optional[float] = Field(default=None, gt=0.0)
     min_component_size: int = Field(default=10, ge=1)  # Changed from 1 to 10 (CAIDA default)
     use_spatial_hashing: bool = Field(default=True)

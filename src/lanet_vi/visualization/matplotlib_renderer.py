@@ -5,9 +5,9 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
-from matplotlib.collections import LineCollection
 import networkx as nx
 import numpy as np
+from matplotlib.collections import LineCollection
 
 from lanet_vi.models.config import BackgroundColor, VisualizationConfig
 from lanet_vi.models.graph import DecompositionResult, VisualizationLayout
@@ -148,7 +148,9 @@ def _draw_edges(
             mid_x, mid_y = (x1 + x2) / 2.0, (y1 + y2) / 2.0
 
             # Get edge colors (darkened endpoint colors)
-            edge_colors_pair = layout.edge_colors.get((source, target), ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))
+            edge_colors_pair = layout.edge_colors.get(
+                (source, target), ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            )
             color1, color2 = edge_colors_pair
 
             # Get edge width
@@ -170,7 +172,8 @@ def _draw_edges(
             segments_by_kcore[min_kcore]['colors'].append(color2)
             segments_by_kcore[min_kcore]['widths'].append(width)
 
-        # Draw edges in k-core order: lower k-core first (background), higher k-core last (foreground)
+        # Draw edges in k-core order: lower k-core first (background),
+        # higher k-core last (foreground)
         # Use negative zorder to ensure all edges are behind nodes (which have zorder=2)
         max_kcore = max(segments_by_kcore.keys()) if segments_by_kcore else 1
         for kcore in sorted(segments_by_kcore.keys()):
@@ -345,7 +348,9 @@ def _draw_degree_scale(
     from matplotlib.legend_handler import HandlerPatch
 
     class HandlerCircle(HandlerPatch):
-        def create_artists(self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans):
+        def create_artists(
+            self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans
+        ):
             center = 0.5 * width - 0.5 * xdescent, 0.5 * height - 0.5 * ydescent
             p = mpatches.Circle(xy=center, radius=orig_handle.radius)
             self.update_prop(p, orig_handle, legend)
@@ -418,7 +423,9 @@ def _draw_size_legend(
     from matplotlib.legend_handler import HandlerPatch
 
     class HandlerCircle(HandlerPatch):
-        def create_artists(self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans):
+        def create_artists(
+            self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans
+        ):
             # Ensure proper vertical spacing between legend items
             center = 0.5 * width - 0.5 * xdescent, 0.5 * height - 0.5 * ydescent
             p = mpatches.Circle(xy=center, radius=orig_handle.radius)
@@ -536,7 +543,9 @@ def select_visible_edges(
         remaining = set(edges) - set(selected_edges)
         remaining_sorted = sorted(
             remaining,
-            key=lambda e: -(decomposition.node_indices.get(e[0], 0) + decomposition.node_indices.get(e[1], 0))
+            key=lambda e: -(
+                decomposition.node_indices.get(e[0], 0) + decomposition.node_indices.get(e[1], 0)
+            ),
         )
         selected_edges.extend(remaining_sorted[:target_edges - len(selected_edges)])
 

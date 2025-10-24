@@ -3,7 +3,7 @@
 This module provides data structures for representing community detection results.
 """
 
-from typing import Dict, List, Set
+from typing import Dict, List
 
 from pydantic import BaseModel, Field
 

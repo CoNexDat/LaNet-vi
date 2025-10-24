@@ -107,7 +107,6 @@ def detect_communities_louvain(
             node_to_community[node] = comm_id
 
     # Calculate modularity
-    partition = {node: comm_id for comm_id, comm in enumerate(communities) for node in comm.nodes}
     modularity = nx_community.modularity(graph, communities_sets, weight=weight)
 
     logger.info(

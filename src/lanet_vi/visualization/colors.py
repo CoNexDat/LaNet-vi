@@ -3,10 +3,8 @@
 from typing import List, Optional, Tuple
 
 import matplotlib.colors as mcolors
-import numpy as np
 
 from lanet_vi.models.config import ColorScheme
-
 
 # Color definitions (RGB in 0-1 range)
 RED = (1.0, 0.0, 0.0)

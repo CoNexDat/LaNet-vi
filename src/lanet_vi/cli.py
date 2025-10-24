@@ -36,8 +36,12 @@ console = Console()
 @app.command()
 def visualize(
     input_file: Path = typer.Option(..., "--input", "-i", help="Input edge list file"),
-    output: Path = typer.Option("output.png", "--output", "-o", help="Output visualization file"),
-    config_file: Optional[Path] = typer.Option(None, "--config", "-c", help="YAML configuration file"),
+    output: Path = typer.Option(
+        "output.png", "--output", "-o", help="Output visualization file"
+    ),
+    config_file: Optional[Path] = typer.Option(
+        None, "--config", "-c", help="YAML configuration file"
+    ),
     decomp: DecompositionType = typer.Option(
         DecompositionType.KCORES, "--decomp", "-d", help="Decomposition type"
     ),
@@ -48,27 +52,39 @@ def visualize(
     ),
     weighted: bool = typer.Option(False, "--weighted", "-w", help="Graph has edge weights"),
     multigraph: bool = typer.Option(False, "--multigraph", help="Allow repeated edges"),
-    directed: bool = typer.Option(False, "--directed", help="Graph is directed (required for dcores)"),
+    directed: bool = typer.Option(
+        False, "--directed", help="Graph is directed (required for dcores)"
+    ),
     width: int = typer.Option(2400, "--width", "-W", help="Image width in pixels"),
     height: int = typer.Option(2400, "--height", "-H", help="Image height in pixels"),
     background: BackgroundColor = typer.Option(
         BackgroundColor.BLACK, "--background", help="Background color"
     ),
-    color_scheme: ColorScheme = typer.Option(ColorScheme.COLOR, "--color-scheme", help="Color scheme"),
-    edges_percent: float = typer.Option(0.5, "--edges-percent", help="Percent of visible edges (0.0-1.0)"),
+    color_scheme: ColorScheme = typer.Option(
+        ColorScheme.COLOR, "--color-scheme", help="Color scheme"
+    ),
+    edges_percent: float = typer.Option(
+        0.5, "--edges-percent", help="Percent of visible edges (0.0-1.0)"
+    ),
     min_edges: int = typer.Option(50000, "--min-edges", help="Minimum number of visible edges"),
     edge_alpha: float = typer.Option(0.6, "--edge-alpha", help="Edge transparency (0.0-1.0)"),
     min_edge_width: float = typer.Option(0.08, "--min-edge-width", help="Minimum edge width"),
     max_edge_width: float = typer.Option(0.3, "--max-edge-width", help="Maximum edge width"),
     node_size_scale: float = typer.Option(0.5, "--node-size-scale", help="Node size multiplier"),
-    node_edge_color: Optional[str] = typer.Option(None, "--node-edge-color", help="Node edge color"),
+    node_edge_color: Optional[str] = typer.Option(
+        None, "--node-edge-color", help="Node edge color"
+    ),
     show_size_legend: bool = typer.Option(True, "--show-size-legend", help="Show size legend"),
-    gradient_edges: bool = typer.Option(True, "--gradient-edges", help="Use gradient edge coloring"),
+    gradient_edges: bool = typer.Option(
+        True, "--gradient-edges", help="Use gradient edge coloring"
+    ),
     epsilon: float = typer.Option(0.40, "--epsilon", help="Controls ring overlapping"),
     delta: float = typer.Option(1.3, "--delta", help="Distance between components"),
     gamma: float = typer.Option(1.5, "--gamma", help="Component diameter"),
     font_zoom: float = typer.Option(1.0, "--font-zoom", help="Font zoom factor"),
-    legend_fontsize: Optional[float] = typer.Option(None, "--legend-fontsize", help="Legend font size (auto-scales if not set)"),
+    legend_fontsize: Optional[float] = typer.Option(
+        None, "--legend-fontsize", help="Legend font size (auto-scales if not set)"
+    ),
     from_layer: int = typer.Option(0, "--from-layer", help="Start from this layer"),
     granularity: int = typer.Option(-1, "--granularity", help="Groups in weighted graphs"),
     strength_intervals: StrengthIntervalMethod = typer.Option(
@@ -93,16 +109,34 @@ def visualize(
         True, "--show-degree-scale", help="Show degree scale legend"
     ),
     # Community detection options
-    detect_communities: bool = typer.Option(False, "--detect-communities", help="Detect and visualize communities"),
-    community_algorithm: str = typer.Option("louvain", "--community-algorithm", help="Community detection algorithm (louvain or greedy_modularity)"),
-    community_resolution: float = typer.Option(1.0, "--community-resolution", help="Resolution parameter for Louvain (higher = more communities)"),
-    color_by_community: bool = typer.Option(True, "--color-by-community", help="Color nodes by community instead of k-core"),
-    draw_community_boundaries: bool = typer.Option(True, "--draw-community-boundaries", help="Draw boundaries around communities"),
+    detect_communities: bool = typer.Option(
+        False, "--detect-communities", help="Detect and visualize communities"
+    ),
+    community_algorithm: str = typer.Option(
+        "louvain",
+        "--community-algorithm",
+        help="Community detection algorithm (louvain or greedy_modularity)",
+    ),
+    community_resolution: float = typer.Option(
+        1.0,
+        "--community-resolution",
+        help="Resolution parameter for Louvain (higher = more communities)",
+    ),
+    color_by_community: bool = typer.Option(
+        True, "--color-by-community", help="Color nodes by community instead of k-core"
+    ),
+    draw_community_boundaries: bool = typer.Option(
+        True, "--draw-community-boundaries", help="Draw boundaries around communities"
+    ),
     # Spiral layout options
-    use_spiral_layout: bool = typer.Option(False, "--use-spiral-layout", help="Use spiral layout algorithm"),
+    use_spiral_layout: bool = typer.Option(
+        False, "--use-spiral-layout", help="Use spiral layout algorithm"
+    ),
     spiral_K: float = typer.Option(10.0, "--spiral-K", help="Spiral scaling constant"),
     spiral_beta: float = typer.Option(1.5, "--spiral-beta", help="Spiral tightness parameter"),
-    spiral_separation: float = typer.Option(1.0, "--spiral-separation", help="Target separation between nodes in spiral"),
+    spiral_separation: float = typer.Option(
+        1.0, "--spiral-separation", help="Target separation between nodes in spiral"
+    ),
     # Logging options
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress console output"),
@@ -114,8 +148,8 @@ def visualize(
     This command loads a network from an edge list file, computes the
     decomposition, and generates a visualization.
 
-    Examples:
-
+    Examples
+    --------
         lanet-vi visualize --input network.txt --output viz.png
 
         lanet-vi visualize --input network.txt --decomp kdenses --weighted
@@ -263,8 +297,8 @@ def config(
     and their default values. You can then edit this file and use it
     with the --config option in the visualize command.
 
-    Examples:
-
+    Examples
+    --------
         lanet-vi config my_config.yaml
 
         lanet-vi config kdense_config.yaml --decomp kdenses
@@ -320,16 +354,34 @@ def info(
 @app.command()
 def generate(
     output: Path = typer.Option(..., "--output", "-o", help="Output edge list file"),
-    model: str = typer.Option("erdos-renyi", "--model", "-m", help="Graph model (erdos-renyi, barabasi-albert, watts-strogatz, powerlaw-cluster)"),
+    model: str = typer.Option(
+        "erdos-renyi",
+        "--model",
+        "-m",
+        help="Graph model (erdos-renyi, barabasi-albert, watts-strogatz, powerlaw-cluster)",
+    ),
     n: int = typer.Option(..., "--nodes", "-n", help="Number of nodes"),
     # Erdős-Rényi parameters
-    p: Optional[float] = typer.Option(None, "--probability", "-p", help="Edge probability (Erdős-Rényi G(n,p))"),
-    m: Optional[int] = typer.Option(None, "--edges", "-e", help="Number of edges (Erdős-Rényi G(n,m) or BA/powerlaw attachment)"),
+    p: Optional[float] = typer.Option(
+        None, "--probability", "-p", help="Edge probability (Erdős-Rényi G(n,p))"
+    ),
+    m: Optional[int] = typer.Option(
+        None, "--edges", "-e", help="Number of edges (Erdős-Rényi G(n,m) or BA/powerlaw attachment)"
+    ),
     # Watts-Strogatz parameters
-    k: Optional[int] = typer.Option(None, "--neighbors", "-k", help="Each node connected to k nearest neighbors (Watts-Strogatz)"),
-    rewire_p: Optional[float] = typer.Option(None, "--rewire", "-r", help="Rewiring probability (Watts-Strogatz)"),
+    k: Optional[int] = typer.Option(
+        None,
+        "--neighbors",
+        "-k",
+        help="Each node connected to k nearest neighbors (Watts-Strogatz)",
+    ),
+    rewire_p: Optional[float] = typer.Option(
+        None, "--rewire", "-r", help="Rewiring probability (Watts-Strogatz)"
+    ),
     # Powerlaw cluster parameter
-    triangle_p: Optional[float] = typer.Option(None, "--triangle-prob", "-t", help="Triangle formation probability (powerlaw-cluster)"),
+    triangle_p: Optional[float] = typer.Option(
+        None, "--triangle-prob", "-t", help="Triangle formation probability (powerlaw-cluster)"
+    ),
     # General options
     directed: bool = typer.Option(False, "--directed", help="Generate directed graph"),
     weighted: bool = typer.Option(False, "--weighted", help="Add random edge weights"),
@@ -341,8 +393,8 @@ def generate(
     """
     Generate random graphs for testing and demonstration.
 
-    Examples:
-
+    Examples
+    --------
         # Erdős-Rényi with edge probability
         lanet-vi generate --output er.txt --model erdos-renyi --nodes 1000 --probability 0.01
 
@@ -353,10 +405,12 @@ def generate(
         lanet-vi generate --output ba.txt --model barabasi-albert --nodes 1000 --edges 3
 
         # Watts-Strogatz small-world network
-        lanet-vi generate --output ws.txt --model watts-strogatz --nodes 1000 --neighbors 6 --rewire 0.3
+        lanet-vi generate --output ws.txt --model watts-strogatz --nodes 1000 \\
+            --neighbors 6 --rewire 0.3
 
         # Powerlaw cluster graph
-        lanet-vi generate --output pc.txt --model powerlaw-cluster --nodes 1000 --edges 3 --triangle-prob 0.5
+        lanet-vi generate --output pc.txt --model powerlaw-cluster --nodes 1000 \\
+            --edges 3 --triangle-prob 0.5
     """
     from lanet_vi.generators import (
         generate_barabasi_albert,
@@ -380,13 +434,17 @@ def generate(
         # Generate graph based on model
         if model == "erdos-renyi":
             if p is None and m is None:
-                console.print("[red]Error:[/red] Erdős-Rényi requires either --probability or --edges")
+                console.print(
+                    "[red]Error:[/red] Erdős-Rényi requires either --probability or --edges"
+                )
                 raise typer.Exit(1)
             graph = generate_erdos_renyi(n=n, p=p, m=m, seed=seed, directed=directed)
 
         elif model == "barabasi-albert":
             if m is None:
-                console.print("[red]Error:[/red] Barabási-Albert requires --edges (attachment count)")
+                console.print(
+                    "[red]Error:[/red] Barabási-Albert requires --edges (attachment count)"
+                )
                 raise typer.Exit(1)
             graph = generate_barabasi_albert(n=n, m=m, seed=seed)
 
@@ -398,13 +456,17 @@ def generate(
 
         elif model == "powerlaw-cluster":
             if m is None or triangle_p is None:
-                console.print("[red]Error:[/red] Powerlaw cluster requires --edges and --triangle-prob")
+                console.print(
+                    "[red]Error:[/red] Powerlaw cluster requires --edges and --triangle-prob"
+                )
                 raise typer.Exit(1)
             graph = generate_powerlaw_cluster(n=n, m=m, p=triangle_p, seed=seed)
 
         else:
             console.print(f"[red]Error:[/red] Unknown model: {model}")
-            console.print("Choose from: erdos-renyi, barabasi-albert, watts-strogatz, powerlaw-cluster")
+            console.print(
+                "Choose from: erdos-renyi, barabasi-albert, watts-strogatz, powerlaw-cluster"
+            )
             raise typer.Exit(1)
 
         # Add random weights if requested
@@ -430,7 +492,7 @@ def generate(
 
 
 def main() -> None:
-    """Main entry point for the CLI."""
+    """Run the CLI application."""
     app()
 
 

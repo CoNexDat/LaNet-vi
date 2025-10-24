@@ -6,7 +6,7 @@ This module provides functions for visualizing network communities, including:
 - Creating community-based color palettes
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np

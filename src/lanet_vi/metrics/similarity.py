@@ -4,9 +4,8 @@ This module provides metrics for comparing different partitions, clusterings,
 and decompositions of networks.
 """
 
-from typing import Dict, Tuple
+from typing import Dict
 
-import numpy as np
 from sklearn.metrics import adjusted_rand_score
 
 from lanet_vi.logging_config import get_logger

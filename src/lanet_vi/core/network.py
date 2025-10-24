@@ -12,12 +12,8 @@ from lanet_vi.decomposition.kdenses import compute_kdenses, find_components_by_d
 from lanet_vi.io.readers import read_edge_list, read_node_colors, read_node_names
 from lanet_vi.logging_config import get_logger
 from lanet_vi.models.config import (
-    DecompositionConfig,
     DecompositionType,
-    GraphConfig,
     LaNetConfig,
-    LayoutConfig,
-    VisualizationConfig,
 )
 from lanet_vi.models.graph import DecompositionResult, VisualizationLayout
 from lanet_vi.visualization.colors import compute_shell_color
@@ -167,7 +163,10 @@ class Network:
             self.decomposition = find_components_by_dense(self.graph, self.decomposition)
         elif decomp_type == DecompositionType.DCORES:
             if not self.graph.is_directed():
-                raise ValueError("D-core decomposition requires a directed graph. Use KCORES for undirected graphs.")
+                raise ValueError(
+                    "D-core decomposition requires a directed graph. "
+                    "Use KCORES for undirected graphs."
+                )
             self.decomposition = compute_dcores(self.graph, self.config.decomposition)
             self.decomposition = find_components_by_dcore(self.graph, self.decomposition)
         else:
@@ -203,7 +202,8 @@ class Network:
         start_time = time.time()
 
         # Filter components by minimum size (for component circles only, not node positioning)
-        # This only affects which components get border circles drawn, all nodes are still positioned
+        # This only affects which components get border circles drawn, all nodes are still
+        # positioned
         min_size = self.config.layout.min_component_size
         filtered_components = [
             comp for comp in self.decomposition.components if comp.size >= min_size
@@ -262,7 +262,8 @@ class Network:
             }
         else:
             node_sizes = {
-                node: scale * (3.0 + 10.0 * (degrees[node] / max_degree)) for node in self.graph.nodes()
+                node: scale * (3.0 + 10.0 * (degrees[node] / max_degree))
+                for node in self.graph.nodes()
             }
 
         # Select visible edges

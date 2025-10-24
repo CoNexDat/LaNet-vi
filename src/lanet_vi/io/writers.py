@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, Union
 
 import networkx as nx
 import pandas as pd
@@ -104,7 +104,9 @@ def write_decomposition_json(
             "total_components": len(result.components),
             "largest_component_size": max(component_sizes) if component_sizes else 0,
             "smallest_component_size": min(component_sizes) if component_sizes else 0,
-            "mean_component_size": sum(component_sizes) / len(component_sizes) if component_sizes else 0,
+            "mean_component_size": (
+                sum(component_sizes) / len(component_sizes) if component_sizes else 0
+            ),
         }
 
     # Include metadata (d-cores pairs, community info, etc.)

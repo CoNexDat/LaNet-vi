@@ -43,7 +43,10 @@ def compute_kcores(
     if config is None:
         config = DecompositionConfig()
 
-    logger.info(f"Computing k-core decomposition for graph with {graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges")
+    logger.info(
+        f"Computing k-core decomposition for graph with {graph.number_of_nodes()} nodes, "
+        f"{graph.number_of_edges()} edges"
+    )
 
     # Check if graph is weighted (check first 100 edges for performance)
     is_weighted = any("weight" in graph[u][v] for u, v in list(graph.edges())[:100])

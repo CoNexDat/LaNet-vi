@@ -4,7 +4,7 @@ import bz2
 import gzip
 import io
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Tuple, Union
 
 import networkx as nx
 import pandas as pd

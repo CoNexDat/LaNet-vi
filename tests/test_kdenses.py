@@ -1,7 +1,6 @@
 """Tests for k-dense decomposition."""
 
 import networkx as nx
-import pytest
 
 from lanet_vi.decomposition.kdenses import compute_kdenses
 

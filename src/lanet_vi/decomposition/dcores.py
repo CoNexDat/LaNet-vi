@@ -7,7 +7,7 @@ incoming and outgoing edges separately.
 This implementation is based on the algorithm from legacy/Source/graph_dcores.cpp
 """
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 import networkx as nx
 
@@ -59,12 +59,18 @@ def compute_dcores(
     For undirected graphs, use compute_kcores instead.
     """
     if not graph.is_directed():
-        raise ValueError("D-core decomposition requires a directed graph. Use compute_kcores for undirected graphs.")
+        raise ValueError(
+            "D-core decomposition requires a directed graph. "
+            "Use compute_kcores for undirected graphs."
+        )
 
     if config is None:
         config = DecompositionConfig()
 
-    logger.info(f"Computing d-core decomposition for directed graph with {graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges")
+    logger.info(
+        f"Computing d-core decomposition for directed graph with {graph.number_of_nodes()} nodes, "
+        f"{graph.number_of_edges()} edges"
+    )
 
     # Compute in-degree and out-degree cores separately
     logger.debug("Computing in-degree cores")

@@ -164,7 +164,9 @@ def compute_spiral_positions(
     >>> len(positions)
     100
     """
-    logger.info(f"Computing spiral layout for {num_nodes} nodes (K={K}, beta={beta}, sep={separation})")
+    logger.info(
+        f"Computing spiral layout for {num_nodes} nodes (K={K}, beta={beta}, sep={separation})"
+    )
 
     positions = {}
 

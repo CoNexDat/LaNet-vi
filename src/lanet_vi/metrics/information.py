@@ -5,7 +5,7 @@ for comparing partitions, decompositions, and community structures.
 """
 
 from collections import Counter
-from typing import Dict, List
+from typing import Dict
 
 import numpy as np
 
