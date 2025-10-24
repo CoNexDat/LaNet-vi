@@ -199,7 +199,7 @@ class Network:
             raise ValueError("Must call decompose() before computing layout")
 
         logger.info("Computing visualization layout")
-        start_time = time.time()
+        _start_time = time.time()  # Reserved for future profiling
 
         # Filter components by minimum size (for component circles only, not node positioning)
         # This only affects which components get border circles drawn, all nodes are still

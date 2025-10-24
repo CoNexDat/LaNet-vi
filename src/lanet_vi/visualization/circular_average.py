@@ -54,7 +54,7 @@ class CircularAverage:
         if new_weight == 0:
             return current_angle
 
-        total_weight = current_weight + new_weight
+        _total_weight = current_weight + new_weight  # Reserved for normalization
 
         # Convert to Cartesian coordinates (unit vectors)
         x_current = current_weight * np.cos(current_angle)

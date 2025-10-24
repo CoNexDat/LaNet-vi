@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 
 
 def calcular_rho(
-    K: float,
+    k: float,
     rho_i: float,
     r_i: float,
     r_j: float,
@@ -29,13 +29,13 @@ def calcular_rho(
     Calculate the radial position for spiral layout using Newton-Raphson method.
 
     This function solves the equation: sqrt(x^2 + K1*x*cos(theta) + K2) = sep
-    where theta = (x/K)^(1/beta) - (rho_i/K)^(1/beta)
+    where theta = (x/k)^(1/beta) - (rho_i/k)^(1/beta)
 
     Direct port from legacy/Source/espiral.cpp
 
     Parameters
     ----------
-    K : float
+    k : float
         Spiral scaling constant
     rho_i : float
         Previous radial position
@@ -64,30 +64,30 @@ def calcular_rho(
 
     Examples
     --------
-    >>> rho = calcular_rho(K=10.0, rho_i=5.0, r_i=0.5, r_j=0.5, sep=1.0, beta=1.5)
+    >>> rho = calcular_rho(k=10.0, rho_i=5.0, r_i=0.5, r_j=0.5, sep=1.0, beta=1.5)
     """
     # Equation coefficients
     K2 = rho_i ** 2
     K1 = -2 * rho_i
 
     # Initial guess for new position
-    # Using spiral formula: K * ((rho_i/K)^(1/beta) + sep/(2*rho_i))^beta
-    x_j = K * ((rho_i / K) ** (1 / beta) + sep / (2 * rho_i)) ** beta
+    # Using spiral formula: k * ((rho_i/k)^(1/beta) + sep/(2*rho_i))^beta
+    x_j = k * ((rho_i / k) ** (1 / beta) + sep / (2 * rho_i)) ** beta
     x_i = x_j
 
     # Newton-Raphson iteration
     def compute_f(x: float) -> float:
         """Compute f(x) = distance - sep."""
-        theta = (x / K) ** (1 / beta) - (rho_i / K) ** (1 / beta)
+        theta = (x / k) ** (1 / beta) - (rho_i / k) ** (1 / beta)
         distance = math.sqrt(x**2 + K1 * x * math.cos(theta) + K2)
         return distance - sep
 
     def compute_f_derivative(x: float, f_val: float) -> float:
         """Compute derivative f'(x)."""
-        theta = (x / K) ** (1 / beta) - (rho_i / K) ** (1 / beta)
+        theta = (x / k) ** (1 / beta) - (rho_i / k) ** (1 / beta)
         term1 = 2 * x
         term2 = K1 * math.cos(theta)
-        term3 = -K1 * (x / K) * (1 / beta) * ((x / K) ** (1 / beta - 1)) * math.sin(theta)
+        term3 = -K1 * (x / k) * (1 / beta) * ((x / k) ** (1 / beta - 1)) * math.sin(theta)
 
         # Derivative of sqrt term
         distance = f_val + sep
@@ -129,7 +129,7 @@ def calcular_rho(
 
 def compute_spiral_positions(
     num_nodes: int,
-    K: float = 10.0,
+    k: float = 10.0,
     beta: float = 1.5,
     separation: float = 1.0,
     initial_radius: float = 1.0,
@@ -142,7 +142,7 @@ def compute_spiral_positions(
     ----------
     num_nodes : int
         Number of nodes to position
-    K : float
+    k : float
         Spiral scaling constant (default: 10.0)
     beta : float
         Spiral tightness (default: 1.5, higher = tighter spiral)
@@ -160,12 +160,12 @@ def compute_spiral_positions(
 
     Examples
     --------
-    >>> positions = compute_spiral_positions(100, K=15.0, beta=2.0)
+    >>> positions = compute_spiral_positions(100, k=15.0, beta=2.0)
     >>> len(positions)
     100
     """
     logger.info(
-        f"Computing spiral layout for {num_nodes} nodes (K={K}, beta={beta}, sep={separation})"
+        f"Computing spiral layout for {num_nodes} nodes (k={k}, beta={beta}, sep={separation})"
     )
 
     positions = {}
@@ -183,7 +183,7 @@ def compute_spiral_positions(
     for i in range(1, num_nodes):
         # Calculate new radial position using Newton-Raphson
         rho = calcular_rho(
-            K=K,
+            k=k,
             rho_i=rho,
             r_i=node_radius,
             r_j=node_radius,
@@ -192,8 +192,8 @@ def compute_spiral_positions(
         )
 
         # Calculate angular position from radial position
-        # theta follows spiral equation: rho = K * theta^beta
-        theta = (rho / K) ** (1 / beta)
+        # theta follows spiral equation: rho = k * theta^beta
+        theta = (rho / k) ** (1 / beta)
 
         # Convert polar to Cartesian
         x = rho * math.cos(theta)

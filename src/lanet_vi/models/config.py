@@ -263,7 +263,7 @@ class LayoutConfig(BaseModel):
         Use spatial hashing for faster circle packing (O(N) instead of O(N²))
     use_spiral_layout : bool
         Use spiral layout algorithm for node placement
-    spiral_K : float
+    spiral_k : float
         Spiral scaling constant (only used if use_spiral_layout=True)
     spiral_beta : float
         Spiral tightness parameter (only used if use_spiral_layout=True)
@@ -280,7 +280,7 @@ class LayoutConfig(BaseModel):
     min_component_size: int = Field(default=10, ge=1)  # Changed from 1 to 10 (CAIDA default)
     use_spatial_hashing: bool = Field(default=True)
     use_spiral_layout: bool = Field(default=False)
-    spiral_K: float = Field(default=10.0, gt=0.0)
+    spiral_k: float = Field(default=10.0, gt=0.0)
     spiral_beta: float = Field(default=1.5, gt=0.0)
     spiral_separation: float = Field(default=1.0, gt=0.0)
 

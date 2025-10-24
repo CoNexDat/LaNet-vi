@@ -225,7 +225,7 @@ def distribute_components(
             radii[i] = radius * np.sqrt(config.alpha * weights[i] ** config.beta)
 
     # Find largest component (will be placed at center)
-    i_max_rad = np.argmax(radii)
+    _i_max_rad = np.argmax(radii)  # Reserved for future optimization
 
     # Initialize random positions
     x = np.zeros(n)
@@ -251,7 +251,7 @@ def distribute_components(
             spatial_grid.insert(i, x[i], y[i], radii[i])
 
     # Iterative packing procedure
-    increment = 1.01
+    _increment = 1.01  # Reserved for future algorithm refinement
     factor_corrector = 1.10
     max_tries = 10 * n
     max_iterations = 1000

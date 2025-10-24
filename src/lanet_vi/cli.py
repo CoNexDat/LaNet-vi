@@ -132,7 +132,7 @@ def visualize(
     use_spiral_layout: bool = typer.Option(
         False, "--use-spiral-layout", help="Use spiral layout algorithm"
     ),
-    spiral_K: float = typer.Option(10.0, "--spiral-K", help="Spiral scaling constant"),
+    spiral_k: float = typer.Option(10.0, "--spiral-K", help="Spiral scaling constant"),
     spiral_beta: float = typer.Option(1.5, "--spiral-beta", help="Spiral tightness parameter"),
     spiral_separation: float = typer.Option(
         1.0, "--spiral-separation", help="Target separation between nodes in spiral"
@@ -217,7 +217,7 @@ def visualize(
                     beta=beta,
                     seed=seed,
                     use_spiral_layout=use_spiral_layout,
-                    spiral_K=spiral_K,
+                    spiral_k=spiral_k,
                     spiral_beta=spiral_beta,
                     spiral_separation=spiral_separation,
                 ),
@@ -390,7 +390,7 @@ def generate(
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress console output"),
     log_file: Optional[Path] = typer.Option(None, "--log-file", help="Log to file"),
 ) -> None:
-    """
+    r"""
     Generate random graphs for testing and demonstration.
 
     Examples

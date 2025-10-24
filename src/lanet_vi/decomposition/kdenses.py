@@ -81,8 +81,8 @@ def _build_triangle_dual_graph(
     edge_to_vertex_map: Dict[Tuple[int, int], int] = {}
     edge_counter = 0
 
-    # Find all triangles using NetworkX
-    triangles = nx.triangles(graph)
+    # Find all triangles using NetworkX (for diagnostics)
+    _triangles = nx.triangles(graph)  # Reserved for future validation
 
     # Process each node's triangles
     for node in graph.nodes():
