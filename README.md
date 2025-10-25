@@ -234,7 +234,7 @@ config.visualization.background = "white"
 ## Development
 
 ```bash
-git clone https://github.com/yourusername/LaNet-vi.git
+git clone https://github.com/conexdat/LaNet-vi.git
 cd LaNet-vi
 uv sync --all-extras
 uv run pytest
