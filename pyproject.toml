@@ -74,6 +74,9 @@ ignore = ["D100", "D104"]
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
+[tool.ruff.lint.pep8-naming]
+ignore-names = ["G", "K1", "K2"]
+
 [tool.mypy]
 python_version = "3.9"
 warn_return_any = true
