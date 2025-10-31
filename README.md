@@ -4,6 +4,7 @@
 [![PyPI](https://img.shields.io/pypi/v/lanet-vi)](https://pypi.org/project/lanet-vi/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![CI](https://github.com/conexdat/LaNet-vi/workflows/CI/badge.svg)](https://github.com/conexdat/LaNet-vi/actions)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
 **Large-scale network visualization using k-core decomposition**
 
