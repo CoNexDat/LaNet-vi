@@ -556,8 +556,8 @@ def select_visible_edges(
         remaining = set(edges) - set(selected_edges)
         remaining_sorted = sorted(
             remaining,
-            key=lambda e: -(
-                decomposition.node_indices.get(e[0], 0) + decomposition.node_indices.get(e[1], 0)
+            key=lambda e: (
+                -(decomposition.node_indices.get(e[0], 0) + decomposition.node_indices.get(e[1], 0))
             ),
         )
         selected_edges.extend(remaining_sorted[: target_edges - len(selected_edges)])

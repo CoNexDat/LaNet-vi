@@ -66,8 +66,8 @@ The example uses optimized default settings. To customize:
 config = LaNetConfig()
 
 # Adjust visualization
-config.visualization.width = 3600      # Higher resolution
-config.visualization.epsilon = 0.50    # More radial spread
+config.visualization.width = 3600  # Higher resolution
+config.visualization.epsilon = 0.50  # More radial spread
 config.visualization.edges_percent = 0.3  # More edges
 
 # Adjust layout
@@ -172,8 +172,8 @@ The example uses optimized default settings. To customize:
 config = LaNetConfig()
 
 # Adjust visualization
-config.visualization.width = 3600      # Higher resolution
-config.visualization.epsilon = 0.50    # More radial spread
+config.visualization.width = 3600  # Higher resolution
+config.visualization.epsilon = 0.50  # More radial spread
 config.visualization.edges_percent = 0.3  # More edges
 
 # Adjust layout
