@@ -16,7 +16,7 @@ uv run python examples/caida_example.py
 
 ### What it Does
 
-1. **Downloads data** from CAIDA public dataset (20170101 snapshot)
+1. **Downloads data** from CAIDA public dataset (20251001 snapshot)
 2. **Loads network** using pandas-based edge list reader
 3. **Computes k-core decomposition** using NetworkX
 4. **Generates visualization** with optimized default settings
@@ -24,10 +24,12 @@ uv run python examples/caida_example.py
 
 ### Network Statistics
 
-- **Nodes:** 56,345 Autonomous Systems
-- **Edges:** 239,876 AS relationships
-- **K-core range:** 1 to 79
-- **Components:** 50,870
+- **Nodes:** 78,370 Autonomous Systems
+- **Edges:** 489,407 AS relationships
+- **K-core range:** 1 to 149
+- **Components:** 71,890
+
+(Numbers from the 20251001 snapshot; they change between snapshots.)
 
 ### Output Files
 
@@ -38,13 +40,13 @@ uv run python examples/caida_example.py
 
 The visualization reveals the hierarchical structure of the Internet:
 
-**Inner core (red/orange, k=60-79):**
+**Inner core (red/orange, k≈100-149):**
 - Tier-1 backbone providers (Level3, Telia)
 - Hypergiant networks (Google, AWS, Cloudflare, Microsoft)
 - Dense interconnection
 - Critical infrastructure
 
-**Middle rings (yellow/green, k=20-60):**
+**Middle rings (yellow/green, k≈20-100):**
 - Regional and national ISPs
 - Medium-sized content providers
 - Transit providers
@@ -98,7 +100,7 @@ uv run python examples/caida_kdenses_example.py
 
 ### What it Does
 
-1. **Downloads data** from CAIDA public dataset (20170101 snapshot)
+1. **Downloads data** from CAIDA public dataset (20251001 snapshot)
 2. **Loads network** using pandas-based edge list reader
 3. **Computes k-denses decomposition** using triangle counting
 4. **Generates visualization** with optimized default settings
@@ -106,10 +108,12 @@ uv run python examples/caida_kdenses_example.py
 
 ### Network Statistics
 
-- **Nodes:** 56,345 Autonomous Systems
-- **Edges:** 239,876 AS relationships
-- **K-dense range:** 2 to 56
-- **Components:** 48,206
+- **Nodes:** 78,370 Autonomous Systems
+- **Edges:** 489,407 AS relationships
+- **K-dense range:** 2 to 55
+- **Components:** 66,396
+
+(Numbers from the 20251001 snapshot; they change between snapshots.)
 
 ### Output Files
 
@@ -121,20 +125,20 @@ uv run python examples/caida_kdenses_example.py
 **K-cores (degree-based):**
 - Identifies hierarchical structure
 - Node in k-core if it has ≥k neighbors
-- Wide range of shells (1-79 for this dataset)
+- Wide range of shells (1-149 for this dataset)
 - Shows overall connectivity patterns
 
 **K-denses (triangle-based):**
 - Identifies cohesive communities
 - Node in k-dense if it participates in ≥k triangles
-- Narrower range of shells (2-56 for this dataset)
+- Narrower range of shells (2-55 for this dataset)
 - Reveals tightly-knit groups with strong interconnections
 
 ### Interpretation
 
 The k-denses visualization reveals cohesive communities in Internet topology:
 
-**Inner core (red/orange, k=40-56):**
+**Inner core (red/orange, k=40-55):**
 - Most densely interconnected AS groups
 - Hypergiants and Tier-1 providers forming tight meshes
 - High triangle density (many mutual peering relationships)
@@ -154,7 +158,7 @@ The k-denses visualization reveals cohesive communities in Internet topology:
 
 ### Comparison with K-Cores
 
-K-denses produces fewer shells than k-cores for the same network (56 vs 79), indicating that triangle-based decomposition is more selective. While k-cores shows the broad hierarchical structure, k-denses highlights where ASes form tightly-knit communities with mutual relationships.
+K-denses produces far fewer shells than k-cores for the same network (55 vs 149), indicating that triangle-based decomposition is more selective. While k-cores shows the broad hierarchical structure, k-denses highlights where ASes form tightly-knit communities with mutual relationships.
 
 For Internet topology analysis:
 - Use **k-cores** to understand overall hierarchical structure
