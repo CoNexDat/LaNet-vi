@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional, cast
 
 import typer
 from rich.console import Console
@@ -156,6 +156,14 @@ def visualize(
     log_level = logging.DEBUG if verbose else logging.INFO
     setup_logging(level=log_level, log_file=log_file, quiet=quiet)
 
+    if community_algorithm not in ("louvain", "greedy_modularity"):
+        raise typer.BadParameter(
+            f"Unknown community algorithm {community_algorithm!r}; "
+            "use 'louvain' or 'greedy_modularity'",
+            param_hint="--community-algorithm",
+        )
+    algorithm = cast(Literal["louvain", "greedy_modularity"], community_algorithm)
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -221,7 +229,7 @@ def visualize(
                 ),
                 community=CommunityConfig(
                     detect_communities=detect_communities,
-                    algorithm=community_algorithm,
+                    algorithm=algorithm,
                     resolution=community_resolution,
                     color_by_community=color_by_community,
                     draw_boundaries=draw_community_boundaries,

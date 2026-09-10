@@ -1,5 +1,7 @@
 """Circular averaging for angular coordinates."""
 
+from typing import Optional
+
 import numpy as np
 
 
@@ -64,7 +66,7 @@ class CircularAverage:
         y_total = y_current + y_new
 
         # Convert back to angle
-        return np.arctan2(y_total, x_total)
+        return float(np.arctan2(y_total, x_total))
 
 
 def calculate_phi_from_neighbors(
@@ -76,9 +78,9 @@ def calculate_phi_from_neighbors(
     node_positions: dict,
     component_center: tuple,
     is_weighted: bool = False,
-    edge_weights: dict = None,
+    edge_weights: Optional[dict] = None,
     no_cliques: bool = False,
-    rng: np.random.Generator = None,
+    rng: Optional[np.random.Generator] = None,
 ) -> float:
     """
     Calculate phi (angular position) based on neighbors in higher shells.

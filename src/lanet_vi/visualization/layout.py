@@ -92,6 +92,15 @@ def place_in_circular_sector(
     return (rho, phi)
 
 
+def _component_level(comp: Component) -> int:
+    """Return the decomposition level (shell or dense index) of a component, 0 if unset."""
+    if comp.shell_index is not None:
+        return comp.shell_index
+    if comp.dense_index is not None:
+        return comp.dense_index
+    return 0
+
+
 class SpatialHashGrid:
     """
     Spatial hash grid for efficient circle overlap detection.
@@ -120,7 +129,7 @@ class SpatialHashGrid:
         cell_y = int((y - self.min_y) / self.cell_size)
         return (cell_x, cell_y)
 
-    def insert(self, idx: int, x: float, y: float, radius: float):
+    def insert(self, idx: int, x: float, y: float, radius: float) -> None:
         """Insert a circle into the grid."""
         # Find all cells this circle overlaps
         cells = self._get_overlapping_cells(x, y, radius)
@@ -129,7 +138,7 @@ class SpatialHashGrid:
                 self.grid[cell] = set()
             self.grid[cell].add(idx)
 
-    def remove(self, idx: int, x: float, y: float, radius: float):
+    def remove(self, idx: int, x: float, y: float, radius: float) -> None:
         """Remove a circle from the grid."""
         cells = self._get_overlapping_cells(x, y, radius)
         for cell in cells:
@@ -239,7 +248,7 @@ def distribute_components(
     spatial_grid = None
     if use_spatial_hashing:
         # Use cell size = 2 * max(radii) for efficient neighbor queries
-        max_radius = np.max(radii)
+        max_radius = float(np.max(radii))
         cell_size = max(2.0 * max_radius, radius / 20.0)
         bounds = (x0 - radius, x0 + radius, y0 - radius, y0 + radius)
         spatial_grid = SpatialHashGrid(bounds, cell_size)
@@ -380,7 +389,7 @@ def _give_new_random_position(
     max_tries: int,
     rng: np.random.Generator,
     exclude_idx: int = -1,
-    spatial_grid: SpatialHashGrid = None,
+    spatial_grid: Optional[SpatialHashGrid] = None,
 ) -> bool:
     """
     Try to find a valid random position for a component.
@@ -432,7 +441,7 @@ def _give_new_random_position(
         # Check overlaps with other components
         if spatial_grid:
             # Use spatial hashing for faster overlap checks
-            nearby = spatial_grid.get_nearby_indices(new_x, new_y, radii[idx])
+            nearby = spatial_grid.get_nearby_indices(new_x, new_y, float(radii[idx]))
             for j in nearby:
                 if j == idx or j == exclude_idx:
                     continue
@@ -636,10 +645,7 @@ def compute_hierarchical_layout(
         if len(components) > 0:
             levels: dict[int, list[Component]] = {}
             for comp in components:
-                level = comp.shell_index if comp.shell_index is not None else comp.dense_index
-                if level not in levels:
-                    levels[level] = []
-                levels[level].append(comp)
+                levels.setdefault(_component_level(comp), []).append(comp)
 
             # Distribute component circles at each level
             for level in sorted(levels.keys(), reverse=True):
@@ -659,16 +665,13 @@ def compute_hierarchical_layout(
         return node_positions
 
     # Fallback: Original component-based layout (for backward compatibility)
-    levels: dict[int, list[Component]] = {}
+    fallback_levels: dict[int, list[Component]] = {}
     for comp in components:
-        level = comp.shell_index if comp.shell_index is not None else comp.dense_index
-        if level not in levels:
-            levels[level] = []
-        levels[level].append(comp)
+        fallback_levels.setdefault(_component_level(comp), []).append(comp)
 
     # Distribute components at each level concentrically
-    for level in sorted(levels.keys(), reverse=True):
-        level_comps = levels[level]
+    for level in sorted(fallback_levels.keys(), reverse=True):
+        level_comps = fallback_levels[level]
 
         # Calculate radius for this level (larger index = smaller radius, towards center)
         level_radius = (max_shell_or_dense - level + 1) * 100.0

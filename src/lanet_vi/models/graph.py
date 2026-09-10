@@ -2,7 +2,7 @@
 
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class NodeData(BaseModel):
@@ -37,11 +37,7 @@ class NodeData(BaseModel):
     strength: Optional[float] = None
     coordinates: Optional[tuple[float, float]] = None
 
-    class Config:
-        """Pydantic model configuration."""
-
-        frozen = False
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(frozen=False, arbitrary_types_allowed=True)
 
 
 class EdgeData(BaseModel):
@@ -64,10 +60,7 @@ class EdgeData(BaseModel):
     weight: float = 1.0
     visible: bool = True
 
-    class Config:
-        """Pydantic model configuration."""
-
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
 
 class Component(BaseModel):
@@ -99,16 +92,13 @@ class Component(BaseModel):
     center: Optional[tuple[float, float]] = None
     radius: Optional[float] = None
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         """Initialize component and compute size."""
         super().__init__(**data)
         if self.size == 0:
             self.size = len(self.nodes)
 
-    class Config:
-        """Pydantic model configuration."""
-
-        frozen = False
+    model_config = ConfigDict(frozen=False)
 
 
 class DecompositionResult(BaseModel):
@@ -140,10 +130,7 @@ class DecompositionResult(BaseModel):
     p_function: Optional[list[float]] = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    class Config:
-        """Pydantic model configuration."""
-
-        frozen = False
+    model_config = ConfigDict(frozen=False)
 
 
 class VisualizationLayout(BaseModel):
@@ -180,11 +167,7 @@ class VisualizationLayout(BaseModel):
     components: list[Component]
     bounds: tuple[float, float, float, float]
 
-    class Config:
-        """Pydantic model configuration."""
-
-        frozen = False
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(frozen=False, arbitrary_types_allowed=True)
 
 
 class NetworkMetadata(BaseModel):
@@ -222,7 +205,4 @@ class NetworkMetadata(BaseModel):
     avg_degree: float
     density: float
 
-    class Config:
-        """Pydantic model configuration."""
-
-        frozen = True
+    model_config = ConfigDict(frozen=True)
