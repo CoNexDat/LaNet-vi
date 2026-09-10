@@ -6,8 +6,6 @@ This module provides functions for visualizing network communities, including:
 - Creating community-based color palettes
 """
 
-from typing import Dict, List, Tuple
-
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.collections import PatchCollection
@@ -23,7 +21,7 @@ logger = get_logger(__name__)
 def get_community_colors(
     num_communities: int,
     colormap: str = "tab20",
-) -> List[Tuple[float, float, float]]:
+) -> list[tuple[float, float, float]]:
     """Generate distinct colors for communities.
 
     Parameters
@@ -60,9 +58,9 @@ def get_community_colors(
 
 def assign_node_colors_by_community(
     community_result: CommunityResult,
-    node_positions: Dict[int, Tuple[float, float]],
+    node_positions: dict[int, tuple[float, float]],
     colormap: str = "tab20",
-) -> Dict[int, Tuple[float, float, float]]:
+) -> dict[int, tuple[float, float, float]]:
     """Assign colors to nodes based on their community membership.
 
     Parameters
@@ -115,7 +113,7 @@ def assign_node_colors_by_community(
 def draw_community_boundaries(
     ax: plt.Axes,
     community_result: CommunityResult,
-    node_positions: Dict[int, Tuple[float, float]],
+    node_positions: dict[int, tuple[float, float]],
     alpha: float = 0.2,
     linewidth: float = 2.0,
     colormap: str = "tab20",
@@ -176,9 +174,7 @@ def draw_community_boundaries(
             colors.append(community_colors[community.id])
 
         except Exception as e:
-            logger.warning(
-                f"Could not compute convex hull for community {community.id}: {e}"
-            )
+            logger.warning(f"Could not compute convex hull for community {community.id}: {e}")
             continue
 
     # Draw all patches
@@ -197,7 +193,7 @@ def draw_community_boundaries(
 def draw_community_circles(
     ax: plt.Axes,
     community_result: CommunityResult,
-    node_positions: Dict[int, Tuple[float, float]],
+    node_positions: dict[int, tuple[float, float]],
     padding: float = 0.1,
     alpha: float = 0.15,
     linewidth: float = 2.0,

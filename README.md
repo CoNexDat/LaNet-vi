@@ -3,7 +3,9 @@
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI](https://img.shields.io/pypi/v/lanet-vi)](https://pypi.org/project/lanet-vi/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![CI](https://github.com/conexdat/LaNet-vi/workflows/CI/badge.svg)](https://github.com/conexdat/LaNet-vi/actions)
+[![CI](https://github.com/CoNexDat/LaNet-vi/actions/workflows/ci.yml/badge.svg)](https://github.com/CoNexDat/LaNet-vi/actions/workflows/ci.yml)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
 **Large-scale network visualization using k-core decomposition**
@@ -235,11 +237,19 @@ config.visualization.background = "white"
 ## Development
 
 ```bash
-git clone https://github.com/conexdat/LaNet-vi.git
+git clone https://github.com/CoNexDat/LaNet-vi.git
 cd LaNet-vi
 uv sync --all-extras
+uv run pre-commit install
 uv run pytest
 ```
+
+## Contributing
+
+Contributions are welcome. `main` is protected: open a pull request and iterate until CI
+and the automatic Copilot review are green. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+full workflow, coding conventions and release process, and [SECURITY.md](SECURITY.md) for
+reporting vulnerabilities.
 
 ## Citation
 
@@ -258,4 +268,3 @@ MIT License
 - Esteban Carisimo (Python implementation)
 - Mariano Beiró (original C++ version)
 - J. Ignacio Alvarez-Hamelin (original C++ version)
-

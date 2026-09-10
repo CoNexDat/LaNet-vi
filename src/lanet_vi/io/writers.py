@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Dict, Union
+from typing import Union
 
 import networkx as nx
 import pandas as pd
@@ -132,7 +132,7 @@ def write_decomposition_json(
 
 
 def write_node_attributes(
-    node_data: Dict[int, Dict],
+    node_data: dict[int, dict],
     output_path: Union[Path, str],
 ) -> None:
     """
@@ -257,9 +257,7 @@ def write_community_json(
             }
             for comm in community_result.communities
         ],
-        "node_to_community": {
-            str(k): v for k, v in community_result.node_to_community.items()
-        },
+        "node_to_community": {str(k): v for k, v in community_result.node_to_community.items()},
     }
 
     # Add community size statistics
@@ -273,9 +271,7 @@ def write_community_json(
     with open(output_path, "w") as f:
         json.dump(data, f, indent=2)
 
-    logger.info(
-        f"Wrote {community_result.num_communities} communities to {output_path}"
-    )
+    logger.info(f"Wrote {community_result.num_communities} communities to {output_path}")
 
 
 def write_edge_list(

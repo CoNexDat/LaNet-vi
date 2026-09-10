@@ -7,7 +7,7 @@ incoming and outgoing edges separately.
 This implementation is based on the algorithm from legacy/Source/graph_dcores.cpp
 """
 
-from typing import Dict, Optional
+from typing import Optional
 
 import networkx as nx
 
@@ -49,9 +49,11 @@ def compute_dcores(
     Examples
     --------
     >>> G = nx.DiGraph()
-    >>> G.add_edges_from([(0,1), (1,2), (2,0)])
+    >>> G.add_edges_from([(0, 1), (1, 2), (2, 0)])
     >>> result = compute_dcores(G)
-    >>> result.node_indices[0]  # (k_in, k_out) for node 0
+    >>> result.node_indices[0]  # max(k_in, k_out), used for layout/colouring
+    1
+    >>> result.metadata["d_cores"][0]  # full (k_in, k_out) pair for node 0
     (1, 1)
 
     Notes
@@ -102,7 +104,7 @@ def compute_dcores(
         decomp_type="dcores",
         node_indices=simple_indices,  # Use max for visualization
         max_index=max(max_in, max_out),
-        min_index=1,
+        min_index=min(simple_indices.values()) if simple_indices else 0,
         metadata={
             "d_cores": node_indices,  # Full (k_in, k_out) pairs
             "max_in_core": max_in,
@@ -114,7 +116,7 @@ def compute_dcores(
 def _compute_directional_cores(
     graph: nx.DiGraph,
     direction: str = "in",
-) -> Dict[int, int]:
+) -> dict[int, int]:
     """
     Compute k-core based on either in-degree or out-degree.
 
@@ -204,6 +206,7 @@ def find_components_by_dcore(
 
     # Group nodes by (k_in, k_out) pair
     from collections import defaultdict
+
     cores_dict = defaultdict(list)
 
     for node, (k_in, k_out) in d_cores.items():

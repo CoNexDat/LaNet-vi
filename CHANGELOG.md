@@ -5,6 +5,36 @@ All notable changes to LaNet-vi will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- D-core decomposition (`--directed --decomp dcores`) crashed because `DecompositionResult`
+  had no `metadata` field; the field now exists and holds the `(k_in, k_out)` pairs.
+  `min_index` is now derived from the data instead of hard-coded to 1.
+- `lanet_vi.community.base` used `X | None` annotations that fail to import on Python 3.9.
+- `lanet_vi.__version__` reported `4.0.0`; it now reads the installed package version
+  (`5.0.0`) from package metadata, so `pyproject.toml` is the single source of truth.
+
+### Infrastructure
+
+- `main` is protected by a GitHub ruleset: changes land through pull requests with green CI
+  and an automatically requested Copilot code review; force-pushes and deletions are blocked.
+- CI split into `lint` (ruff check, ruff format, mypy), a `test` matrix on Python 3.9–3.13
+  (Ubuntu) plus macOS 3.12, and `build` (uv build + twine check). Coverage is enforced
+  with a minimum threshold and uploaded as an artifact.
+- Ruff formatter adopted; `UP` (pyupgrade) and `B` (bugbear) rule sets enabled and the
+  codebase migrated to PEP 585 built-in generics.
+- pre-commit hooks (ruff lint/format, file hygiene) via `.pre-commit-config.yaml`.
+- Dependabot for GitHub Actions and Python (uv) dependencies.
+- PyPI releases use trusted publishing (OIDC) through the `pypi` environment instead of a
+  long-lived API token.
+- Added `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CODEOWNERS`, issue and
+  pull request templates, and `AGENTS.md` (agent/contributor instructions; `CLAUDE.md`
+  now includes it).
+- New tests for the CLI, rendering pipeline, d-cores, writers and version metadata.
+- Python 3.13 added to the supported versions.
+
 ## [5.0.0] - 2025-10-18
 
 ### Overview
@@ -109,4 +139,5 @@ LaNet-vi 5.0 is a complete Python rewrite that includes all features from the C+
 
 ---
 
-[5.0.0]: https://github.com/conexdat/lanet-vi/releases/tag/v5.0.0
+[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.0.0...HEAD
+[5.0.0]: https://github.com/CoNexDat/LaNet-vi/releases/tag/v5.0.0

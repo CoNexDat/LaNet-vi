@@ -26,14 +26,14 @@ def visualize_caida_snapshot():
     # url = "https://publicdata.caida.org/datasets/as-relationships/serial-1/20251001.as-rel.txt.bz2"
     url = "https://publicdata.caida.org/datasets/as-relationships/serial-1/20170101.as-rel.txt.bz2"
 
-    print(f"\n[1/5] Downloading CAIDA snapshot...")
+    print("\n[1/5] Downloading CAIDA snapshot...")
     print(f"      URL: {url}")
 
     try:
         # Download and parse CAIDA data
         graph, dataframe = read_caida_snapshot(url, timeout=60)
 
-        print(f"      ✓ Downloaded successfully")
+        print("      ✓ Downloaded successfully")
         print(f"      • AS nodes: {graph.number_of_nodes()}")
         print(f"      • Relationships: {graph.number_of_edges()}")
         print(f"      • DataFrame shape: {dataframe.shape}")
@@ -51,7 +51,7 @@ def visualize_caida_snapshot():
             return
 
         graph, dataframe = read_caida_snapshot(local_file.as_posix())
-        print(f"      ✓ Loaded from local file")
+        print("      ✓ Loaded from local file")
 
     # Configure visualization using LaNet-vi optimized defaults
     # All parameters have been tuned based on CAIDA dataset and are now the defaults
@@ -60,9 +60,10 @@ def visualize_caida_snapshot():
 
     print(f"      • Resolution: {config.visualization.width}x{config.visualization.height}")
     print(f"      • Background: {config.visualization.background}")
-    print(f"      • Edge visibility: {config.visualization.edges_percent*100}% (min: {config.visualization.min_edges})")
+    viz = config.visualization
+    print(f"      • Edge visibility: {viz.edges_percent * 100}% (min: {viz.min_edges})")
     print(f"      • Epsilon: {config.visualization.epsilon} (radial spread)")
-    print(f"      • Using optimized defaults for smooth, readable visualization")
+    print("      • Using optimized defaults for smooth, readable visualization")
 
     # Create Network instance
     print("\n[3/5] Computing k-core decomposition...")
@@ -71,14 +72,15 @@ def visualize_caida_snapshot():
     # Compute k-core decomposition
     result = net.decompose(DecompositionType.KCORES)
 
-    print(f"      ✓ Decomposition complete")
+    print("      ✓ Decomposition complete")
     print(f"      • Min k-core: {result.min_index}")
     print(f"      • Max k-core: {result.max_index}")
     print(f"      • Components: {len(result.components)}")
 
     # Show top k-cores
-    print(f"\n      Top k-cores distribution:")
+    print("\n      Top k-cores distribution:")
     from collections import Counter
+
     core_counts = Counter(result.node_indices.values())
     for k in sorted(core_counts.keys(), reverse=True)[:5]:
         print(f"        k={k:2d}: {core_counts[k]:5d} nodes")
@@ -110,12 +112,12 @@ def visualize_caida_snapshot():
     print("\n" + "=" * 70)
     print("Visualization complete!")
     print("=" * 70)
-    print(f"\nOutput files:")
+    print("\nOutput files:")
     print(f"  • {output_file} - Network visualization")
     print(f"  • {cores_csv} - K-core decomposition (AS number, k-core)")
-    print(f"\nThe visualization shows the hierarchical structure of the")
-    print(f"Internet's AS-level topology, with central ASes in inner shells")
-    print(f"and peripheral networks in outer shells.")
+    print("\nThe visualization shows the hierarchical structure of the")
+    print("Internet's AS-level topology, with central ASes in inner shells")
+    print("and peripheral networks in outer shells.")
 
 
 def visualize_from_local_file():

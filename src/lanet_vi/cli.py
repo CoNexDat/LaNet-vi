@@ -36,9 +36,7 @@ console = Console()
 @app.command()
 def visualize(
     input_file: Path = typer.Option(..., "--input", "-i", help="Input edge list file"),
-    output: Path = typer.Option(
-        "output.png", "--output", "-o", help="Output visualization file"
-    ),
+    output: Path = typer.Option("output.png", "--output", "-o", help="Output visualization file"),
     config_file: Optional[Path] = typer.Option(
         None, "--config", "-c", help="YAML configuration file"
     ),
@@ -304,9 +302,7 @@ def config(
         lanet-vi config kdense_config.yaml --decomp kdenses
     """
     # Create default configuration
-    default_config = LaNetConfig(
-        decomposition=DecompositionConfig(decomp_type=decomp)
-    )
+    default_config = LaNetConfig(decomposition=DecompositionConfig(decomp_type=decomp))
 
     # Save to file
     save_config_to_yaml(default_config, output)
@@ -472,6 +468,7 @@ def generate(
         # Add random weights if requested
         if weighted:
             import random
+
             if seed is not None:
                 random.seed(seed)
             for u, v in graph.edges():

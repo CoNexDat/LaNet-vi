@@ -3,7 +3,7 @@
 This module provides data structures for representing community detection results.
 """
 
-from typing import Dict, List
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -22,7 +22,7 @@ class Community(BaseModel):
     """
 
     id: int
-    nodes: List[int]
+    nodes: list[int]
     size: int = Field(default=0)
 
     def __init__(self, **data):
@@ -50,8 +50,8 @@ class CommunityResult(BaseModel):
     """
 
     algorithm: str
-    communities: List[Community]
-    node_to_community: Dict[int, int]
+    communities: list[Community]
+    node_to_community: dict[int, int]
     num_communities: int = Field(default=0)
     modularity: float = Field(default=0.0)
 
@@ -61,7 +61,7 @@ class CommunityResult(BaseModel):
         if self.num_communities == 0:
             self.num_communities = len(self.communities)
 
-    def get_community(self, community_id: int) -> Community | None:
+    def get_community(self, community_id: int) -> Optional[Community]:
         """Get a community by its ID.
 
         Parameters
@@ -71,7 +71,7 @@ class CommunityResult(BaseModel):
 
         Returns
         -------
-        Community | None
+        Optional[Community]
             The community if found, None otherwise
         """
         for community in self.communities:
@@ -79,7 +79,7 @@ class CommunityResult(BaseModel):
                 return community
         return None
 
-    def get_node_community(self, node: int) -> int | None:
+    def get_node_community(self, node: int) -> Optional[int]:
         """Get the community ID for a given node.
 
         Parameters
@@ -89,12 +89,12 @@ class CommunityResult(BaseModel):
 
         Returns
         -------
-        int | None
+        Optional[int]
             Community ID if node is found, None otherwise
         """
         return self.node_to_community.get(node)
 
-    def get_community_sizes(self) -> Dict[int, int]:
+    def get_community_sizes(self) -> dict[int, int]:
         """Get the size of each community.
 
         Returns

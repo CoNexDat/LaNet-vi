@@ -1,7 +1,7 @@
 """Matplotlib-based renderer for network visualization."""
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
@@ -20,7 +20,7 @@ def render_network(
     decomposition: DecompositionResult,
     config: VisualizationConfig,
     output_path: Union[Path, str],
-    node_names: Optional[Dict[int, str]] = None,
+    node_names: Optional[dict[int, str]] = None,
 ) -> None:
     """
     Render network visualization using matplotlib.
@@ -135,7 +135,8 @@ def _draw_edges(
         # Use gradient edge rendering with k-core layering
         # Group edge segments by k-core level for proper layering
         from collections import defaultdict
-        segments_by_kcore = defaultdict(lambda: {'segments': [], 'colors': [], 'widths': []})
+
+        segments_by_kcore = defaultdict(lambda: {"segments": [], "colors": [], "widths": []})
 
         for source, target in layout.visible_edges:
             if source not in layout.node_positions or target not in layout.node_positions:
@@ -163,14 +164,14 @@ def _draw_edges(
 
             # Add both edge segments to the appropriate k-core group
             # First half: source -> midpoint (color1)
-            segments_by_kcore[min_kcore]['segments'].append([(x1, y1), (mid_x, mid_y)])
-            segments_by_kcore[min_kcore]['colors'].append(color1)
-            segments_by_kcore[min_kcore]['widths'].append(width)
+            segments_by_kcore[min_kcore]["segments"].append([(x1, y1), (mid_x, mid_y)])
+            segments_by_kcore[min_kcore]["colors"].append(color1)
+            segments_by_kcore[min_kcore]["widths"].append(width)
 
             # Second half: midpoint -> target (color2)
-            segments_by_kcore[min_kcore]['segments'].append([(mid_x, mid_y), (x2, y2)])
-            segments_by_kcore[min_kcore]['colors'].append(color2)
-            segments_by_kcore[min_kcore]['widths'].append(width)
+            segments_by_kcore[min_kcore]["segments"].append([(mid_x, mid_y), (x2, y2)])
+            segments_by_kcore[min_kcore]["colors"].append(color2)
+            segments_by_kcore[min_kcore]["widths"].append(width)
 
         # Draw edges in k-core order: lower k-core first (background),
         # higher k-core last (foreground)
@@ -178,15 +179,15 @@ def _draw_edges(
         max_kcore = max(segments_by_kcore.keys()) if segments_by_kcore else 1
         for kcore in sorted(segments_by_kcore.keys()):
             data = segments_by_kcore[kcore]
-            if data['segments']:
+            if data["segments"]:
                 # Map k-core to zorder range: [-max_kcore, -1]
                 # Lower k-core gets more negative zorder (further back)
                 # Higher k-core gets less negative zorder (closer to front, but still behind nodes)
                 edge_zorder = kcore - max_kcore - 1
                 lc = LineCollection(
-                    data['segments'],
-                    colors=data['colors'],
-                    linewidths=data['widths'],
+                    data["segments"],
+                    colors=data["colors"],
+                    linewidths=data["widths"],
                     alpha=config.edge_alpha,
                     zorder=edge_zorder,
                 )
@@ -230,7 +231,7 @@ def _draw_nodes(
             colors.append(layout.node_colors.get(node, (0.7, 0.7, 0.7)))
             # scatter uses area (s = πr²), so multiply by π and square
             size = layout.node_sizes.get(node, 5.0)
-            sizes.append(np.pi * size ** 2)
+            sizes.append(np.pi * size**2)
 
         # Draw all nodes at once with scatter
         ax.scatter(
@@ -263,7 +264,7 @@ def _draw_nodes(
 def _draw_labels(
     ax: plt.Axes,
     layout: VisualizationLayout,
-    node_names: Dict[int, str],
+    node_names: dict[int, str],
     config: VisualizationConfig,
     decomposition: DecompositionResult,
 ) -> None:
@@ -309,9 +310,7 @@ def _draw_degree_scale(
     legend_elements = []
 
     max_idx = (
-        config.color_scale_max_value
-        if config.color_scale_max_value
-        else decomposition.max_index
+        config.color_scale_max_value if config.color_scale_max_value else decomposition.max_index
     )
 
     # Sample more indices for comprehensive legend (matching reference image)
@@ -376,7 +375,7 @@ def _draw_degree_scale(
         fontsize=fontsize,
         title="k-core",
         labelcolor=text_color,  # Set label text color
-        title_fontproperties={'size': fontsize, 'weight': 'bold'},
+        title_fontproperties={"size": fontsize, "weight": "bold"},
     )
     # Set title color manually (labelcolor doesn't affect title)
     legend.get_title().set_color(text_color)
@@ -406,16 +405,12 @@ def _draw_size_legend(
         # Log scaling for large graphs
         sample_degrees = [1, max_degree // 4, max_degree // 2, max_degree]
         sample_sizes = [
-            0.3 + 2.0 * math.log(1 + deg) / math.log(1 + max_degree)
-            for deg in sample_degrees
+            0.3 + 2.0 * math.log(1 + deg) / math.log(1 + max_degree) for deg in sample_degrees
         ]
     else:
         # Linear scaling for small graphs
         sample_degrees = [1, max_degree // 2, max_degree]
-        sample_sizes = [
-            0.5 + 3.0 * (deg / max_degree)
-            for deg in sample_degrees
-        ]
+        sample_sizes = [0.5 + 3.0 * (deg / max_degree) for deg in sample_degrees]
 
     # Create legend elements
     legend_elements = []
@@ -463,7 +458,7 @@ def _draw_size_legend(
         title="degree",
         labelspacing=1.5,  # Increase spacing to prevent overlap
         labelcolor=text_color,  # Set label text color
-        title_fontproperties={'size': fontsize, 'weight': 'bold'},
+        title_fontproperties={"size": fontsize, "weight": "bold"},
     )
     # Set title color manually (labelcolor doesn't affect title)
     legend.get_title().set_color(text_color)
@@ -473,7 +468,7 @@ def select_visible_edges(
     graph: nx.Graph,
     config: VisualizationConfig,
     decomposition: DecompositionResult,
-) -> List[Tuple[int, int]]:
+) -> list[tuple[int, int]]:
     """
     Select subset of edges to display based on configuration.
 
@@ -512,6 +507,7 @@ def select_visible_edges(
 
     # Group edges by their shell connectivity
     from collections import defaultdict
+
     edges_by_shell = defaultdict(list)
 
     for edge in edges:
@@ -530,8 +526,7 @@ def select_visible_edges(
         shell_edges = edges_by_shell[shell_idx]
         # Sample proportion of edges from this shell
         n_to_sample = min(
-            len(shell_edges),
-            max(1, int(len(shell_edges) * target_edges / total_edges_available))
+            len(shell_edges), max(1, int(len(shell_edges) * target_edges / total_edges_available))
         )
         selected_edges.extend(random.sample(shell_edges, n_to_sample))
 
@@ -547,6 +542,6 @@ def select_visible_edges(
                 decomposition.node_indices.get(e[0], 0) + decomposition.node_indices.get(e[1], 0)
             ),
         )
-        selected_edges.extend(remaining_sorted[:target_edges - len(selected_edges)])
+        selected_edges.extend(remaining_sorted[: target_edges - len(selected_edges)])
 
     return selected_edges[:target_edges]
