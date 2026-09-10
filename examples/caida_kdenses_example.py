@@ -34,7 +34,7 @@ def visualize_caida_kdenses():
     print("=" * 70)
 
     # CAIDA snapshot URL (same as k-cores example for comparison)
-    url = "https://publicdata.caida.org/datasets/as-relationships/serial-1/20170101.as-rel.txt.bz2"
+    url = "https://publicdata.caida.org/datasets/as-relationships/serial-1/20251001.as-rel.txt.bz2"
 
     print("\n[1/5] Downloading CAIDA snapshot...")
     print(f"      URL: {url}")
@@ -53,7 +53,7 @@ def visualize_caida_kdenses():
         print("\n      Using local file instead...")
 
         # Fallback: try local file if download fails
-        local_file = Path("20170101.as-rel.txt.bz2")
+        local_file = Path("20251001.as-rel.txt.bz2")
         if not local_file.exists():
             print(f"      ✗ Local file not found: {local_file}")
             print("\n      Please download the file manually:")

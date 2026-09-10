@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `lanet_vi.__version__` reported `4.0.0`; it now reads the installed package version
   (`5.0.0`) from package metadata, so `pyproject.toml` is the single source of truth.
 
+### Changed
+
+- CAIDA examples, README and docs now use the 20251001 AS-relationships snapshot
+  (78,370 ASes, 489,407 relationships, k-cores 1-149); example images regenerated.
+
 ### Infrastructure
 
 - `main` is protected by a GitHub ruleset: changes land through pull requests with green CI

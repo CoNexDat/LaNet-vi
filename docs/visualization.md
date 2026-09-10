@@ -154,7 +154,7 @@ degree
 Looking at a typical output:
 
 **Center (red/orange):**
-- High k-core (k=60-79)
+- High k-core (k≈100-149 in the 2025 CAIDA snapshot)
 - Tier-1 ISPs and backbone providers
 - Dense interconnection
 - Few nodes, many edges between them

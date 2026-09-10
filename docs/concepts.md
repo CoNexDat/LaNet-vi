@@ -73,7 +73,7 @@ This creates a hierarchical "onion-like" structure where:
 In the CAIDA AS-relationships dataset:
 - **k=1-10** (outer): Stub networks, small ISPs, end users
 - **k=20-40** (middle): Regional ISPs, medium providers
-- **k=60-79** (inner): Tier-1 backbone providers (Level3, Telia) and Hypergiant networks (Google, AWS, Cloudflare)
+- **k≈100-149** (inner, 2025 snapshot): Tier-1 backbone providers (Level3, Telia) and Hypergiant networks (Google, AWS, Cloudflare)
 
 The visualization clearly shows this hierarchical structure with colored concentric rings.
 
