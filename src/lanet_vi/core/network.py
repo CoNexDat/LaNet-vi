@@ -2,7 +2,7 @@
 
 import time
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union
+from typing import Optional, Union
 
 import networkx as nx
 
@@ -66,8 +66,8 @@ class Network:
         self.graph = graph
         self.config = config if config else LaNetConfig()
         self.decomposition: Optional[DecompositionResult] = None
-        self.node_names: Dict[int, str] = {}
-        self.node_colors: Dict[int, Tuple[float, float, float]] = {}
+        self.node_names: dict[int, str] = {}
+        self.node_colors: dict[int, tuple[float, float, float]] = {}
 
     @classmethod
     def from_edge_list(
@@ -209,7 +209,6 @@ class Network:
             comp for comp in self.decomposition.components if comp.size >= min_size
         ]
 
-
         # Group ALL nodes by shell index for shell-based layout
         # This ensures every node gets positioned, not just nodes in large components
         from collections import defaultdict
@@ -300,13 +299,9 @@ class Network:
                 else:
                     normalized = 0.5
 
-                width = (
-                    self.config.visualization.min_edge_width
-                    + normalized
-                    * (
-                        self.config.visualization.max_edge_width
-                        - self.config.visualization.min_edge_width
-                    )
+                width = self.config.visualization.min_edge_width + normalized * (
+                    self.config.visualization.max_edge_width
+                    - self.config.visualization.min_edge_width
                 )
                 edge_widths[(u, v)] = width
 
@@ -363,7 +358,7 @@ class Network:
             self.node_names if self.node_names else None,
         )
 
-    def get_metadata(self) -> Dict:
+    def get_metadata(self) -> dict:
         """
         Get network metadata.
 

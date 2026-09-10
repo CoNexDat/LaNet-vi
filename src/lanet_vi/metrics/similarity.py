@@ -4,8 +4,6 @@ This module provides metrics for comparing different partitions, clusterings,
 and decompositions of networks.
 """
 
-from typing import Dict
-
 from sklearn.metrics import adjusted_rand_score
 
 from lanet_vi.logging_config import get_logger
@@ -19,8 +17,8 @@ logger = get_logger(__name__)
 
 
 def compute_adjusted_rand_index(
-    partition1: Dict[int, int],
-    partition2: Dict[int, int],
+    partition1: dict[int, int],
+    partition2: dict[int, int],
 ) -> float:
     """Compute Adjusted Rand Index (ARI) between two partitions.
 
@@ -86,9 +84,9 @@ def compute_adjusted_rand_index(
 
 
 def compare_partitions(
-    partition1: Dict[int, int],
-    partition2: Dict[int, int],
-) -> Dict[str, float]:
+    partition1: dict[int, int],
+    partition2: dict[int, int],
+) -> dict[str, float]:
     """Compare two partitions using multiple similarity metrics.
 
     Computes several metrics for comprehensive comparison:
@@ -151,7 +149,7 @@ def compare_partitions(
 def compare_decompositions(
     decomp1: DecompositionResult,
     decomp2: DecompositionResult,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Compare two network decompositions.
 
     Compares decompositions as partitions where each k-core/k-dense level
@@ -183,16 +181,14 @@ def compare_decompositions(
     - Same decomposition on different graphs
     - Community detection vs structural decomposition
     """
-    logger.info(
-        f"Comparing decompositions: {decomp1.decomp_type} vs {decomp2.decomp_type}"
-    )
+    logger.info(f"Comparing decompositions: {decomp1.decomp_type} vs {decomp2.decomp_type}")
 
     return compare_partitions(decomp1.node_indices, decomp2.node_indices)
 
 
 def compute_overlap_coefficient(
-    partition1: Dict[int, int],
-    partition2: Dict[int, int],
+    partition1: dict[int, int],
+    partition2: dict[int, int],
     cluster1_id: int,
     cluster2_id: int,
 ) -> float:
@@ -239,8 +235,8 @@ def compute_overlap_coefficient(
 
 
 def compute_jaccard_similarity(
-    partition1: Dict[int, int],
-    partition2: Dict[int, int],
+    partition1: dict[int, int],
+    partition2: dict[int, int],
     cluster1_id: int,
     cluster2_id: int,
 ) -> float:

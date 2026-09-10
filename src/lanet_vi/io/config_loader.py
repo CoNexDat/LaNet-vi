@@ -50,7 +50,7 @@ def load_config_from_yaml(file_path: Union[Path, str]) -> LaNetConfig:
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
     # Load YAML file
-    with open(file_path, "r") as f:
+    with open(file_path) as f:
         config_dict = yaml.safe_load(f)
 
     logger.debug(f"Loaded YAML configuration with keys: {list(config_dict.keys())}")

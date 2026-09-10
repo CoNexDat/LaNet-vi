@@ -188,8 +188,7 @@ class VisualizationConfig(BaseModel):
             aspect = width / v
             if aspect < 0.5 or aspect > 3.0:
                 raise ValueError(
-                    f"Aspect ratio {aspect:.2f} is unusual. "
-                    "Recommended ratio is 4:3 (width/height)"
+                    f"Aspect ratio {aspect:.2f} is unusual. Recommended ratio is 4:3 (width/height)"
                 )
         return v
 

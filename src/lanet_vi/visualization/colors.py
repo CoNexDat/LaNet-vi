@@ -1,6 +1,6 @@
 """Color schemes and utilities for network visualization."""
 
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import matplotlib.colors as mcolors
 
@@ -19,7 +19,7 @@ WHITE = (1.0, 1.0, 1.0)
 BLACK = (0.0, 0.0, 0.0)
 
 
-def get_color_scale(scheme: ColorScheme) -> List[Tuple[Tuple[float, float, float], float]]:
+def get_color_scale(scheme: ColorScheme) -> list[tuple[tuple[float, float, float], float]]:
     """
     Get color scale for the given color scheme.
 
@@ -60,10 +60,10 @@ def get_color_scale(scheme: ColorScheme) -> List[Tuple[Tuple[float, float, float
 
 
 def interpolate_color(
-    color1: Tuple[float, float, float],
-    color2: Tuple[float, float, float],
+    color1: tuple[float, float, float],
+    color2: tuple[float, float, float],
     alpha: float,
-) -> Tuple[float, float, float]:
+) -> tuple[float, float, float]:
     """
     Linearly interpolate between two colors.
 
@@ -92,7 +92,7 @@ def compute_shell_color(
     max_shell_index: int,
     color_scheme: ColorScheme,
     color_scale_max: Optional[int] = None,
-) -> Tuple[float, float, float]:
+) -> tuple[float, float, float]:
     """
     Compute color for a node based on its shell/dense index.
 

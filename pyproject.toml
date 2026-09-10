@@ -34,6 +34,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 [project.urls]
@@ -48,6 +49,7 @@ dev = [
     "pytest-cov>=4.0",
     "ruff>=0.1",
     "mypy>=1.0",
+    "pre-commit>=4.0",
     "ipython>=8.0",
     "jupyter>=1.0",
 ]
@@ -67,9 +69,15 @@ build-backend = "uv_build"
 line-length = 100
 target-version = "py39"
 
+[tool.ruff.format]
+docstring-code-format = true
+
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "D"]
+select = ["E", "F", "I", "N", "W", "D", "UP", "B"]
 ignore = ["D100", "D104"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/lanet_vi/cli.py" = ["B008"]  # typer.Option(...) defaults are the documented Typer pattern
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
@@ -88,4 +96,4 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-addopts = "-v --cov=lanet_vi --cov-report=term-missing"
+addopts = "-v --cov=lanet_vi --cov-report=term-missing --cov-report=xml --cov-fail-under=40"

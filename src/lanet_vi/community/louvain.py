@@ -110,8 +110,7 @@ def detect_communities_louvain(
     modularity = nx_community.modularity(graph, communities_sets, weight=weight)
 
     logger.info(
-        f"Louvain detection complete: {len(communities)} communities, "
-        f"modularity={modularity:.4f}"
+        f"Louvain detection complete: {len(communities)} communities, modularity={modularity:.4f}"
     )
 
     return CommunityResult(

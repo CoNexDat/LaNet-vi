@@ -5,7 +5,6 @@ for comparing partitions, decompositions, and community structures.
 """
 
 from collections import Counter
-from typing import Dict
 
 import numpy as np
 
@@ -14,7 +13,7 @@ from lanet_vi.logging_config import get_logger
 logger = get_logger(__name__)
 
 
-def compute_partition_entropy(partition: Dict[int, int]) -> float:
+def compute_partition_entropy(partition: dict[int, int]) -> float:
     """Compute Shannon entropy of a partition.
 
     The entropy H(X) measures the uncertainty in the partition:
@@ -61,8 +60,8 @@ def compute_partition_entropy(partition: Dict[int, int]) -> float:
 
 
 def compute_mutual_information(
-    partition1: Dict[int, int],
-    partition2: Dict[int, int],
+    partition1: dict[int, int],
+    partition2: dict[int, int],
 ) -> float:
     """Compute mutual information between two partitions.
 
@@ -124,6 +123,7 @@ def compute_mutual_information(
     # Build contingency table
     # contingency[i][j] = number of nodes in cluster i of partition1 and cluster j of partition2
     from collections import defaultdict
+
     contingency = defaultdict(lambda: defaultdict(int))
 
     for node in nodes1:
@@ -150,8 +150,8 @@ def compute_mutual_information(
 
 
 def compute_normalized_mutual_information(
-    partition1: Dict[int, int],
-    partition2: Dict[int, int],
+    partition1: dict[int, int],
+    partition2: dict[int, int],
     method: str = "arithmetic",
 ) -> float:
     """Compute normalized mutual information (NMI) between two partitions.
@@ -220,16 +220,15 @@ def compute_normalized_mutual_information(
         nmi = mi / max(h1, h2)
     else:
         raise ValueError(
-            f"Unknown normalization method: {method}. "
-            "Choose from: arithmetic, geometric, min, max"
+            f"Unknown normalization method: {method}. Choose from: arithmetic, geometric, min, max"
         )
 
     return float(nmi)
 
 
 def compute_variation_of_information(
-    partition1: Dict[int, int],
-    partition2: Dict[int, int],
+    partition1: dict[int, int],
+    partition2: dict[int, int],
 ) -> float:
     """Compute variation of information (VI) between two partitions.
 
