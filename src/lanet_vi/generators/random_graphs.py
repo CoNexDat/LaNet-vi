@@ -140,8 +140,7 @@ def generate_barabasi_albert(
     G = nx.barabasi_albert_graph(n, m, seed=seed)
 
     logger.info(
-        f"Generated scale-free graph: {G.number_of_nodes()} nodes, "
-        f"{G.number_of_edges()} edges"
+        f"Generated scale-free graph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges"
     )
     return G
 
@@ -196,8 +195,7 @@ def generate_watts_strogatz(
     G = nx.watts_strogatz_graph(n, k, p, seed=seed)
 
     logger.info(
-        f"Generated small-world graph: {G.number_of_nodes()} nodes, "
-        f"{G.number_of_edges()} edges"
+        f"Generated small-world graph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges"
     )
     return G
 

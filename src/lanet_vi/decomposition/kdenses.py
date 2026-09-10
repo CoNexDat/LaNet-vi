@@ -1,7 +1,5 @@
 """K-dense decomposition using triangle-based dual graph approach."""
 
-from typing import Dict, List, Tuple
-
 import networkx as nx
 
 from lanet_vi.models.graph import Component, DecompositionResult
@@ -61,7 +59,7 @@ def compute_kdenses(graph: nx.Graph) -> DecompositionResult:
 
 def _build_triangle_dual_graph(
     graph: nx.Graph,
-) -> Tuple[nx.Graph, Dict[Tuple[int, int], int]]:
+) -> tuple[nx.Graph, dict[tuple[int, int], int]]:
     """
     Build dual graph where edges are vertices and triangles are edges.
 
@@ -78,7 +76,7 @@ def _build_triangle_dual_graph(
         Mapping from original edge (u, v) to dual vertex ID
     """
     dual_graph = nx.Graph()
-    edge_to_vertex_map: Dict[Tuple[int, int], int] = {}
+    edge_to_vertex_map: dict[tuple[int, int], int] = {}
     edge_counter = 0
 
     # Find all triangles using NetworkX (for diagnostics)
@@ -103,21 +101,15 @@ def _build_triangle_dual_graph(
                     v1, v2, v3 = sorted([node, neighbor1, neighbor2])
 
                     # Get or create dual vertices for each edge
-                    edge1 = _get_or_create_dual_vertex(
-                        edge_to_vertex_map, (v1, v2), edge_counter
-                    )
+                    edge1 = _get_or_create_dual_vertex(edge_to_vertex_map, (v1, v2), edge_counter)
                     if edge1 == edge_counter:
                         edge_counter += 1
 
-                    edge2 = _get_or_create_dual_vertex(
-                        edge_to_vertex_map, (v2, v3), edge_counter
-                    )
+                    edge2 = _get_or_create_dual_vertex(edge_to_vertex_map, (v2, v3), edge_counter)
                     if edge2 == edge_counter:
                         edge_counter += 1
 
-                    edge3 = _get_or_create_dual_vertex(
-                        edge_to_vertex_map, (v1, v3), edge_counter
-                    )
+                    edge3 = _get_or_create_dual_vertex(edge_to_vertex_map, (v1, v3), edge_counter)
                     if edge3 == edge_counter:
                         edge_counter += 1
 
@@ -130,8 +122,8 @@ def _build_triangle_dual_graph(
 
 
 def _get_or_create_dual_vertex(
-    edge_map: Dict[Tuple[int, int], int],
-    edge: Tuple[int, int],
+    edge_map: dict[tuple[int, int], int],
+    edge: tuple[int, int],
     counter: int,
 ) -> int:
     """
@@ -165,9 +157,9 @@ def _get_or_create_dual_vertex(
 
 def _compute_vertex_dense_indices(
     graph: nx.Graph,
-    edge_to_vertex_map: Dict[Tuple[int, int], int],
-    dual_cores: Dict[int, int],
-) -> Dict[int, int]:
+    edge_to_vertex_map: dict[tuple[int, int], int],
+    dual_cores: dict[int, int],
+) -> dict[int, int]:
     """
     Compute dense index for each vertex in original graph.
 
@@ -188,7 +180,7 @@ def _compute_vertex_dense_indices(
     Dict[int, int]
         Dense index for each vertex
     """
-    dense_indices: Dict[int, int] = {}
+    dense_indices: dict[int, int] = {}
 
     for node in graph.nodes():
         max_edge_core = 0
@@ -234,7 +226,7 @@ def find_components_by_dense(
     component_id = 0
 
     # Group nodes by dense index
-    denses: Dict[int, List[int]] = {}
+    denses: dict[int, list[int]] = {}
     for node, dense_idx in decomposition.node_indices.items():
         if dense_idx not in denses:
             denses[dense_idx] = []

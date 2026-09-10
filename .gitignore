@@ -1,6 +1,5 @@
 TODO/*.md
 .claude
-CLAUDE.md
 legacy/*
 
 # Python-generated files
@@ -37,11 +36,14 @@ dmypy.json
 .ipynb_checkpoints/
 *.ipynb
 
-# Output files
+# Output files (example outputs in examples/outputs are tracked)
 *.png
 *.pov
 *.svg
 *.csv
+!examples/outputs/*.png
+!examples/outputs/*.svg
+coverage.xml
 log/*.log
 
 # Development and temporary files

@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional, cast
 
 import typer
 from rich.console import Console
@@ -36,9 +36,7 @@ console = Console()
 @app.command()
 def visualize(
     input_file: Path = typer.Option(..., "--input", "-i", help="Input edge list file"),
-    output: Path = typer.Option(
-        "output.png", "--output", "-o", help="Output visualization file"
-    ),
+    output: Path = typer.Option("output.png", "--output", "-o", help="Output visualization file"),
     config_file: Optional[Path] = typer.Option(
         None, "--config", "-c", help="YAML configuration file"
     ),
@@ -158,6 +156,14 @@ def visualize(
     log_level = logging.DEBUG if verbose else logging.INFO
     setup_logging(level=log_level, log_file=log_file, quiet=quiet)
 
+    if community_algorithm not in ("louvain", "greedy_modularity"):
+        raise typer.BadParameter(
+            f"Unknown community algorithm {community_algorithm!r}; "
+            "use 'louvain' or 'greedy_modularity'",
+            param_hint="--community-algorithm",
+        )
+    algorithm = cast(Literal["louvain", "greedy_modularity"], community_algorithm)
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -223,7 +229,7 @@ def visualize(
                 ),
                 community=CommunityConfig(
                     detect_communities=detect_communities,
-                    algorithm=community_algorithm,
+                    algorithm=algorithm,
                     resolution=community_resolution,
                     color_by_community=color_by_community,
                     draw_boundaries=draw_community_boundaries,
@@ -304,9 +310,7 @@ def config(
         lanet-vi config kdense_config.yaml --decomp kdenses
     """
     # Create default configuration
-    default_config = LaNetConfig(
-        decomposition=DecompositionConfig(decomp_type=decomp)
-    )
+    default_config = LaNetConfig(decomposition=DecompositionConfig(decomp_type=decomp))
 
     # Save to file
     save_config_to_yaml(default_config, output)
@@ -472,6 +476,7 @@ def generate(
         # Add random weights if requested
         if weighted:
             import random
+
             if seed is not None:
                 random.seed(seed)
             for u, v in graph.edges():

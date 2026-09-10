@@ -6,8 +6,6 @@ This module provides functions for visualizing network communities, including:
 - Creating community-based color palettes
 """
 
-from typing import Dict, List, Tuple
-
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.collections import PatchCollection
@@ -23,7 +21,7 @@ logger = get_logger(__name__)
 def get_community_colors(
     num_communities: int,
     colormap: str = "tab20",
-) -> List[Tuple[float, float, float]]:
+) -> list[tuple[float, float, float]]:
     """Generate distinct colors for communities.
 
     Parameters
@@ -43,26 +41,27 @@ def get_community_colors(
     For more than 20 communities, consider using "hsv" or "rainbow" colormaps.
     """
     if num_communities <= 20:
-        cmap = plt.cm.get_cmap("tab20")
+        cmap = plt.get_cmap("tab20")
     elif num_communities <= 40:
         # Combine tab20 with tab20b/tab20c
-        cmap = plt.cm.get_cmap("tab20b")
+        cmap = plt.get_cmap("tab20b")
     else:
         # Use continuous colormap for many communities
-        cmap = plt.cm.get_cmap("hsv")
+        cmap = plt.get_cmap("hsv")
 
-    colors = []
+    colors: list[tuple[float, float, float]] = []
     for i in range(num_communities):
-        colors.append(cmap(i / max(num_communities, 1)))
+        r, g, b, _alpha = cmap(i / max(num_communities, 1))
+        colors.append((float(r), float(g), float(b)))
 
     return colors
 
 
 def assign_node_colors_by_community(
     community_result: CommunityResult,
-    node_positions: Dict[int, Tuple[float, float]],
+    node_positions: dict[int, tuple[float, float]],
     colormap: str = "tab20",
-) -> Dict[int, Tuple[float, float, float]]:
+) -> dict[int, tuple[float, float, float]]:
     """Assign colors to nodes based on their community membership.
 
     Parameters
@@ -115,7 +114,7 @@ def assign_node_colors_by_community(
 def draw_community_boundaries(
     ax: plt.Axes,
     community_result: CommunityResult,
-    node_positions: Dict[int, Tuple[float, float]],
+    node_positions: dict[int, tuple[float, float]],
     alpha: float = 0.2,
     linewidth: float = 2.0,
     colormap: str = "tab20",
@@ -176,9 +175,7 @@ def draw_community_boundaries(
             colors.append(community_colors[community.id])
 
         except Exception as e:
-            logger.warning(
-                f"Could not compute convex hull for community {community.id}: {e}"
-            )
+            logger.warning(f"Could not compute convex hull for community {community.id}: {e}")
             continue
 
     # Draw all patches
@@ -197,7 +194,7 @@ def draw_community_boundaries(
 def draw_community_circles(
     ax: plt.Axes,
     community_result: CommunityResult,
-    node_positions: Dict[int, Tuple[float, float]],
+    node_positions: dict[int, tuple[float, float]],
     padding: float = 0.1,
     alpha: float = 0.15,
     linewidth: float = 2.0,
@@ -246,7 +243,7 @@ def draw_community_circles(
 
         # Compute center and radius
         center = points_array.mean(axis=0)
-        max_dist = np.max(np.linalg.norm(points_array - center, axis=1))
+        max_dist = float(np.max(np.linalg.norm(points_array - center, axis=1)))
         radius = max_dist * (1.0 + padding)
 
         # Draw circle

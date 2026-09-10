@@ -1,7 +1,7 @@
 """Layout algorithms for network visualization, including circle packing."""
 
 import logging
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Optional
 
 import networkx as nx
 import numpy as np
@@ -22,7 +22,7 @@ def place_in_circular_sector(
     total: int,
     random: float,
     unique: bool = False,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """
     Place a node within a circular sector using a U-shaped path algorithm.
 
@@ -92,6 +92,15 @@ def place_in_circular_sector(
     return (rho, phi)
 
 
+def _component_level(comp: Component) -> int:
+    """Return the decomposition level (shell or dense index) of a component, 0 if unset."""
+    if comp.shell_index is not None:
+        return comp.shell_index
+    if comp.dense_index is not None:
+        return comp.dense_index
+    return 0
+
+
 class SpatialHashGrid:
     """
     Spatial hash grid for efficient circle overlap detection.
@@ -99,7 +108,7 @@ class SpatialHashGrid:
     Divides 2D space into grid cells for O(1) neighbor queries.
     """
 
-    def __init__(self, bounds: Tuple[float, float, float, float], cell_size: float):
+    def __init__(self, bounds: tuple[float, float, float, float], cell_size: float):
         """
         Initialize spatial hash grid.
 
@@ -112,15 +121,15 @@ class SpatialHashGrid:
         """
         self.min_x, self.max_x, self.min_y, self.max_y = bounds
         self.cell_size = cell_size
-        self.grid: Dict[Tuple[int, int], Set[int]] = {}
+        self.grid: dict[tuple[int, int], set[int]] = {}
 
-    def _get_cell(self, x: float, y: float) -> Tuple[int, int]:
+    def _get_cell(self, x: float, y: float) -> tuple[int, int]:
         """Get grid cell coordinates for a point."""
         cell_x = int((x - self.min_x) / self.cell_size)
         cell_y = int((y - self.min_y) / self.cell_size)
         return (cell_x, cell_y)
 
-    def insert(self, idx: int, x: float, y: float, radius: float):
+    def insert(self, idx: int, x: float, y: float, radius: float) -> None:
         """Insert a circle into the grid."""
         # Find all cells this circle overlaps
         cells = self._get_overlapping_cells(x, y, radius)
@@ -129,14 +138,14 @@ class SpatialHashGrid:
                 self.grid[cell] = set()
             self.grid[cell].add(idx)
 
-    def remove(self, idx: int, x: float, y: float, radius: float):
+    def remove(self, idx: int, x: float, y: float, radius: float) -> None:
         """Remove a circle from the grid."""
         cells = self._get_overlapping_cells(x, y, radius)
         for cell in cells:
             if cell in self.grid:
                 self.grid[cell].discard(idx)
 
-    def _get_overlapping_cells(self, x: float, y: float, radius: float) -> List[Tuple[int, int]]:
+    def _get_overlapping_cells(self, x: float, y: float, radius: float) -> list[tuple[int, int]]:
         """Get all grid cells overlapped by a circle."""
         min_cell_x = int((x - radius - self.min_x) / self.cell_size)
         max_cell_x = int((x + radius - self.min_x) / self.cell_size)
@@ -149,7 +158,7 @@ class SpatialHashGrid:
                 cells.append((cx, cy))
         return cells
 
-    def get_nearby_indices(self, x: float, y: float, radius: float) -> Set[int]:
+    def get_nearby_indices(self, x: float, y: float, radius: float) -> set[int]:
         """Get indices of circles near this position."""
         cells = self._get_overlapping_cells(x, y, radius)
         nearby = set()
@@ -160,11 +169,11 @@ class SpatialHashGrid:
 
 
 def distribute_components(
-    components: List[Component],
-    center: Tuple[float, float],
+    components: list[Component],
+    center: tuple[float, float],
     radius: float,
     config: LayoutConfig,
-) -> List[Component]:
+) -> list[Component]:
     """
     Distribute components within a circular container using circle packing.
 
@@ -218,9 +227,7 @@ def distribute_components(
     radii = np.zeros(n)
     for i in range(n):
         if config.coord_distribution == CoordDistributionAlgorithm.LOG:
-            radii[i] = radius * np.sqrt(
-                config.alpha * np.log(1 + weights[i]) ** config.beta
-            )
+            radii[i] = radius * np.sqrt(config.alpha * np.log(1 + weights[i]) ** config.beta)
         else:
             radii[i] = radius * np.sqrt(config.alpha * weights[i] ** config.beta)
 
@@ -241,7 +248,7 @@ def distribute_components(
     spatial_grid = None
     if use_spatial_hashing:
         # Use cell size = 2 * max(radii) for efficient neighbor queries
-        max_radius = np.max(radii)
+        max_radius = float(np.max(radii))
         cell_size = max(2.0 * max_radius, radius / 20.0)
         bounds = (x0 - radius, x0 + radius, y0 - radius, y0 + radius)
         spatial_grid = SpatialHashGrid(bounds, cell_size)
@@ -382,7 +389,7 @@ def _give_new_random_position(
     max_tries: int,
     rng: np.random.Generator,
     exclude_idx: int = -1,
-    spatial_grid: SpatialHashGrid = None,
+    spatial_grid: Optional[SpatialHashGrid] = None,
 ) -> bool:
     """
     Try to find a valid random position for a component.
@@ -434,7 +441,7 @@ def _give_new_random_position(
         # Check overlaps with other components
         if spatial_grid:
             # Use spatial hashing for faster overlap checks
-            nearby = spatial_grid.get_nearby_indices(new_x, new_y, radii[idx])
+            nearby = spatial_grid.get_nearby_indices(new_x, new_y, float(radii[idx]))
             for j in nearby:
                 if j == idx or j == exclude_idx:
                     continue
@@ -463,15 +470,15 @@ def _give_new_random_position(
 
 
 def compute_hierarchical_layout(
-    components: List[Component],
+    components: list[Component],
     config: LayoutConfig,
     max_shell_or_dense: int,
-    all_nodes_by_shell: Optional[Dict[int, List[int]]] = None,
+    all_nodes_by_shell: Optional[dict[int, list[int]]] = None,
     graph: Optional[nx.Graph] = None,
-    node_shells: Optional[Dict[int, int]] = None,
+    node_shells: Optional[dict[int, int]] = None,
     no_cliques: bool = False,
     epsilon: float = 0.18,
-) -> Dict[int, Tuple[float, float]]:
+) -> dict[int, tuple[float, float]]:
     """
     Compute hierarchical layout with shells/dense levels arranged concentrically.
 
@@ -505,7 +512,7 @@ def compute_hierarchical_layout(
     Dict[int, Tuple[float, float]]
         Mapping from node ID to (x, y) coordinates
     """
-    node_positions: Dict[int, Tuple[float, float]] = {}
+    node_positions: dict[int, tuple[float, float]] = {}
 
     # If all_nodes_by_shell provided, use shell-based layout (LaNet-vi style)
     if all_nodes_by_shell:
@@ -529,9 +536,9 @@ def compute_hierarchical_layout(
 
         for pass_num in [1, 2]:
             if DEBUG_LAYOUT and pass_num == 2:
-                logger.info(f"\n{'='*80}")
+                logger.info(f"\n{'=' * 80}")
                 logger.info("PASS 2: Refining node positions with neighbor-based phi")
-                logger.info(f"{'='*80}\n")
+                logger.info(f"{'=' * 80}\n")
 
             for shell_index in sorted(all_nodes_by_shell.keys(), reverse=True):
                 shell_nodes = all_nodes_by_shell[shell_index]
@@ -596,7 +603,7 @@ def compute_hierarchical_layout(
                                 ),
                                 edge_weights=None,  # TODO: Add edge weights if needed
                                 no_cliques=no_cliques,
-                                rng=rng
+                                rng=rng,
                             )
 
                             # Add angular jitter to prevent clustering when nodes share neighbors
@@ -636,12 +643,9 @@ def compute_hierarchical_layout(
         # Now compute component centers for border circles (only for large components)
         # Skip circle packing if we have too many components - just use simple placement
         if len(components) > 0:
-            levels: Dict[int, List[Component]] = {}
+            levels: dict[int, list[Component]] = {}
             for comp in components:
-                level = comp.shell_index if comp.shell_index is not None else comp.dense_index
-                if level not in levels:
-                    levels[level] = []
-                levels[level].append(comp)
+                levels.setdefault(_component_level(comp), []).append(comp)
 
             # Distribute component circles at each level
             for level in sorted(levels.keys(), reverse=True):
@@ -661,16 +665,13 @@ def compute_hierarchical_layout(
         return node_positions
 
     # Fallback: Original component-based layout (for backward compatibility)
-    levels: Dict[int, List[Component]] = {}
+    fallback_levels: dict[int, list[Component]] = {}
     for comp in components:
-        level = comp.shell_index if comp.shell_index is not None else comp.dense_index
-        if level not in levels:
-            levels[level] = []
-        levels[level].append(comp)
+        fallback_levels.setdefault(_component_level(comp), []).append(comp)
 
     # Distribute components at each level concentrically
-    for level in sorted(levels.keys(), reverse=True):
-        level_comps = levels[level]
+    for level in sorted(fallback_levels.keys(), reverse=True):
+        level_comps = fallback_levels[level]
 
         # Calculate radius for this level (larger index = smaller radius, towards center)
         level_radius = (max_shell_or_dense - level + 1) * 100.0

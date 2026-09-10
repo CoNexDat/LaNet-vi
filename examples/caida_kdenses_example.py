@@ -34,16 +34,16 @@ def visualize_caida_kdenses():
     print("=" * 70)
 
     # CAIDA snapshot URL (same as k-cores example for comparison)
-    url = "https://publicdata.caida.org/datasets/as-relationships/serial-1/20170101.as-rel.txt.bz2"
+    url = "https://publicdata.caida.org/datasets/as-relationships/serial-1/20251001.as-rel.txt.bz2"
 
-    print(f"\n[1/5] Downloading CAIDA snapshot...")
+    print("\n[1/5] Downloading CAIDA snapshot...")
     print(f"      URL: {url}")
 
     try:
         # Download and parse CAIDA data
         graph, dataframe = read_caida_snapshot(url, timeout=60)
 
-        print(f"      ✓ Downloaded successfully")
+        print("      ✓ Downloaded successfully")
         print(f"      • AS nodes: {graph.number_of_nodes()}")
         print(f"      • Relationships: {graph.number_of_edges()}")
         print(f"      • DataFrame shape: {dataframe.shape}")
@@ -53,7 +53,7 @@ def visualize_caida_kdenses():
         print("\n      Using local file instead...")
 
         # Fallback: try local file if download fails
-        local_file = Path("20170101.as-rel.txt.bz2")
+        local_file = Path("20251001.as-rel.txt.bz2")
         if not local_file.exists():
             print(f"      ✗ Local file not found: {local_file}")
             print("\n      Please download the file manually:")
@@ -61,7 +61,7 @@ def visualize_caida_kdenses():
             return
 
         graph, dataframe = read_caida_snapshot(local_file.as_posix())
-        print(f"      ✓ Loaded from local file")
+        print("      ✓ Loaded from local file")
 
     # Configure visualization using optimized defaults
     print("\n[2/5] Configuring visualization...")
@@ -69,8 +69,8 @@ def visualize_caida_kdenses():
 
     print(f"      • Resolution: {config.visualization.width}x{config.visualization.height}")
     print(f"      • Background: {config.visualization.background}")
-    print(f"      • Decomposition: K-DENSES (triangle-based)")
-    print(f"      • Using optimized defaults for smooth visualization")
+    print("      • Decomposition: K-DENSES (triangle-based)")
+    print("      • Using optimized defaults for smooth visualization")
 
     # Create Network instance
     print("\n[3/5] Computing k-denses decomposition...")
@@ -80,21 +80,22 @@ def visualize_caida_kdenses():
     # Compute k-denses decomposition
     result = net.decompose(DecompositionType.KDENSES)
 
-    print(f"      ✓ Decomposition complete")
+    print("      ✓ Decomposition complete")
     print(f"      • Min k-dense: {result.min_index}")
     print(f"      • Max k-dense: {result.max_index}")
     print(f"      • Components: {len(result.components)}")
 
     # Show top k-denses
-    print(f"\n      Top k-denses distribution:")
+    print("\n      Top k-denses distribution:")
     from collections import Counter
+
     dense_counts = Counter(result.node_indices.values())
     for k in sorted(dense_counts.keys(), reverse=True)[:5]:
         print(f"        k={k:2d}: {dense_counts[k]:5d} nodes")
 
     # K-denses typically produces fewer shells than k-cores
     print(f"\n      K-denses range: {result.min_index}-{result.max_index}")
-    print(f"      (Compare with k-cores which typically ranges 1-79 for this dataset)")
+    print("      (Compare with k-cores which typically ranges 1-79 for this dataset)")
 
     # Generate visualization
     print("\n[4/5] Generating visualization...")
@@ -123,22 +124,22 @@ def visualize_caida_kdenses():
     print("\n" + "=" * 70)
     print("K-Denses Decomposition Complete!")
     print("=" * 70)
-    print(f"\nOutput files:")
+    print("\nOutput files:")
     print(f"  • {output_file} - Network visualization")
     print(f"  • {denses_csv} - K-denses decomposition (AS number, k-dense)")
 
-    print(f"\nAbout K-Denses:")
-    print(f"  K-denses decomposition identifies cohesive subgraphs based on")
-    print(f"  triangle density rather than node degree. A node belongs to the")
-    print(f"  k-dense if it participates in at least k triangles.")
-    print(f"")
-    print(f"  Comparison with K-cores:")
-    print(f"  • K-denses: Triangle-based → identifies tight communities")
-    print(f"  • K-cores: Degree-based → identifies hierarchical structure")
-    print(f"")
-    print(f"  The k-denses visualization shows more concentrated cores with")
-    print(f"  fewer intermediate shells, highlighting the most cohesive parts")
-    print(f"  of the Internet topology.")
+    print("\nAbout K-Denses:")
+    print("  K-denses decomposition identifies cohesive subgraphs based on")
+    print("  triangle density rather than node degree. A node belongs to the")
+    print("  k-dense if it participates in at least k triangles.")
+    print("")
+    print("  Comparison with K-cores:")
+    print("  • K-denses: Triangle-based → identifies tight communities")
+    print("  • K-cores: Degree-based → identifies hierarchical structure")
+    print("")
+    print("  The k-denses visualization shows more concentrated cores with")
+    print("  fewer intermediate shells, highlighting the most cohesive parts")
+    print("  of the Internet topology.")
 
 
 if __name__ == "__main__":

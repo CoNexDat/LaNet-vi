@@ -1,5 +1,7 @@
 """Circular averaging for angular coordinates."""
 
+from typing import Optional
+
 import numpy as np
 
 
@@ -14,11 +16,7 @@ class CircularAverage:
     """
 
     def average(
-        self,
-        current_angle: float,
-        current_weight: float,
-        new_angle: float,
-        new_weight: float
+        self, current_angle: float, current_weight: float, new_angle: float, new_weight: float
     ) -> float:
         """
         Calculate weighted circular average of two angles.
@@ -68,7 +66,7 @@ class CircularAverage:
         y_total = y_current + y_new
 
         # Convert back to angle
-        return np.arctan2(y_total, x_total)
+        return float(np.arctan2(y_total, x_total))
 
 
 def calculate_phi_from_neighbors(
@@ -80,9 +78,9 @@ def calculate_phi_from_neighbors(
     node_positions: dict,
     component_center: tuple,
     is_weighted: bool = False,
-    edge_weights: dict = None,
+    edge_weights: Optional[dict] = None,
     no_cliques: bool = False,
-    rng: np.random.Generator = None
+    rng: Optional[np.random.Generator] = None,
 ) -> float:
     """
     Calculate phi (angular position) based on neighbors in higher shells.
@@ -163,7 +161,7 @@ def calculate_phi_from_neighbors(
             new_amount = int(w / sum_w) if sum_w > 0 else 0  # C++ line 418
         else:
             # Weight by shell difference (C++ line 420)
-            new_amount = (nb_shell + 1 - shell_index)
+            new_amount = nb_shell + 1 - shell_index
 
         if new_amount == 0:
             continue

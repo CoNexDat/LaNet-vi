@@ -1,8 +1,8 @@
 """Graph data models for LaNet-vi."""
 
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class NodeData(BaseModel):
@@ -30,18 +30,14 @@ class NodeData(BaseModel):
 
     node_id: int
     name: Optional[str] = None
-    color: Optional[Tuple[float, float, float]] = Field(default=None)
+    color: Optional[tuple[float, float, float]] = Field(default=None)
     shell_index: Optional[int] = None
     dense_index: Optional[int] = None
     degree: Optional[int] = None
     strength: Optional[float] = None
-    coordinates: Optional[Tuple[float, float]] = None
+    coordinates: Optional[tuple[float, float]] = None
 
-    class Config:
-        """Pydantic model configuration."""
-
-        frozen = False
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(frozen=False, arbitrary_types_allowed=True)
 
 
 class EdgeData(BaseModel):
@@ -64,10 +60,7 @@ class EdgeData(BaseModel):
     weight: float = 1.0
     visible: bool = True
 
-    class Config:
-        """Pydantic model configuration."""
-
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
 
 class Component(BaseModel):
@@ -92,23 +85,20 @@ class Component(BaseModel):
     """
 
     component_id: int
-    nodes: List[int]
+    nodes: list[int]
     shell_index: Optional[int] = None
     dense_index: Optional[int] = None
     size: int = Field(default=0)
-    center: Optional[Tuple[float, float]] = None
+    center: Optional[tuple[float, float]] = None
     radius: Optional[float] = None
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         """Initialize component and compute size."""
         super().__init__(**data)
         if self.size == 0:
             self.size = len(self.nodes)
 
-    class Config:
-        """Pydantic model configuration."""
-
-        frozen = False
+    model_config = ConfigDict(frozen=False)
 
 
 class DecompositionResult(BaseModel):
@@ -128,19 +118,19 @@ class DecompositionResult(BaseModel):
         List of connected components at each level
     p_function : Optional[List[float]]
         Strength interval boundaries for weighted graphs
+    metadata : Dict[str, Any]
+        Extra, decomposition-specific data (e.g. ``d_cores`` pairs for d-cores)
     """
 
     decomp_type: str
-    node_indices: Dict[int, int]
+    node_indices: dict[int, int]
     max_index: int
     min_index: int
-    components: List[Component] = Field(default_factory=list)
-    p_function: Optional[List[float]] = None
+    components: list[Component] = Field(default_factory=list)
+    p_function: Optional[list[float]] = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
-    class Config:
-        """Pydantic model configuration."""
-
-        frozen = False
+    model_config = ConfigDict(frozen=False)
 
 
 class VisualizationLayout(BaseModel):
@@ -166,22 +156,18 @@ class VisualizationLayout(BaseModel):
         Layout bounds (xmin, xmax, ymin, ymax)
     """
 
-    node_positions: Dict[int, Tuple[float, float]]
-    node_colors: Dict[int, Tuple[float, float, float]]
-    node_sizes: Dict[int, float]
-    visible_edges: List[Tuple[int, int]]
-    edge_colors: Dict[
-        Tuple[int, int], Tuple[Tuple[float, float, float], Tuple[float, float, float]]
+    node_positions: dict[int, tuple[float, float]]
+    node_colors: dict[int, tuple[float, float, float]]
+    node_sizes: dict[int, float]
+    visible_edges: list[tuple[int, int]]
+    edge_colors: dict[
+        tuple[int, int], tuple[tuple[float, float, float], tuple[float, float, float]]
     ] = Field(default_factory=dict)
-    edge_widths: Dict[Tuple[int, int], float] = Field(default_factory=dict)
-    components: List[Component]
-    bounds: Tuple[float, float, float, float]
+    edge_widths: dict[tuple[int, int], float] = Field(default_factory=dict)
+    components: list[Component]
+    bounds: tuple[float, float, float, float]
 
-    class Config:
-        """Pydantic model configuration."""
-
-        frozen = False
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(frozen=False, arbitrary_types_allowed=True)
 
 
 class NetworkMetadata(BaseModel):
@@ -219,7 +205,4 @@ class NetworkMetadata(BaseModel):
     avg_degree: float
     density: float
 
-    class Config:
-        """Pydantic model configuration."""
-
-        frozen = True
+    model_config = ConfigDict(frozen=True)

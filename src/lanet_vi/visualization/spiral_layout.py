@@ -6,7 +6,6 @@ iterative solver to compute node positions along a spiral path.
 """
 
 import math
-from typing import Dict, Tuple
 
 import numpy as np
 
@@ -67,7 +66,7 @@ def calcular_rho(
     >>> rho = calcular_rho(k=10.0, rho_i=5.0, r_i=0.5, r_j=0.5, sep=1.0, beta=1.5)
     """
     # Equation coefficients
-    K2 = rho_i ** 2
+    K2 = rho_i**2
     K1 = -2 * rho_i
 
     # Initial guess for new position
@@ -94,7 +93,7 @@ def calcular_rho(
         if distance < 1e-10:
             return 0.0
 
-        return (0.5 / distance) * (term1 + term2 + term3)
+        return float((0.5 / distance) * (term1 + term2 + term3))
 
     # Iterative solver
     f = compute_f(x_i)
@@ -124,7 +123,7 @@ def calcular_rho(
     if iterations >= max_iterations:
         logger.debug(f"Spiral calculation reached max iterations ({max_iterations})")
 
-    return x_i
+    return float(x_i)
 
 
 def compute_spiral_positions(
@@ -134,7 +133,7 @@ def compute_spiral_positions(
     separation: float = 1.0,
     initial_radius: float = 1.0,
     node_radius: float = 0.5,
-) -> Dict[int, Tuple[float, float]]:
+) -> dict[int, tuple[float, float]]:
     """
     Compute node positions along a spiral path.
 
@@ -168,7 +167,7 @@ def compute_spiral_positions(
         f"Computing spiral layout for {num_nodes} nodes (k={k}, beta={beta}, sep={separation})"
     )
 
-    positions = {}
+    positions: dict[int, tuple[float, float]] = {}
 
     if num_nodes == 0:
         return positions
@@ -211,7 +210,7 @@ def compute_semicircular_positions(
     radius: float = 10.0,
     start_angle: float = 0.0,
     end_angle: float = np.pi,
-) -> Dict[int, Tuple[float, float]]:
+) -> dict[int, tuple[float, float]]:
     """
     Compute node positions along a semicircular arc.
 
@@ -242,7 +241,7 @@ def compute_semicircular_positions(
     """
     logger.info(f"Computing semicircular layout for {num_nodes} nodes (radius={radius})")
 
-    positions = {}
+    positions: dict[int, tuple[float, float]] = {}
 
     if num_nodes == 0:
         return positions

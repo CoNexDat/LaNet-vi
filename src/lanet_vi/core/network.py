@@ -2,7 +2,7 @@
 
 import time
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union
+from typing import Optional, Union
 
 import networkx as nx
 
@@ -21,6 +21,14 @@ from lanet_vi.visualization.layout import compute_hierarchical_layout
 from lanet_vi.visualization.matplotlib_renderer import render_network, select_visible_edges
 
 logger = get_logger(__name__)
+
+
+RGB = tuple[float, float, float]
+
+
+def _darken(color: RGB, factor: float = 0.75) -> RGB:
+    """Scale an RGB colour towards black."""
+    return (color[0] * factor, color[1] * factor, color[2] * factor)
 
 
 class Network:
@@ -66,8 +74,8 @@ class Network:
         self.graph = graph
         self.config = config if config else LaNetConfig()
         self.decomposition: Optional[DecompositionResult] = None
-        self.node_names: Dict[int, str] = {}
-        self.node_colors: Dict[int, Tuple[float, float, float]] = {}
+        self.node_names: dict[int, str] = {}
+        self.node_colors: dict[int, tuple[float, float, float]] = {}
 
     @classmethod
     def from_edge_list(
@@ -209,7 +217,6 @@ class Network:
             comp for comp in self.decomposition.components if comp.size >= min_size
         ]
 
-
         # Group ALL nodes by shell index for shell-based layout
         # This ensures every node gets positioned, not just nodes in large components
         from collections import defaultdict
@@ -281,8 +288,8 @@ class Network:
                 color_u = node_colors.get(u, (0.7, 0.7, 0.7))
                 color_v = node_colors.get(v, (0.7, 0.7, 0.7))
 
-                edge_color_u = tuple(c * 0.75 for c in color_u)
-                edge_color_v = tuple(c * 0.75 for c in color_v)
+                edge_color_u = _darken(color_u)
+                edge_color_v = _darken(color_v)
 
                 # IMPORTANT: Colors are flipped in original implementation!
                 # The half near node u gets node v's color (showing where it's going)
@@ -300,13 +307,9 @@ class Network:
                 else:
                     normalized = 0.5
 
-                width = (
-                    self.config.visualization.min_edge_width
-                    + normalized
-                    * (
-                        self.config.visualization.max_edge_width
-                        - self.config.visualization.min_edge_width
-                    )
+                width = self.config.visualization.min_edge_width + normalized * (
+                    self.config.visualization.max_edge_width
+                    - self.config.visualization.min_edge_width
                 )
                 edge_widths[(u, v)] = width
 
@@ -363,7 +366,7 @@ class Network:
             self.node_names if self.node_names else None,
         )
 
-    def get_metadata(self) -> Dict:
+    def get_metadata(self) -> dict:
         """
         Get network metadata.
 

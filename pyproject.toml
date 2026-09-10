@@ -34,6 +34,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 [project.urls]
@@ -48,8 +49,11 @@ dev = [
     "pytest-cov>=4.0",
     "ruff>=0.1",
     "mypy>=1.0",
+    "pre-commit>=4.0",
     "ipython>=8.0",
     "jupyter>=1.0",
+    "types-pyyaml>=6.0",
+    "types-requests>=2.31",
 ]
 interactive = [
     "plotly>=5.0",
@@ -60,16 +64,22 @@ interactive = [
 lanet-vi = "lanet_vi.cli:main"
 
 [build-system]
-requires = ["uv_build>=0.8.0,<0.9"]
+requires = ["uv_build>=0.8.0,<0.13"]
 build-backend = "uv_build"
 
 [tool.ruff]
 line-length = 100
 target-version = "py39"
 
+[tool.ruff.format]
+docstring-code-format = true
+
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "D"]
+select = ["E", "F", "I", "N", "W", "D", "UP", "B"]
 ignore = ["D100", "D104"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/lanet_vi/cli.py" = ["B008"]  # typer.Option(...) defaults are the documented Typer pattern
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
@@ -82,10 +92,11 @@ python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+ignore_missing_imports = true  # networkx, scipy, sklearn, matplotlib ship no stubs
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-addopts = "-v --cov=lanet_vi --cov-report=term-missing"
+addopts = "-v --cov=lanet_vi --cov-report=term-missing --cov-report=xml --cov-fail-under=40"

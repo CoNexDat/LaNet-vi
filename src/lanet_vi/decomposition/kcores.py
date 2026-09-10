@@ -1,6 +1,6 @@
 """K-core decomposition using NetworkX."""
 
-from typing import Dict, List, Optional
+from typing import Optional
 
 import networkx as nx
 import numpy as np
@@ -91,7 +91,7 @@ def compute_kcores(
 def _build_p_function(
     graph: nx.Graph,
     config: DecompositionConfig,
-) -> List[float]:
+) -> list[float]:
     """
     Build p-function for weighted graph decomposition.
 
@@ -168,8 +168,8 @@ def _build_p_function(
 
 def _compute_weighted_cores(
     graph: nx.Graph,
-    p_function: List[float],
-) -> Dict[int, int]:
+    p_function: list[float],
+) -> dict[int, int]:
     """
     Compute core numbers for weighted graph using p-function.
 
@@ -232,7 +232,7 @@ def find_components_by_shell(
     component_id = 0
 
     # Group nodes by shell index
-    shells: Dict[int, List[int]] = {}
+    shells: dict[int, list[int]] = {}
     for node, shell_idx in decomposition.node_indices.items():
         if shell_idx not in shells:
             shells[shell_idx] = []

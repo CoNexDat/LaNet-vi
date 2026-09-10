@@ -3,7 +3,9 @@
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI](https://img.shields.io/pypi/v/lanet-vi)](https://pypi.org/project/lanet-vi/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![CI](https://github.com/conexdat/LaNet-vi/workflows/CI/badge.svg)](https://github.com/conexdat/LaNet-vi/actions)
+[![CI](https://github.com/CoNexDat/LaNet-vi/actions/workflows/ci.yml/badge.svg)](https://github.com/CoNexDat/LaNet-vi/actions/workflows/ci.yml)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
 **Large-scale network visualization using k-core decomposition**
@@ -84,7 +86,7 @@ from lanet_vi import Network, LaNetConfig
 
 # Download and visualize CAIDA AS-relationships data
 graph, _ = read_caida_snapshot(
-    "https://publicdata.caida.org/datasets/as-relationships/serial-1/20170101.as-rel.txt.bz2"
+    "https://publicdata.caida.org/datasets/as-relationships/serial-1/20251001.as-rel.txt.bz2"
 )
 
 config = LaNetConfig()  # Uses optimized defaults
@@ -103,7 +105,7 @@ The visualization reveals the Internet's hierarchical structure with Tier-1 prov
   <img src="examples/outputs/caida_as_relationships_kcores.png" width="45%" alt="K-cores decomposition">
   <img src="examples/outputs/caida_as_relationships_kdenses.png" width="45%" alt="K-denses decomposition">
   <br>
-  <em>CAIDA AS-Relationships Network (56,345 nodes): K-cores (left) vs K-denses (right)</em>
+  <em>CAIDA AS-Relationships Network, 20251001 snapshot (78,370 nodes): K-cores (left) vs K-denses (right)</em>
 </p>
 
 The visualizations reveal the hierarchical structure of the Internet, with densely connected core networks (red/orange) at the center and peripheral networks (blue/purple) at the edges. K-cores use degree-based decomposition while k-denses use triangle-based decomposition, highlighting different structural properties.
@@ -235,11 +237,19 @@ config.visualization.background = "white"
 ## 🛠️ Development
 
 ```bash
-git clone https://github.com/conexdat/LaNet-vi.git
+git clone https://github.com/CoNexDat/LaNet-vi.git
 cd LaNet-vi
 uv sync --all-extras
+uv run pre-commit install
 uv run pytest
 ```
+
+## Contributing
+
+Contributions are welcome. `main` is protected: open a pull request and iterate until CI
+and the automatic Copilot review are green. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+full workflow, coding conventions and release process, and [SECURITY.md](SECURITY.md) for
+reporting vulnerabilities.
 
 ## Citation
 
@@ -258,4 +268,3 @@ MIT License
 - Esteban Carisimo (Python implementation)
 - Mariano Beiró (original C++ version)
 - J. Ignacio Alvarez-Hamelin (original C++ version)
-

@@ -5,8 +5,6 @@ algorithms, particularly for large graphs. Uses scipy's cKDTree for efficient
 nearest neighbor queries.
 """
 
-from typing import Dict, List, Tuple
-
 import numpy as np
 from scipy.spatial import cKDTree
 
@@ -41,7 +39,7 @@ class SpatialIndex:
     >>> neighbors = index.query_radius(x=0.5, y=0.5, radius=1.0)
     """
 
-    def __init__(self, points: Dict[int, Tuple[float, float]]):
+    def __init__(self, points: dict[int, tuple[float, float]]):
         """Initialize spatial index from node positions."""
         if not points:
             raise ValueError("Cannot create spatial index from empty points dictionary")
@@ -61,7 +59,7 @@ class SpatialIndex:
         y: float,
         k: int = 1,
         exclude_self: bool = False,
-    ) -> List[int]:
+    ) -> list[int]:
         """Find k nearest neighbors to a query point.
 
         Parameters
@@ -99,7 +97,8 @@ class SpatialIndex:
         # Filter out exact matches if requested
         if exclude_self:
             filtered = [
-                idx for idx, dist in zip(indices, distances)
+                idx
+                for idx, dist in zip(indices, distances)
                 if dist > 1e-10  # Not an exact match
             ]
             indices = filtered[:k]
@@ -114,7 +113,7 @@ class SpatialIndex:
         y: float,
         radius: float,
         exclude_self: bool = False,
-    ) -> List[int]:
+    ) -> list[int]:
         """Find all neighbors within a radius of a query point.
 
         Parameters
@@ -149,7 +148,7 @@ class SpatialIndex:
 
         return [int(self.node_ids[idx]) for idx in indices]
 
-    def query_pairs(self, radius: float) -> List[Tuple[int, int]]:
+    def query_pairs(self, radius: float) -> list[tuple[int, int]]:
         """Find all pairs of points within a given radius of each other.
 
         Parameters
@@ -172,17 +171,14 @@ class SpatialIndex:
         Useful for collision detection and clustering analysis.
         """
         # Get sparse distance matrix
-        pair_indices = self.tree.query_pairs(radius, output_type='ndarray')
+        pair_indices = self.tree.query_pairs(radius, output_type="ndarray")
 
         # Convert indices to node IDs
-        pairs = [
-            (int(self.node_ids[i]), int(self.node_ids[j]))
-            for i, j in pair_indices
-        ]
+        pairs = [(int(self.node_ids[i]), int(self.node_ids[j])) for i, j in pair_indices]
 
         return pairs
 
-    def get_bounding_box(self) -> Tuple[float, float, float, float]:
+    def get_bounding_box(self) -> tuple[float, float, float, float]:
         """Get bounding box of all indexed points.
 
         Returns
@@ -202,7 +198,7 @@ class SpatialIndex:
 
 
 def build_spatial_index(
-    node_positions: Dict[int, Tuple[float, float]],
+    node_positions: dict[int, tuple[float, float]],
 ) -> SpatialIndex:
     """Build spatial index from node positions.
 
@@ -228,10 +224,10 @@ def build_spatial_index(
 
 
 def detect_overlaps(
-    node_positions: Dict[int, Tuple[float, float]],
-    node_radii: Dict[int, float],
+    node_positions: dict[int, tuple[float, float]],
+    node_radii: dict[int, float],
     padding: float = 0.0,
-) -> List[Tuple[int, int]]:
+) -> list[tuple[int, int]]:
     """Detect overlapping nodes using spatial indexing.
 
     Parameters
@@ -278,7 +274,7 @@ def detect_overlaps(
             other_radius = node_radii.get(other_id, 0.0)
 
             # Calculate distance
-            dist = np.sqrt((x - other_x)**2 + (y - other_y)**2)
+            dist = np.sqrt((x - other_x) ** 2 + (y - other_y) ** 2)
 
             # Check if overlap
             min_dist = radius + other_radius + padding

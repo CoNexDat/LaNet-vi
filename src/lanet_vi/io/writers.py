@@ -2,11 +2,12 @@
 
 import json
 from pathlib import Path
-from typing import Dict, Union
+from typing import Any, Union
 
 import networkx as nx
 import pandas as pd
 
+from lanet_vi.community.base import CommunityResult
 from lanet_vi.logging_config import get_logger
 from lanet_vi.models.graph import DecompositionResult
 
@@ -90,8 +91,8 @@ def write_decomposition_json(
     if include_components and result.components:
         data["components"] = [
             {
-                "id": comp.id,
-                "index": comp.index,
+                "id": comp.component_id,
+                "index": (comp.shell_index if comp.shell_index is not None else comp.dense_index),
                 "size": comp.size,
                 "nodes": comp.nodes,
             }
@@ -132,7 +133,7 @@ def write_decomposition_json(
 
 
 def write_node_attributes(
-    node_data: Dict[int, Dict],
+    node_data: dict[int, dict],
     output_path: Union[Path, str],
 ) -> None:
     """
@@ -222,7 +223,7 @@ def write_graph_json(
 
 
 def write_community_json(
-    community_result,  # CommunityResult type
+    community_result: CommunityResult,
     output_path: Union[Path, str],
 ) -> None:
     """
@@ -257,9 +258,7 @@ def write_community_json(
             }
             for comm in community_result.communities
         ],
-        "node_to_community": {
-            str(k): v for k, v in community_result.node_to_community.items()
-        },
+        "node_to_community": {str(k): v for k, v in community_result.node_to_community.items()},
     }
 
     # Add community size statistics
@@ -273,9 +272,7 @@ def write_community_json(
     with open(output_path, "w") as f:
         json.dump(data, f, indent=2)
 
-    logger.info(
-        f"Wrote {community_result.num_communities} communities to {output_path}"
-    )
+    logger.info(f"Wrote {community_result.num_communities} communities to {output_path}")
 
 
 def write_edge_list(
@@ -306,7 +303,7 @@ def write_edge_list(
 
     logger.info(f"Writing edge list to {output_path}")
 
-    edges = []
+    edges: list[tuple[Any, ...]] = []
     for u, v, data in graph.edges(data=True):
         if include_weights and "weight" in data:
             edges.append((u, v, data["weight"]))

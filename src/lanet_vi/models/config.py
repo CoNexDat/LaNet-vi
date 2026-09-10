@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 
 class BackgroundColor(str, Enum):
@@ -181,15 +181,14 @@ class VisualizationConfig(BaseModel):
 
     @field_validator("width", "height")
     @classmethod
-    def check_aspect_ratio(cls, v: int, info) -> int:
+    def check_aspect_ratio(cls, v: int, info: ValidationInfo) -> int:
         """Validate that resolution maintains reasonable aspect ratio."""
         if info.field_name == "height" and "width" in info.data:
             width = info.data["width"]
             aspect = width / v
             if aspect < 0.5 or aspect > 3.0:
                 raise ValueError(
-                    f"Aspect ratio {aspect:.2f} is unusual. "
-                    "Recommended ratio is 4:3 (width/height)"
+                    f"Aspect ratio {aspect:.2f} is unusual. Recommended ratio is 4:3 (width/height)"
                 )
         return v
 
@@ -311,7 +310,4 @@ class LaNetConfig(BaseModel):
     community: CommunityConfig = Field(default_factory=CommunityConfig)
     renderer: Renderer = Renderer.MATPLOTLIB
 
-    class Config:
-        """Pydantic model configuration."""
-
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
