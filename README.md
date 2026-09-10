@@ -1,4 +1,4 @@
-# LaNet-vi 5.0
+# 🧅 LaNet-vi
 
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI](https://img.shields.io/pypi/v/lanet-vi)](https://pypi.org/project/lanet-vi/)
@@ -12,7 +12,7 @@
 
 LaNet-vi is a Python package for visualizing large-scale networks through hierarchical decomposition algorithms. It reveals network structure by identifying the k-core hierarchy - from peripheral nodes to densely connected cores.
 
-## What is K-Core Decomposition?
+## 🧅 What is K-Core Decomposition?
 
 K-core decomposition identifies hierarchical layers in networks where each k-core is a maximal subgraph with all nodes having at least k neighbors. This creates an "onion-like" structure revealing:
 
@@ -24,17 +24,17 @@ Perfect for analyzing social networks, internet topology, biological networks, a
 
 📖 **[Learn more about k-core concepts →](docs/concepts.md)**
 
-## Features
+## ✨ Features
 
-- **K-core, k-dense, and d-core decomposition** algorithms
-- **Circular hierarchical layout** with smooth rings and gradient edge coloring
-- **High-performance rendering** for networks with millions of nodes
-- **Flexible I/O** supporting compressed formats (gzip, bz2)
-- **Community detection** with Louvain and modularity algorithms
-- **Python API and CLI** with full configurability
-- **Publication-ready** visualizations with auto-scaling legends
+- 🧅 **K-core, k-dense, and d-core decomposition** algorithms
+- 🎯 **Circular hierarchical layout** with smooth rings and gradient edge coloring
+- ⚡ **High-performance rendering** for networks with millions of nodes
+- 📂 **Flexible I/O** supporting compressed formats (gzip, bz2)
+- 🕸️ **Community detection** with Louvain and modularity algorithms
+- 🐍 **Python API and CLI** with full configurability
+- 📊 **Publication-ready** visualizations with auto-scaling legends
 
-## Installation
+## 📦 Installation
 
 ```bash
 # Using uv (recommended)
@@ -44,7 +44,7 @@ uv pip install lanet-vi
 pip install lanet-vi
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Command Line
 
@@ -78,7 +78,7 @@ net.decompose(DecompositionType.KCORES)
 net.visualize("output.png")
 ```
 
-## Example: Internet Topology
+## 🌐 Example: Internet Topology
 
 ```python
 from lanet_vi.io.readers import read_caida_snapshot
@@ -99,7 +99,7 @@ net.visualize("internet_topology.png")
 
 The visualization reveals the Internet's hierarchical structure with Tier-1 providers in the center and stub networks at the periphery.
 
-## Example Visualizations
+## 🖼️ Example Visualizations
 
 <p align="center">
   <img src="examples/outputs/caida_as_relationships_kcores.png" width="45%" alt="K-cores decomposition">
@@ -110,7 +110,7 @@ The visualization reveals the Internet's hierarchical structure with Tier-1 prov
 
 The visualizations reveal the hierarchical structure of the Internet, with densely connected core networks (red/orange) at the center and peripheral networks (blue/purple) at the edges. K-cores use degree-based decomposition while k-denses use triangle-based decomposition, highlighting different structural properties.
 
-## Input Format
+## 📄 Input Format
 
 Edge list (space or tab separated):
 
@@ -130,7 +130,7 @@ Weighted networks:
 
 Supports `.txt`, `.txt.gz`, `.txt.bz2` formats.
 
-## Common Options
+## ⚙️ Common Options
 
 **Decomposition:**
 - `--decomp [kcores|kdenses|dcores]`: Decomposition algorithm (default: kcores)
@@ -150,7 +150,7 @@ Supports `.txt`, `.txt.gz`, `.txt.bz2` formats.
 
 **Full CLI reference:** See [docs/usage.md](docs/usage.md#using-lanet-vi-via-command-line)
 
-## Configuration
+## 🔧 Configuration
 
 Generate a template:
 
@@ -182,14 +182,14 @@ Use it:
 lanet-vi visualize --input network.txt --config my_config.yaml
 ```
 
-## Documentation
+## 📖 Documentation
 
 - **[K-Core Concepts](docs/concepts.md)** - Understanding k-core decomposition
 - **[Visualization Guide](docs/visualization.md)** - How the plots work (colors, sizing, layout)
 - **[Usage Guide](docs/usage.md)** - Detailed Python API and CLI examples
 - **[Examples](examples/)** - Working examples with real datasets
 
-## Advanced Features
+## 🔬 Advanced Features
 
 ### Community Detection
 
@@ -216,7 +216,7 @@ lanet-vi visualize --input citations.txt \
   --output dcores.png
 ```
 
-## Performance Tips
+## ⚡ Performance Tips
 
 **Large networks (>100K nodes):**
 
@@ -234,7 +234,7 @@ config.visualization.height = 3600
 config.visualization.background = "white"
 ```
 
-## Development
+## 🛠️ Development
 
 ```bash
 git clone https://github.com/CoNexDat/LaNet-vi.git
