@@ -1,7 +1,7 @@
 """Matplotlib-based renderer for network visualization."""
 
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
@@ -136,7 +136,9 @@ def _draw_edges(
         # Group edge segments by k-core level for proper layering
         from collections import defaultdict
 
-        segments_by_kcore = defaultdict(lambda: {"segments": [], "colors": [], "widths": []})
+        segments_by_kcore: defaultdict[int, dict[str, list[Any]]] = defaultdict(
+            lambda: {"segments": [], "colors": [], "widths": []}
+        )
 
         for source, target in layout.visible_edges:
             if source not in layout.node_positions or target not in layout.node_positions:
@@ -347,9 +349,17 @@ def _draw_degree_scale(
     from matplotlib.legend_handler import HandlerPatch
 
     class HandlerCircle(HandlerPatch):
-        def create_artists(
-            self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans
-        ):
+        def create_artists(  # type: ignore[override]
+            self,
+            legend: Any,
+            orig_handle: Any,
+            xdescent: float,
+            ydescent: float,
+            width: float,
+            height: float,
+            fontsize: float,
+            trans: Any,
+        ) -> list[Any]:
             center = 0.5 * width - 0.5 * xdescent, 0.5 * height - 0.5 * ydescent
             p = mpatches.Circle(xy=center, radius=orig_handle.radius)
             self.update_prop(p, orig_handle, legend)
@@ -418,9 +428,17 @@ def _draw_size_legend(
     from matplotlib.legend_handler import HandlerPatch
 
     class HandlerCircle(HandlerPatch):
-        def create_artists(
-            self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans
-        ):
+        def create_artists(  # type: ignore[override]
+            self,
+            legend: Any,
+            orig_handle: Any,
+            xdescent: float,
+            ydescent: float,
+            width: float,
+            height: float,
+            fontsize: float,
+            trans: Any,
+        ) -> list[Any]:
             # Ensure proper vertical spacing between legend items
             center = 0.5 * width - 0.5 * xdescent, 0.5 * height - 0.5 * ydescent
             p = mpatches.Circle(xy=center, radius=orig_handle.radius)

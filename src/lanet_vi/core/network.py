@@ -23,6 +23,14 @@ from lanet_vi.visualization.matplotlib_renderer import render_network, select_vi
 logger = get_logger(__name__)
 
 
+RGB = tuple[float, float, float]
+
+
+def _darken(color: RGB, factor: float = 0.75) -> RGB:
+    """Scale an RGB colour towards black."""
+    return (color[0] * factor, color[1] * factor, color[2] * factor)
+
+
 class Network:
     """
     Main class for network analysis and visualization.
@@ -280,8 +288,8 @@ class Network:
                 color_u = node_colors.get(u, (0.7, 0.7, 0.7))
                 color_v = node_colors.get(v, (0.7, 0.7, 0.7))
 
-                edge_color_u = tuple(c * 0.75 for c in color_u)
-                edge_color_v = tuple(c * 0.75 for c in color_v)
+                edge_color_u = _darken(color_u)
+                edge_color_v = _darken(color_v)
 
                 # IMPORTANT: Colors are flipped in original implementation!
                 # The half near node u gets node v's color (showing where it's going)

@@ -4,7 +4,7 @@ import bz2
 import gzip
 import io
 from pathlib import Path
-from typing import Union
+from typing import IO, Union
 
 import networkx as nx
 import pandas as pd
@@ -13,6 +13,15 @@ import requests
 from lanet_vi.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+def _open_text(file_path: Path) -> IO[str]:
+    """Open a possibly compressed (.bz2/.gz) file in text mode."""
+    if file_path.suffix == ".bz2":
+        return bz2.open(file_path, "rt")
+    if file_path.suffix == ".gz":
+        return gzip.open(file_path, "rt")
+    return open(file_path)
 
 
 def read_edge_list(
@@ -53,21 +62,11 @@ def read_edge_list(
     """
     file_path = Path(file_path)
 
-    # Determine compression
-    if file_path.suffix == ".bz2":
-        open_func = bz2.open
-        compression = "bz2"
-    elif file_path.suffix == ".gz":
-        open_func = gzip.open
-        compression = "gzip"
-    else:
-        open_func = open
-        compression = "none"
-
+    compression = {".bz2": "bz2", ".gz": "gzip"}.get(file_path.suffix, "none")
     logger.info(f"Reading edge list from {file_path} (compression: {compression})")
 
     # Read edge list with pandas
-    with open_func(file_path, "rt") as f:
+    with _open_text(file_path) as f:
         if weighted:
             df = pd.read_csv(
                 f,

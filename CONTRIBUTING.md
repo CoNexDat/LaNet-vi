@@ -56,9 +56,10 @@ without a Copilot review is not merged.
      addressed**: either fix it and push, or reply explaining why it is not applicable
      and resolve the thread. Do not merge with unresolved review threads.
 
-   The ruleset requests Copilot automatically when Copilot is enabled for the
-   organisation. If no review request appears, request it yourself and re-request it
-   after each push:
+   The ruleset requests Copilot automatically on PRs targeting `main`. For stacked PRs
+   or if no request appears, request it yourself and re-request it after each push
+   (if Copilot shows "Monthly limit reached", wait for the quota to reset or upgrade;
+   the PR stays open until then):
 
    ```bash
    gh pr edit <number> --add-reviewer Copilot   # or the Reviewers gear in the sidebar

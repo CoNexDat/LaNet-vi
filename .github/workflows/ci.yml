@@ -3,8 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  pull_request:  # every PR, including stacked ones whose base is another branch
 
 permissions:
   contents: read
@@ -36,9 +35,7 @@ jobs:
         run: uv run ruff format --check src/ tests/ examples/
 
       - name: mypy
-        run: uv run mypy src/lanet_vi --ignore-missing-imports
-        # TODO(chore/mypy-strict): remove once the remaining type errors are fixed.
-        continue-on-error: true
+        run: uv run mypy src/lanet_vi
 
   test:
     name: test (${{ matrix.os }}, ${{ matrix.python-version }})

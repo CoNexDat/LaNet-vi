@@ -6,6 +6,7 @@ from pathlib import Path
 import networkx as nx
 import pandas as pd
 
+from lanet_vi.core.network import Network
 from lanet_vi.decomposition.kcores import compute_kcores
 from lanet_vi.io.writers import (
     write_decomposition_csv,
@@ -29,7 +30,9 @@ def test_write_decomposition_csv_roundtrip(karate: nx.Graph, tmp_path: Path):
 
 def test_write_decomposition_json_includes_components(karate: nx.Graph, tmp_path: Path):
     """JSON export carries indices, components and statistics."""
-    result = compute_kcores(karate)
+    net = Network(karate)
+    result = net.decompose()
+    assert result.components, "Network.decompose() should populate components"
     out = tmp_path / "cores.json"
 
     write_decomposition_json(result, out)
@@ -40,8 +43,10 @@ def test_write_decomposition_json_includes_components(karate: nx.Graph, tmp_path
     assert data["max_index"] == result.max_index
     assert len(data["node_indices"]) == karate.number_of_nodes()
     assert data["num_components"] == len(result.components)
-    if result.components:
-        assert "component_statistics" in data
+    assert data["component_statistics"]["total_components"] == len(result.components)
+    first = data["components"][0]
+    assert set(first) == {"id", "index", "size", "nodes"}
+    assert first["index"] is not None
 
 
 def test_write_edge_list_roundtrip(karate: nx.Graph, tmp_path: Path):

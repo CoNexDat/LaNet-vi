@@ -3,7 +3,7 @@
 This module provides data structures for representing community detection results.
 """
 
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -25,7 +25,7 @@ class Community(BaseModel):
     nodes: list[int]
     size: int = Field(default=0)
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         """Initialize community and compute size if not provided."""
         super().__init__(**data)
         if self.size == 0:
@@ -55,7 +55,7 @@ class CommunityResult(BaseModel):
     num_communities: int = Field(default=0)
     modularity: float = Field(default=0.0)
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         """Initialize community result and compute derived fields."""
         super().__init__(**data)
         if self.num_communities == 0:
@@ -71,7 +71,7 @@ class CommunityResult(BaseModel):
 
         Returns
         -------
-        Optional[Community]
+        Community | None
             The community if found, None otherwise
         """
         for community in self.communities:
@@ -89,7 +89,7 @@ class CommunityResult(BaseModel):
 
         Returns
         -------
-        Optional[int]
+        int | None
             Community ID if node is found, None otherwise
         """
         return self.node_to_community.get(node)
