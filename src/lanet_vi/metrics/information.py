@@ -5,6 +5,7 @@ for comparing partitions, decompositions, and community structures.
 """
 
 from collections import Counter
+from typing import Any
 
 import numpy as np
 
@@ -124,7 +125,7 @@ def compute_mutual_information(
     # contingency[i][j] = number of nodes in cluster i of partition1 and cluster j of partition2
     from collections import defaultdict
 
-    contingency = defaultdict(lambda: defaultdict(int))
+    contingency: defaultdict[Any, defaultdict[Any, int]] = defaultdict(lambda: defaultdict(int))
 
     for node in nodes1:
         c1 = partition1[node]

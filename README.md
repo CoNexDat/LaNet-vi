@@ -86,7 +86,7 @@ from lanet_vi import Network, LaNetConfig
 
 # Download and visualize CAIDA AS-relationships data
 graph, _ = read_caida_snapshot(
-    "https://publicdata.caida.org/datasets/as-relationships/serial-1/20170101.as-rel.txt.bz2"
+    "https://publicdata.caida.org/datasets/as-relationships/serial-1/20251001.as-rel.txt.bz2"
 )
 
 config = LaNetConfig()  # Uses optimized defaults
@@ -105,7 +105,7 @@ The visualization reveals the Internet's hierarchical structure with Tier-1 prov
   <img src="examples/outputs/caida_as_relationships_kcores.png" width="45%" alt="K-cores decomposition">
   <img src="examples/outputs/caida_as_relationships_kdenses.png" width="45%" alt="K-denses decomposition">
   <br>
-  <em>CAIDA AS-Relationships Network (56,345 nodes): K-cores (left) vs K-denses (right)</em>
+  <em>CAIDA AS-Relationships Network, 20251001 snapshot (78,370 nodes): K-cores (left) vs K-denses (right)</em>
 </p>
 
 The visualizations reveal the hierarchical structure of the Internet, with densely connected core networks (red/orange) at the center and peripheral networks (blue/purple) at the edges. K-cores use degree-based decomposition while k-denses use triangle-based decomposition, highlighting different structural properties.

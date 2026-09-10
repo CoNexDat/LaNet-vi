@@ -97,3 +97,22 @@ def test_generate_writes_edge_list(tmp_path: Path):
     assert result.exit_code == 0, result.output
     assert output.exists()
     assert len(output.read_text().strip().splitlines()) > 0
+
+
+def test_visualize_rejects_unknown_community_algorithm(small_edge_list: Path, tmp_path: Path):
+    """An unsupported --community-algorithm is a usage error, not a crash."""
+    result = runner.invoke(
+        app,
+        [
+            "visualize",
+            "--input",
+            str(small_edge_list),
+            "--output",
+            str(tmp_path / "x.png"),
+            "--community-algorithm",
+            "bogus",
+        ],
+    )
+    assert result.exit_code == 2
+    # Rich may wrap and colour the option name, so check the message text instead
+    assert "Unknown community algorithm" in result.output

@@ -76,8 +76,12 @@ gh pr edit <n> --add-reviewer Copilot     # or the "Reviewers" gear in the PR si
 ```
 
 Re-request after every push (`gh pr edit <n> --add-reviewer Copilot` again, or the
-re-request icon next to Copilot in the sidebar). If the request is refused because Copilot
-is not available to the account, stop and tell the maintainer; do not merge without it.
+re-request icon next to Copilot in the sidebar). Note: the ruleset only auto-requests on
+PRs whose base is `main`; stacked PRs (base = another branch) always need a manual request.
+If the request is refused or silently dropped (the sidebar shows Copilot greyed out with
+"Monthly limit reached", or the API returns "could not resolve user"), stop and tell the
+maintainer; do not merge without the review. The free Copilot tier has a small monthly
+quota of code reviews, so keep PRs few and batch pushes where you can.
 
 Concretely:
 

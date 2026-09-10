@@ -23,8 +23,8 @@ def visualize_caida_snapshot():
     print("=" * 70)
 
     # CAIDA snapshot URL
-    # url = "https://publicdata.caida.org/datasets/as-relationships/serial-1/20251001.as-rel.txt.bz2"
-    url = "https://publicdata.caida.org/datasets/as-relationships/serial-1/20170101.as-rel.txt.bz2"
+    url = "https://publicdata.caida.org/datasets/as-relationships/serial-1/20251001.as-rel.txt.bz2"
+    # url = "https://publicdata.caida.org/datasets/as-relationships/serial-1/20170101.as-rel.txt.bz2"
 
     print("\n[1/5] Downloading CAIDA snapshot...")
     print(f"      URL: {url}")

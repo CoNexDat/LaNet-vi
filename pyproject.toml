@@ -52,6 +52,8 @@ dev = [
     "pre-commit>=4.0",
     "ipython>=8.0",
     "jupyter>=1.0",
+    "types-pyyaml>=6.0",
+    "types-requests>=2.31",
 ]
 interactive = [
     "plotly>=5.0",
@@ -90,6 +92,7 @@ python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+ignore_missing_imports = true  # networkx, scipy, sklearn, matplotlib ship no stubs
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
