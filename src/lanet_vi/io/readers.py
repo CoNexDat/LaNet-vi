@@ -4,7 +4,7 @@ import bz2
 import gzip
 import io
 from pathlib import Path
-from typing import IO
+from typing import IO, Any
 
 import networkx as nx
 import numpy as np
@@ -88,18 +88,24 @@ def read_edge_list(
 
     sep = delimiter if delimiter is not None else r"\s+"
     columns = ["source", "target", "weight"]
+    # Only a structurally missing field may become NaN; tokens such as "NA" or "nan"
+    # must reach the numeric validation below and be rejected
+    na: dict[str, Any] = {"keep_default_na": False, "na_values": []}
     try:
         # Fixed three-column schema: short rows get NaN in the missing fields and
         # extra fields are ignored, whatever the first row looks like
         with _open_text(file_path) as f:
             df = pd.read_csv(
-                f, sep=sep, comment=comment, header=None, names=columns, usecols=columns
+                f, sep=sep, comment=comment, header=None, names=columns, usecols=columns, **na
             )
     except pd.errors.ParserError:
         # The C engine rejects usecols when no row has three fields; without usecols
         # it still pads short rows with NaN, so retry that way
         with _open_text(file_path) as f:
-            df = pd.read_csv(f, sep=sep, comment=comment, header=None, names=columns)
+            df = pd.read_csv(f, sep=sep, comment=comment, header=None, names=columns, **na)
+
+    # With default NA handling off, a structurally missing field arrives as ""
+    df = df.mask(df == "")
 
     if df.empty:
         logger.warning(f"{file_path}: no edges found")

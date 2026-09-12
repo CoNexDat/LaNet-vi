@@ -278,3 +278,20 @@ def test_network_directed_multigraph_kcores_end_to_end(tmp_path: Path):
 
     assert result.components
     assert sum(c.size for c in result.components) == 3
+
+
+@pytest.mark.parametrize("token", ["NA", "N/A", "NaN", "nan", "null"])
+def test_read_edge_list_rejects_na_like_weights(tmp_path: Path, token: str):
+    """NA-like tokens in the weight column are errors, not missing values."""
+    path = _write(tmp_path, f"1 2 {token}\n2 3 0.5\n")
+
+    with pytest.raises(ValueError, match="not a number"):
+        read_edge_list(path, weighted=True)
+
+
+def test_read_edge_list_rejects_na_like_ids(tmp_path: Path):
+    """NA-like tokens in an id column are rejected as non-integer ids."""
+    path = _write(tmp_path, "NA 2\n")
+
+    with pytest.raises(ValueError, match="integer"):
+        read_edge_list(path)
