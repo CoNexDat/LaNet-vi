@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 
 class BackgroundColor(str, Enum):
@@ -182,6 +182,14 @@ class VisualizationConfig(BaseModel):
     show_size_legend: bool = Field(default=True)
     # Changed from 1.0 to 0.5 for moderate node sizes
     node_size_scale: float = Field(default=0.5, gt=0.0)
+
+    @model_validator(mode="after")
+    def fold_deprecated_size_legend(self) -> "VisualizationConfig":
+        """Fold the deprecated ``show_size_legend`` alias into ``show_degree_scale``."""
+        if not self.show_size_legend:
+            self.show_degree_scale = False
+            self.show_size_legend = True
+        return self
 
     @field_validator("width", "height")
     @classmethod

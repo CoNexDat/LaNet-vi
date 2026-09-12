@@ -1,6 +1,7 @@
 """Configuration loading from YAML files."""
 
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -48,11 +49,7 @@ def load_config_from_yaml(file_path: Path | str) -> LaNetConfig:
         logger.error(f"Configuration file not found: {file_path}")
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
-    # Load YAML file
-    with open(file_path) as f:
-        config_dict = yaml.safe_load(f)
-
-    logger.debug(f"Loaded YAML configuration with keys: {list(config_dict.keys())}")
+    config_dict = read_config_yaml(file_path)
 
     # Validate and create config object using Pydantic
     # Pydantic will automatically validate types and constraints
@@ -64,6 +61,47 @@ def load_config_from_yaml(file_path: Path | str) -> LaNetConfig:
         raise
 
     return config
+
+
+def read_config_yaml(file_path: Path | str) -> dict[str, Any]:
+    """
+    Read a YAML configuration file into a plain dictionary without validating it.
+
+    Used by the CLI to merge the file with explicit command-line flags before a
+    single validation pass.
+
+    Parameters
+    ----------
+    file_path : Union[Path, str]
+        Path to the YAML file
+
+    Returns
+    -------
+    Dict[str, Any]
+        Nested dictionary as written in the file (empty if the file is empty)
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist
+    ValueError
+        If the top level of the file is not a mapping
+    """
+    file_path = Path(file_path)
+    if not file_path.exists():
+        logger.error(f"Configuration file not found: {file_path}")
+        raise FileNotFoundError(f"Configuration file not found: {file_path}")
+
+    with open(file_path) as f:
+        loaded = yaml.safe_load(f)
+
+    if loaded is None:
+        return {}
+    if not isinstance(loaded, dict):
+        raise ValueError(f"{file_path}: top level must be a mapping of sections")
+
+    logger.debug(f"Loaded YAML configuration with keys: {list(loaded.keys())}")
+    return loaded
 
 
 def save_config_to_yaml(config: LaNetConfig, file_path: Path | str) -> None:

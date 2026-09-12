@@ -63,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--show-degree-scale` toggled the colour legend instead of the degree legend. It now
   controls the degree (node size) legend, as the C++ `-showDegreeScale`; the colour legend
   has its own `--show-color-legend/--no-show-color-legend` (config `show_color_legend`).
-  `show_size_legend` is kept as a deprecated alias (#23).
+  `show_size_legend` is kept as a deprecated alias that folds into `show_degree_scale` (#23).
 - Default-true boolean flags (`--show-degree-scale`, `--gradient-edges`,
   `--color-by-community`, `--draw-community-boundaries`) now have `--no-...` forms (#23).
 - Options that the current implementation does not use (`--from-layer`, `--delta`,

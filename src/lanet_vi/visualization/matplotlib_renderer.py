@@ -87,7 +87,7 @@ def render_network(
         _draw_degree_scale(ax, decomposition, config)
 
     # Degree (node size) legend: the C++ -showDegreeScale
-    if config.show_degree_scale and config.show_size_legend:
+    if config.show_degree_scale:
         _draw_size_legend(ax, graph, config)
 
     # Save figure

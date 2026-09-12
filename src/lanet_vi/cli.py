@@ -3,13 +3,14 @@
 import logging
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from lanet_vi.core.network import Network
-from lanet_vi.io.config_loader import load_config_from_yaml, save_config_to_yaml
+from lanet_vi.io.config_loader import read_config_yaml, save_config_to_yaml
 from lanet_vi.io.writers import write_decomposition_csv, write_decomposition_json
 from lanet_vi.logging_config import setup_logging
 from lanet_vi.models.config import (
@@ -85,17 +86,30 @@ def _given_explicitly(ctx: typer.Context, param: str) -> bool:
 
 
 def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
-    """Start from the YAML file (or defaults) and apply explicitly given CLI flags."""
-    base = load_config_from_yaml(config_file) if config_file else LaNetConfig()
-    data = base.model_dump(mode="json")
+    """Merge defaults, the YAML file and explicitly given CLI flags; validate once.
+
+    Precedence is the C++ one: defaults < config file < command line. Validation
+    runs only on the merged values, so a flag can fix a value that would be
+    invalid on its own in the file (for example one side of the aspect ratio).
+    """
+    data: dict[str, Any] = LaNetConfig().model_dump(mode="json")
+
+    if config_file is not None:
+        for section, values in read_config_yaml(config_file).items():
+            if isinstance(values, dict) and isinstance(data.get(section), dict):
+                data[section].update(values)
+            else:
+                data[section] = values
 
     for param, (section, field) in _CLI_TO_CONFIG.items():
         if param not in ctx.params or not _given_explicitly(ctx, param):
             continue
         value = ctx.params[param]
         data[section][field] = value.value if isinstance(value, Enum) else value
+        if field == "show_degree_scale":
+            # Keep the deprecated alias in step so it cannot veto the explicit flag
+            data[section]["show_size_legend"] = value
 
-    # Validate once so cross-field checks (aspect ratio, enums) run on the merged values
     return LaNetConfig.model_validate(data)
 
 

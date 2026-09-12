@@ -259,3 +259,49 @@ def test_names_file_enables_labels(small_edge_list: Path, tmp_path: Path):
         )
     assert result.exit_code == 0, result.output
     assert seen["labels"] is True
+
+
+def test_build_config_validates_after_merge(tmp_path: Path):
+    """A width/height pair that is invalid in the YAML alone passes once flags fix it."""
+    from lanet_vi.cli import _build_config
+
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text("visualization:\n  width: 3200\n  height: 800\n")  # aspect 4.0: invalid
+
+    class FakeCtx:
+        params = {"height": 1600}
+
+        def get_parameter_source(self, name: str):  # noqa: D102
+            class Src:
+                name = "COMMANDLINE"
+
+            return Src()
+
+    config = _build_config(FakeCtx(), cfg)  # type: ignore[arg-type]
+    assert (config.visualization.width, config.visualization.height) == (3200, 1600)
+
+
+def test_deprecated_show_size_legend_alias():
+    """show_size_legend: false folds into show_degree_scale; an explicit flag wins over it."""
+    from lanet_vi.cli import _build_config
+    from lanet_vi.models.config import VisualizationConfig
+
+    folded = VisualizationConfig(show_size_legend=False)
+    assert folded.show_degree_scale is False and folded.show_size_legend is True
+
+    class FakeCtx:
+        params = {"show_degree_scale": True}
+
+        def get_parameter_source(self, name: str):  # noqa: D102
+            class Src:
+                name = "COMMANDLINE"
+
+            return Src()
+
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as d:
+        cfg = Path(d) / "c.yaml"
+        cfg.write_text("visualization:\n  show_size_legend: false\n")
+        config = _build_config(FakeCtx(), cfg)  # type: ignore[arg-type]
+    assert config.visualization.show_degree_scale is True
