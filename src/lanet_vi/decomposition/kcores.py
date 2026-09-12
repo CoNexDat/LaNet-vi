@@ -53,14 +53,16 @@ def compute_kcores(
     graph = _without_self_loops(graph)
 
     # Weighted if the caller says so; otherwise if any edge carries a weight
-    # (short-circuits at the first weighted edge)
-    is_weighted = (
+    # (short-circuits at the first weighted edge). An edgeless graph has no
+    # strengths to bin, so it always takes the unweighted path (all cores 0).
+    is_weighted = graph.number_of_edges() > 0 and (
         weighted
         if weighted is not None
         else any("weight" in data for _, _, data in graph.edges(data=True))
     )
 
-    graph = _merge_parallel_edges(graph) if is_weighted and graph.is_multigraph() else graph
+    if is_weighted and (graph.is_multigraph() or graph.is_directed()):
+        graph = _as_weighted_simple_graph(graph)
 
     if not is_weighted:
         logger.info("Using unweighted k-core algorithm (NetworkX core_number)")
@@ -114,14 +116,17 @@ def _without_self_loops(graph: nx.Graph) -> nx.Graph:
     return graph
 
 
-def _merge_parallel_edges(graph: nx.Graph) -> nx.Graph:
-    """Collapse a weighted multigraph into a simple graph, summing parallel weights.
+def _as_weighted_simple_graph(graph: nx.Graph) -> nx.Graph:
+    """Collapse a weighted multigraph or digraph into an undirected simple graph.
 
-    The C++ ``-multigraph -weighted`` mode summed the weights of parallel edges
-    into the node strength, which is what the p-function needs.
+    Weights of parallel and reciprocal edges are summed, so a node's strength is
+    the total weight incident to it in either direction. This matches the C++
+    ``-multigraph -weighted`` mode (parallel weights summed into the strength)
+    and keeps the weighted path consistent with the unweighted one, which uses
+    in-degree plus out-degree on directed graphs.
     """
-    logger.info("Merging parallel edges: strength is the sum of their weights")
-    simple: nx.Graph = nx.DiGraph() if graph.is_directed() else nx.Graph()
+    logger.info("Merging parallel/reciprocal edges: strength is the sum of their weights")
+    simple = nx.Graph()
     simple.add_nodes_from(graph.nodes(data=True))
     for u, v, data in graph.edges(data=True):
         w = float(data.get("weight", 1.0))
@@ -341,7 +346,10 @@ def find_components_by_shell(
         subgraph = graph.subgraph(shell_nodes).copy()
 
         # Find connected components
-        for comp_nodes in nx.connected_components(subgraph):
+        components_of = (
+            nx.weakly_connected_components if subgraph.is_directed() else nx.connected_components
+        )
+        for comp_nodes in components_of(subgraph):
             components.append(
                 Component(
                     component_id=component_id,

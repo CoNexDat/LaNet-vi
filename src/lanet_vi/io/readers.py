@@ -86,24 +86,33 @@ def read_edge_list(
     compression = {".bz2": "bz2", ".gz": "gzip"}.get(file_path.suffix, "none")
     logger.info(f"Reading edge list from {file_path} (compression: {compression})")
 
-    with _open_text(file_path) as f:
-        df = pd.read_csv(
-            f,
-            sep=delimiter if delimiter is not None else r"\s+",
-            comment=comment,
-            header=None,
-            skip_blank_lines=True,
-        )
+    sep = delimiter if delimiter is not None else r"\s+"
+    columns = ["source", "target", "weight"]
+    try:
+        # Fixed three-column schema: short rows get NaN in the missing fields and
+        # extra fields are ignored, whatever the first row looks like
+        with _open_text(file_path) as f:
+            df = pd.read_csv(
+                f, sep=sep, comment=comment, header=None, names=columns, usecols=columns
+            )
+    except pd.errors.ParserError:
+        # The C engine rejects usecols when no row has three fields; without usecols
+        # it still pads short rows with NaN, so retry that way
+        with _open_text(file_path) as f:
+            df = pd.read_csv(f, sep=sep, comment=comment, header=None, names=columns)
 
-    if df.shape[1] < 2:
+    if df.empty:
+        logger.warning(f"{file_path}: no edges found")
+    if df["target"].isna().all() and not df.empty:
         raise ValueError(f"{file_path}: expected at least two columns (source target)")
+    has_weight_column = df["weight"].notna().any()
 
-    source = _integer_column(df.iloc[:, 0], file_path)
-    target = _integer_column(df.iloc[:, 1], file_path)
+    source = _integer_column(df["source"], file_path)
+    target = _integer_column(df["target"], file_path)
 
     if weighted:
-        if df.shape[1] >= 3:
-            raw = df.iloc[:, 2]
+        if has_weight_column:
+            raw = df["weight"]
             weight_series = pd.to_numeric(raw, errors="coerce")
             bad = weight_series.isna() & raw.notna()
             if bad.any():
@@ -116,7 +125,7 @@ def read_edge_list(
         else:
             logger.warning(f"{file_path}: --weighted given but no weight column; using 1.0")
             weight = np.ones(len(df))
-    elif df.shape[1] >= 3:
+    elif has_weight_column:
         logger.info(f"{file_path}: ignoring extra columns (graph is not weighted)")
 
     # Create appropriate graph type

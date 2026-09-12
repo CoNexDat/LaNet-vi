@@ -204,12 +204,12 @@ def test_multidigraph_kcores_count_both_directions():
 
 def test_weighted_multigraph_sums_parallel_weights():
     """Parallel weighted edges are merged by summing before the strength-based cores."""
-    from lanet_vi.decomposition.kcores import _merge_parallel_edges
+    from lanet_vi.decomposition.kcores import _as_weighted_simple_graph
 
     G = nx.MultiGraph()
     G.add_weighted_edges_from([(1, 2, 0.5), (1, 2, 1.5), (2, 3, 1.0)])
 
-    merged = _merge_parallel_edges(G)
+    merged = _as_weighted_simple_graph(G)
     assert not merged.is_multigraph()
     assert merged[1][2]["weight"] == 2.0
 
@@ -233,3 +233,48 @@ def test_read_node_names_strips_trailing_comment(tmp_path: Path):
     path = _write(tmp_path, "1 Alice # note\n", "names.txt")
 
     assert read_node_names(path) == {1: "Alice"}
+
+
+def test_weighted_digraph_strength_counts_both_directions():
+    """Reciprocal weighted arcs are summed into one undirected weight."""
+    from lanet_vi.decomposition.kcores import _as_weighted_simple_graph
+
+    G = nx.DiGraph()
+    G.add_weighted_edges_from([(1, 2, 1.0), (2, 1, 2.0)])
+
+    merged = _as_weighted_simple_graph(G)
+    assert not merged.is_directed()
+    assert merged[1][2]["weight"] == 3.0
+
+
+def test_read_edge_list_optional_weight_in_any_row_order(tmp_path: Path):
+    """A short first row followed by a three-field row parses (fixed schema)."""
+    path = _write(tmp_path, "1 2\n2 3 0.5\n")
+
+    G = read_edge_list(path, weighted=True)
+
+    assert G[1][2]["weight"] == 1.0 and G[2][3]["weight"] == 0.5
+
+
+def test_kcores_weighted_flag_on_edgeless_graph():
+    """weighted=True on a graph without edges returns zero cores instead of crashing."""
+    G = nx.Graph()
+    G.add_nodes_from([1, 2])
+
+    assert compute_kcores(G, weighted=True).node_indices == {1: 0, 2: 0}
+
+
+def test_network_directed_multigraph_kcores_end_to_end(tmp_path: Path):
+    """--directed --multigraph works through Network.decompose (weak components)."""
+    from lanet_vi.core.network import Network
+    from lanet_vi.models.config import DecompositionType, GraphConfig, LaNetConfig
+
+    path = _write(tmp_path, "1 2\n1 2\n2 3\n3 1\n")
+    net = Network.from_edge_list(
+        path, LaNetConfig(graph=GraphConfig(directed=True, multigraph=True))
+    )
+
+    result = net.decompose(DecompositionType.KCORES)
+
+    assert result.components
+    assert sum(c.size for c in result.components) == 3
