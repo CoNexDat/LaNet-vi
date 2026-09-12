@@ -1,7 +1,7 @@
 """Matplotlib-based renderer for network visualization."""
 
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
@@ -19,8 +19,8 @@ def render_network(
     layout: VisualizationLayout,
     decomposition: DecompositionResult,
     config: VisualizationConfig,
-    output_path: Union[Path, str],
-    node_names: Optional[dict[int, str]] = None,
+    output_path: Path | str,
+    node_names: dict[int, str] | None = None,
 ) -> None:
     """
     Render network visualization using matplotlib.
@@ -446,7 +446,7 @@ def _draw_size_legend(
             p.set_transform(trans)
             return [p]
 
-    for deg, size in zip(sample_degrees, sample_sizes):
+    for deg, size in zip(sample_degrees, sample_sizes, strict=True):
         circle = mpatches.Circle(
             (0, 0),
             radius=size,

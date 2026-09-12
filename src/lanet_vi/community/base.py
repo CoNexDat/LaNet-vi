@@ -3,7 +3,7 @@
 This module provides data structures for representing community detection results.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -61,7 +61,7 @@ class CommunityResult(BaseModel):
         if self.num_communities == 0:
             self.num_communities = len(self.communities)
 
-    def get_community(self, community_id: int) -> Optional[Community]:
+    def get_community(self, community_id: int) -> Community | None:
         """Get a community by its ID.
 
         Parameters
@@ -79,7 +79,7 @@ class CommunityResult(BaseModel):
                 return community
         return None
 
-    def get_node_community(self, node: int) -> Optional[int]:
+    def get_node_community(self, node: int) -> int | None:
         """Get the community ID for a given node.
 
         Parameters

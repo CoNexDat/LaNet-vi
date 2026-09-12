@@ -1,7 +1,6 @@
 """Configuration loading from YAML files."""
 
 from pathlib import Path
-from typing import Union
 
 import yaml
 
@@ -11,7 +10,7 @@ from lanet_vi.models.config import LaNetConfig
 logger = get_logger(__name__)
 
 
-def load_config_from_yaml(file_path: Union[Path, str]) -> LaNetConfig:
+def load_config_from_yaml(file_path: Path | str) -> LaNetConfig:
     """
     Load LaNet-vi configuration from a YAML file.
 
@@ -67,7 +66,7 @@ def load_config_from_yaml(file_path: Union[Path, str]) -> LaNetConfig:
     return config
 
 
-def save_config_to_yaml(config: LaNetConfig, file_path: Union[Path, str]) -> None:
+def save_config_to_yaml(config: LaNetConfig, file_path: Path | str) -> None:
     """
     Save LaNet-vi configuration to a YAML file.
 

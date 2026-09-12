@@ -1,7 +1,7 @@
 """Configuration models for LaNet-vi using Pydantic."""
 
 from enum import Enum
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
@@ -157,14 +157,14 @@ class VisualizationConfig(BaseModel):
     delta: float = Field(default=1.3, gt=0.0)
     gamma: float = Field(default=1.5, gt=0.0)
     font_zoom: float = Field(default=1.0, gt=0.0)
-    legend_fontsize: Optional[float] = Field(default=None, gt=0.0)
+    legend_fontsize: float | None = Field(default=None, gt=0.0)
     edges_percent: float = Field(default=0.5, ge=0.0, le=1.0)  # Changed from 0.0 to 0.5 (50% edges)
     min_edges: int = Field(default=50000, ge=0)  # Changed from 1000 to match CAIDA defaults
     opacity: float = Field(default=0.2, ge=0.0, le=1.0)
     unit_length: float = Field(default=1.0, gt=0.0)
     draw_circles: bool = False
     show_degree_scale: bool = True
-    color_scale_max_value: Optional[int] = Field(default=None, gt=0)
+    color_scale_max_value: int | None = Field(default=None, gt=0)
     gradient_edges: bool = Field(default=True)
     # Changed from 0.3 to 0.6 for better visibility
     edge_alpha: float = Field(default=0.6, ge=0.0, le=1.0)
@@ -172,9 +172,9 @@ class VisualizationConfig(BaseModel):
     max_edge_width: float = Field(default=0.3, gt=0.0)  # Changed from 0.2 to match CAIDA defaults
     show_node_labels: bool = Field(default=False)
     label_all_nodes: bool = Field(default=True)
-    label_kcore_min: Optional[int] = Field(default=None, ge=1)
-    label_kcore_max: Optional[int] = Field(default=None, ge=1)
-    node_edge_color: Optional[str] = Field(default=None)
+    label_kcore_min: int | None = Field(default=None, ge=1)
+    label_kcore_max: int | None = Field(default=None, ge=1)
+    node_edge_color: str | None = Field(default=None)
     show_size_legend: bool = Field(default=True)
     # Changed from 1.0 to 0.5 for moderate node sizes
     node_size_scale: float = Field(default=0.5, gt=0.0)
@@ -219,7 +219,7 @@ class DecompositionConfig(BaseModel):
     from_layer: int = Field(default=0, ge=0)
     granularity: int = Field(default=-1, ge=-1)
     strength_intervals: StrengthIntervalMethod = StrengthIntervalMethod.EQUAL_SIZE
-    maximum_strength: Optional[float] = Field(default=None, gt=0.0)
+    maximum_strength: float | None = Field(default=None, gt=0.0)
     no_cliques: bool = False
 
 
@@ -275,7 +275,7 @@ class LayoutConfig(BaseModel):
     beta: float = Field(default=1.0)
     # Changed from 42 to 0 for maximum uniformity (CAIDA default)
     seed: int = Field(default=0, ge=0)
-    ratio_constant: Optional[float] = Field(default=None, gt=0.0)
+    ratio_constant: float | None = Field(default=None, gt=0.0)
     min_component_size: int = Field(default=10, ge=1)  # Changed from 1 to 10 (CAIDA default)
     use_spatial_hashing: bool = Field(default=True)
     use_spiral_layout: bool = Field(default=False)

@@ -1,6 +1,6 @@
 # 🧅 LaNet-vi
 
-[![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI](https://img.shields.io/pypi/v/lanet-vi)](https://pypi.org/project/lanet-vi/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![CI](https://github.com/CoNexDat/LaNet-vi/actions/workflows/ci.yml/badge.svg)](https://github.com/CoNexDat/LaNet-vi/actions/workflows/ci.yml)
