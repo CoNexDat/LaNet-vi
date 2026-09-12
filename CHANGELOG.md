@@ -53,6 +53,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   output; its files were tab-separated and could not be read back by `lanet-vi visualize`.
 - Node names may contain spaces (the name is the rest of the line, quotes stripped) and
   the colours file accepts tabs.
+- `lanet-vi config` wrote YAML with `!!python/object/apply` tags that `--config` could
+  not load; enums are now written as plain strings (#23).
+- `--config` no longer discards the other command-line flags. Precedence is now the C++
+  one: defaults < YAML file < flags given explicitly on the command line (#23).
+- `--names` now draws the labels (it loaded them and drew nothing); use
+  `--no-node-labels` to load names without drawing them. A node named `0` is no longer
+  skipped (#23).
+- `--show-degree-scale` toggled the colour legend instead of the degree legend. It now
+  controls the degree (node size) legend, as the C++ `-showDegreeScale`; the colour legend
+  has its own `--show-color-legend/--no-show-color-legend` (config `show_color_legend`).
+  `show_size_legend` is kept as a deprecated alias (#23).
+- Default-true boolean flags (`--show-degree-scale`, `--gradient-edges`,
+  `--color-by-community`, `--draw-community-boundaries`) now have `--no-...` forms (#23).
+- Options that the current implementation does not use (`--from-layer`, `--delta`,
+  `--gamma`, `--alpha`, `--beta`, `--coord-distribution`, `--use-spiral-layout`,
+  `--detect-communities`) say so in their help text, with the tracking issue (#18, #23).
 - `write_decomposition_json` crashed when components were present (it read non-existent
   `Component.id` / `Component.index` attributes).
 - `lanet_vi.community.base` failed to import on Python 3.9 because of `X | None` return

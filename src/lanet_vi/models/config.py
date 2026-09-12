@@ -127,7 +127,9 @@ class VisualizationConfig(BaseModel):
     draw_circles : bool
         Whether to draw component border circles
     show_degree_scale : bool
-        Whether to show degree scale in the picture
+        Whether to show the degree (node size) legend, as the C++ ``-showDegreeScale``
+    show_color_legend : bool
+        Whether to show the shell/dense index colour legend
     color_scale_max_value : Optional[int]
         Maximum value for color scale normalization
     gradient_edges : bool
@@ -164,6 +166,7 @@ class VisualizationConfig(BaseModel):
     unit_length: float = Field(default=1.0, gt=0.0)
     draw_circles: bool = False
     show_degree_scale: bool = True
+    show_color_legend: bool = True
     color_scale_max_value: int | None = Field(default=None, gt=0)
     gradient_edges: bool = Field(default=True)
     # Changed from 0.3 to 0.6 for better visibility
@@ -175,6 +178,7 @@ class VisualizationConfig(BaseModel):
     label_kcore_min: int | None = Field(default=None, ge=1)
     label_kcore_max: int | None = Field(default=None, ge=1)
     node_edge_color: str | None = Field(default=None)
+    # Deprecated alias of show_degree_scale (kept so old YAML files still load)
     show_size_legend: bool = Field(default=True)
     # Changed from 1.0 to 0.5 for moderate node sizes
     node_size_scale: float = Field(default=0.5, gt=0.0)

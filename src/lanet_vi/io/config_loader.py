@@ -87,8 +87,9 @@ def save_config_to_yaml(config: LaNetConfig, file_path: Path | str) -> None:
 
     logger.info(f"Saving configuration to {file_path}")
 
-    # Convert config to dictionary
-    config_dict = config.model_dump(exclude_none=True)
+    # Convert config to plain JSON-compatible types (enums become their values),
+    # so the file can be read back with yaml.safe_load
+    config_dict = config.model_dump(mode="json", exclude_none=True)
 
     # Save to YAML file
     with open(file_path, "w") as f:

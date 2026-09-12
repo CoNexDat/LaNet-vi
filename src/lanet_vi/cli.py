@@ -1,8 +1,8 @@
 """Command-line interface for LaNet-vi."""
 
 import logging
+from enum import Enum
 from pathlib import Path
-from typing import Literal, cast
 
 import typer
 from rich.console import Console
@@ -15,16 +15,89 @@ from lanet_vi.logging_config import setup_logging
 from lanet_vi.models.config import (
     BackgroundColor,
     ColorScheme,
-    CommunityConfig,
     CoordDistributionAlgorithm,
     DecompositionConfig,
     DecompositionType,
     GraphConfig,
     LaNetConfig,
-    LayoutConfig,
     StrengthIntervalMethod,
-    VisualizationConfig,
 )
+
+# CLI parameter name -> (config section, field). Only parameters the user gave
+# explicitly override the YAML file / defaults (C++ precedence: defaults <
+# config file < command line).
+_CLI_TO_CONFIG: dict[str, tuple[str, str]] = {
+    "weighted": ("graph", "weighted"),
+    "multigraph": ("graph", "multigraph"),
+    "directed": ("graph", "directed"),
+    "decomp": ("decomposition", "decomp_type"),
+    "from_layer": ("decomposition", "from_layer"),
+    "granularity": ("decomposition", "granularity"),
+    "strength_intervals": ("decomposition", "strength_intervals"),
+    "no_cliques": ("decomposition", "no_cliques"),
+    "background": ("visualization", "background"),
+    "color_scheme": ("visualization", "color_scheme"),
+    "width": ("visualization", "width"),
+    "height": ("visualization", "height"),
+    "epsilon": ("visualization", "epsilon"),
+    "delta": ("visualization", "delta"),
+    "gamma": ("visualization", "gamma"),
+    "font_zoom": ("visualization", "font_zoom"),
+    "legend_fontsize": ("visualization", "legend_fontsize"),
+    "edges_percent": ("visualization", "edges_percent"),
+    "min_edges": ("visualization", "min_edges"),
+    "edge_alpha": ("visualization", "edge_alpha"),
+    "min_edge_width": ("visualization", "min_edge_width"),
+    "max_edge_width": ("visualization", "max_edge_width"),
+    "node_size_scale": ("visualization", "node_size_scale"),
+    "node_edge_color": ("visualization", "node_edge_color"),
+    "show_size_legend": ("visualization", "show_size_legend"),
+    "gradient_edges": ("visualization", "gradient_edges"),
+    "draw_circles": ("visualization", "draw_circles"),
+    "show_degree_scale": ("visualization", "show_degree_scale"),
+    "show_color_legend": ("visualization", "show_color_legend"),
+    "show_node_labels": ("visualization", "show_node_labels"),
+    "color_scale_max": ("visualization", "color_scale_max_value"),
+    "coord_distribution": ("layout", "coord_distribution"),
+    "alpha": ("layout", "alpha"),
+    "beta": ("layout", "beta"),
+    "seed": ("layout", "seed"),
+    "use_spiral_layout": ("layout", "use_spiral_layout"),
+    "spiral_k": ("layout", "spiral_k"),
+    "spiral_beta": ("layout", "spiral_beta"),
+    "spiral_separation": ("layout", "spiral_separation"),
+    "detect_communities": ("community", "detect_communities"),
+    "community_algorithm": ("community", "algorithm"),
+    "community_resolution": ("community", "resolution"),
+    "color_by_community": ("community", "color_by_community"),
+    "draw_community_boundaries": ("community", "draw_boundaries"),
+}
+
+# Names of click's ParameterSource members that mean "the user set this". Compared by
+# name because Typer >= 0.20 vendors click and does not re-export the enum.
+_EXPLICIT_SOURCES = ("COMMANDLINE", "ENVIRONMENT")
+
+
+def _given_explicitly(ctx: typer.Context, param: str) -> bool:
+    """Return True if ``param`` came from the command line or the environment."""
+    source = ctx.get_parameter_source(param)
+    return source is not None and source.name in _EXPLICIT_SOURCES
+
+
+def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
+    """Start from the YAML file (or defaults) and apply explicitly given CLI flags."""
+    base = load_config_from_yaml(config_file) if config_file else LaNetConfig()
+    data = base.model_dump(mode="json")
+
+    for param, (section, field) in _CLI_TO_CONFIG.items():
+        if param not in ctx.params or not _given_explicitly(ctx, param):
+            continue
+        value = ctx.params[param]
+        data[section][field] = value.value if isinstance(value, Enum) else value
+
+    # Validate once so cross-field checks (aspect ratio, enums) run on the merged values
+    return LaNetConfig.model_validate(data)
+
 
 app = typer.Typer(
     name="lanet-vi",
@@ -35,6 +108,7 @@ console = Console()
 
 @app.command()
 def visualize(
+    ctx: typer.Context,
     input_file: Path = typer.Option(..., "--input", "-i", help="Input edge list file"),
     output: Path = typer.Option("output.png", "--output", "-o", help="Output visualization file"),
     config_file: Path | None = typer.Option(None, "--config", "-c", help="YAML configuration file"),
@@ -68,18 +142,26 @@ def visualize(
     max_edge_width: float = typer.Option(0.3, "--max-edge-width", help="Maximum edge width"),
     node_size_scale: float = typer.Option(0.5, "--node-size-scale", help="Node size multiplier"),
     node_edge_color: str | None = typer.Option(None, "--node-edge-color", help="Node edge color"),
-    show_size_legend: bool = typer.Option(True, "--show-size-legend", help="Show size legend"),
+    show_size_legend: bool = typer.Option(
+        True, "--show-size-legend/--no-show-size-legend", hidden=True
+    ),
     gradient_edges: bool = typer.Option(
-        True, "--gradient-edges", help="Use gradient edge coloring"
+        True, "--gradient-edges/--no-gradient-edges", help="Use gradient edge coloring"
     ),
     epsilon: float = typer.Option(0.40, "--epsilon", help="Controls ring overlapping"),
-    delta: float = typer.Option(1.3, "--delta", help="Distance between components"),
-    gamma: float = typer.Option(1.5, "--gamma", help="Component diameter"),
+    delta: float = typer.Option(
+        1.3, "--delta", help="Distance between components (not used by the current layout, #18)"
+    ),
+    gamma: float = typer.Option(
+        1.5, "--gamma", help="Component diameter (not used by the current layout, #18)"
+    ),
     font_zoom: float = typer.Option(1.0, "--font-zoom", help="Font zoom factor"),
     legend_fontsize: float | None = typer.Option(
         None, "--legend-fontsize", help="Legend font size (auto-scales if not set)"
     ),
-    from_layer: int = typer.Option(0, "--from-layer", help="Start from this layer"),
+    from_layer: int = typer.Option(
+        0, "--from-layer", help="Start from this layer (not implemented yet, #23)"
+    ),
     granularity: int = typer.Option(-1, "--granularity", help="Groups in weighted graphs"),
     strength_intervals: StrengthIntervalMethod = typer.Option(
         StrengthIntervalMethod.EQUAL_SIZE,
@@ -89,10 +171,14 @@ def visualize(
     coord_distribution: CoordDistributionAlgorithm = typer.Option(
         CoordDistributionAlgorithm.CLASSIC,
         "--coord-distribution",
-        help="Component distribution algorithm",
+        help="Component distribution algorithm (not used by the current layout, #18)",
     ),
-    alpha: float = typer.Option(1.0, "--alpha", help="Component ratio formula constant"),
-    beta: float = typer.Option(1.0, "--beta", help="Component ratio formula exponent"),
+    alpha: float = typer.Option(
+        1.0, "--alpha", help="Component ratio formula constant (not used yet, #18)"
+    ),
+    beta: float = typer.Option(
+        1.0, "--beta", help="Component ratio formula exponent (not used yet, #18)"
+    ),
     seed: int = typer.Option(0, "--seed", help="Random seed"),
     draw_circles: bool = typer.Option(False, "--draw-circles", help="Draw component borders"),
     no_cliques: bool = typer.Option(False, "--no-cliques", help="Omit cliques in central core"),
@@ -100,11 +186,21 @@ def visualize(
         None, "--color-scale-max", help="Max value for color scale"
     ),
     show_degree_scale: bool = typer.Option(
-        True, "--show-degree-scale", help="Show degree scale legend"
+        True, "--show-degree-scale/--no-show-degree-scale", help="Show the degree (size) legend"
+    ),
+    show_color_legend: bool = typer.Option(
+        True, "--show-color-legend/--no-show-color-legend", help="Show the colour legend"
+    ),
+    show_node_labels: bool | None = typer.Option(
+        None,
+        "--node-labels/--no-node-labels",
+        help="Draw node names (default: on when --names is given)",
     ),
     # Community detection options
     detect_communities: bool = typer.Option(
-        False, "--detect-communities", help="Detect and visualize communities"
+        False,
+        "--detect-communities",
+        help="Detect and visualize communities (not wired into rendering yet, #23)",
     ),
     community_algorithm: str = typer.Option(
         "louvain",
@@ -117,14 +213,18 @@ def visualize(
         help="Resolution parameter for Louvain (higher = more communities)",
     ),
     color_by_community: bool = typer.Option(
-        True, "--color-by-community", help="Color nodes by community instead of k-core"
+        True,
+        "--color-by-community/--no-color-by-community",
+        help="Color nodes by community instead of k-core",
     ),
     draw_community_boundaries: bool = typer.Option(
-        True, "--draw-community-boundaries", help="Draw boundaries around communities"
+        True,
+        "--draw-community-boundaries/--no-draw-community-boundaries",
+        help="Draw boundaries around communities",
     ),
     # Spiral layout options
     use_spiral_layout: bool = typer.Option(
-        False, "--use-spiral-layout", help="Use spiral layout algorithm"
+        False, "--use-spiral-layout", help="Use spiral layout algorithm (not implemented, #18)"
     ),
     spiral_k: float = typer.Option(10.0, "--spiral-K", help="Spiral scaling constant"),
     spiral_beta: float = typer.Option(1.5, "--spiral-beta", help="Spiral tightness parameter"),
@@ -158,7 +258,6 @@ def visualize(
             "use 'louvain' or 'greedy_modularity'",
             param_hint="--community-algorithm",
         )
-    algorithm = cast(Literal["louvain", "greedy_modularity"], community_algorithm)
 
     with Progress(
         SpinnerColumn(),
@@ -168,69 +267,10 @@ def visualize(
         # Build configuration
         task = progress.add_task("Building configuration...", total=None)
 
-        # Load from YAML if provided, otherwise use defaults
-        if config_file:
-            config = load_config_from_yaml(config_file)
-            # Override with command-line arguments if provided
-            if weighted:
-                config.graph.weighted = weighted
-            if multigraph:
-                config.graph.multigraph = multigraph
-        else:
-            config = LaNetConfig(
-                graph=GraphConfig(
-                    weighted=weighted,
-                    multigraph=multigraph,
-                    directed=directed,
-                ),
-                decomposition=DecompositionConfig(
-                    decomp_type=decomp,
-                    from_layer=from_layer,
-                    granularity=granularity,
-                    strength_intervals=strength_intervals,
-                    no_cliques=no_cliques,
-                ),
-                visualization=VisualizationConfig(
-                    background=background,
-                    color_scheme=color_scheme,
-                    width=width,
-                    height=height,
-                    epsilon=epsilon,
-                    delta=delta,
-                    gamma=gamma,
-                    font_zoom=font_zoom,
-                    legend_fontsize=legend_fontsize,
-                    edges_percent=edges_percent,
-                    min_edges=min_edges,
-                    edge_alpha=edge_alpha,
-                    min_edge_width=min_edge_width,
-                    max_edge_width=max_edge_width,
-                    node_size_scale=node_size_scale,
-                    node_edge_color=node_edge_color,
-                    show_size_legend=show_size_legend,
-                    gradient_edges=gradient_edges,
-                    draw_circles=draw_circles,
-                    show_degree_scale=show_degree_scale,
-                    color_scale_max_value=color_scale_max,
-                ),
-                layout=LayoutConfig(
-                    coord_distribution=coord_distribution,
-                    alpha=alpha,
-                    beta=beta,
-                    seed=seed,
-                    use_spiral_layout=use_spiral_layout,
-                    spiral_k=spiral_k,
-                    spiral_beta=spiral_beta,
-                    spiral_separation=spiral_separation,
-                ),
-                community=CommunityConfig(
-                    detect_communities=detect_communities,
-                    algorithm=algorithm,
-                    resolution=community_resolution,
-                    color_by_community=color_by_community,
-                    draw_boundaries=draw_community_boundaries,
-                ),
-            )
+        config = _build_config(ctx, config_file)
+        if show_node_labels is None:
+            config.visualization.show_node_labels = names is not None
+        decomp = DecompositionType(config.decomposition.decomp_type)
 
         progress.update(task, description="Loading network...")
         network = Network.from_edge_list(input_file, config)

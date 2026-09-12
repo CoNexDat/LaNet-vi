@@ -135,8 +135,9 @@ degree
 
 ### Legend Configuration
 
-- `show_degree_scale`: Show/hide k-core legend
-- `show_size_legend`: Show/hide degree legend
+- `show_color_legend`: Show/hide the shell/dense index colour legend
+- `show_degree_scale`: Show/hide the degree (node size) legend, as the C++ `-showDegreeScale`
+  (`show_size_legend` is a deprecated alias)
 - `legend_fontsize`: Manual font size (or auto-scales with diagram)
 - Text color: Automatic (white on dark, black on light)
 
