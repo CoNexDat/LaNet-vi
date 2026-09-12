@@ -163,7 +163,9 @@ class Network:
         start_time = time.time()
 
         if decomp_type == DecompositionType.KCORES:
-            self.decomposition = compute_kcores(self.graph, self.config.decomposition)
+            self.decomposition = compute_kcores(
+                self.graph, self.config.decomposition, weighted=self.config.graph.weighted
+            )
             self.decomposition = find_components_by_shell(self.graph, self.decomposition)
         elif decomp_type == DecompositionType.KDENSES:
             self.decomposition = compute_kdenses(self.graph)

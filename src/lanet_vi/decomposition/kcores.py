@@ -1,7 +1,5 @@
 """K-core decomposition using NetworkX."""
 
-from itertools import islice
-
 import networkx as nx
 import numpy as np
 
@@ -15,6 +13,7 @@ logger = get_logger(__name__)
 def compute_kcores(
     graph: nx.Graph,
     config: DecompositionConfig | None = None,
+    weighted: bool | None = None,
 ) -> DecompositionResult:
     """
     Compute k-core decomposition of a graph.
@@ -28,6 +27,9 @@ def compute_kcores(
         Input graph
     config : Optional[DecompositionConfig]
         Decomposition configuration
+    weighted : Optional[bool]
+        Force the weighted (strength-based) or unweighted algorithm. ``None``
+        (default) picks the weighted one if any edge has a ``weight`` attribute.
 
     Returns
     -------
@@ -50,8 +52,13 @@ def compute_kcores(
 
     graph = _without_self_loops(graph)
 
-    # Check if graph is weighted (check first 100 edges for performance)
-    is_weighted = any("weight" in data for _, _, data in islice(graph.edges(data=True), 100))
+    # Weighted if the caller says so; otherwise if any edge carries a weight
+    # (short-circuits at the first weighted edge)
+    is_weighted = (
+        weighted
+        if weighted is not None
+        else any("weight" in data for _, _, data in graph.edges(data=True))
+    )
 
     graph = _merge_parallel_edges(graph) if is_weighted and graph.is_multigraph() else graph
 

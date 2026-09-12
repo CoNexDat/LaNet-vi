@@ -200,3 +200,36 @@ def test_multidigraph_kcores_count_both_directions():
     result = compute_kcores(G)  # type: ignore[arg-type]
 
     assert result.node_indices == {x: 2, y: 2, u: 1, v: 1}
+
+
+def test_weighted_multigraph_sums_parallel_weights():
+    """Parallel weighted edges are merged by summing before the strength-based cores."""
+    from lanet_vi.decomposition.kcores import _merge_parallel_edges
+
+    G = nx.MultiGraph()
+    G.add_weighted_edges_from([(1, 2, 0.5), (1, 2, 1.5), (2, 3, 1.0)])
+
+    merged = _merge_parallel_edges(G)
+    assert not merged.is_multigraph()
+    assert merged[1][2]["weight"] == 2.0
+
+    result = compute_kcores(G)  # runs the weighted path through the merge
+    assert result.p_function is not None
+    assert set(result.node_indices) == {1, 2, 3}
+
+
+def test_weighted_flag_wins_over_late_weight_attribute():
+    """weighted=True forces the strength path even if the first edges carry no weight."""
+    G = nx.path_graph(150)
+    G.add_edge(0, 149, weight=3.0)
+
+    assert compute_kcores(G, weighted=False).p_function is None
+    assert compute_kcores(G).p_function is not None  # autodetect scans every edge
+    assert compute_kcores(G, weighted=True).p_function is not None
+
+
+def test_read_node_names_strips_trailing_comment(tmp_path: Path):
+    """An inline # comment after the name is dropped, as pandas used to do."""
+    path = _write(tmp_path, "1 Alice # note\n", "names.txt")
+
+    assert read_node_names(path) == {1: "Alice"}

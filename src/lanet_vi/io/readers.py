@@ -125,13 +125,12 @@ def read_edge_list(
     else:
         G = nx.MultiGraph() if multigraph else nx.Graph()
 
-    # Register every node first so one that only appears in a self-loop is kept
-    G.add_nodes_from(np.unique(np.concatenate([source, target])).tolist())
-
     self_loops = source == target
     n_self_loops = int(self_loops.sum())
     if n_self_loops:
         logger.warning(f"{file_path}: dropping {n_self_loops} self-loop(s)")
+        # Keep nodes that only appear in a self-loop
+        G.add_nodes_from(np.unique(source[self_loops]).tolist())
         source, target = source[~self_loops], target[~self_loops]
         if weighted:
             weight = weight[~self_loops]
@@ -269,8 +268,8 @@ def read_node_names(
     names_dict: dict[int, str] = {}
     with _open_text(file_path) as f:
         for lineno, raw in enumerate(f, start=1):
-            line = raw.strip()
-            if not line or line.startswith(comment):
+            line = raw.split(comment, 1)[0].strip() if comment else raw.strip()
+            if not line:
                 continue
             parts = line.split(delimiter, 1)
             try:
