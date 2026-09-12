@@ -98,6 +98,8 @@ def read_edge_list(
             df = pd.read_csv(
                 f, sep=sep, comment=comment, header=None, names=columns, usecols=columns, **na
             )
+    except pd.errors.EmptyDataError:
+        df = pd.DataFrame(columns=columns)
     except pd.errors.ParserError:
         # The C engine rejects usecols when no row has three fields; without usecols
         # it still pads short rows with NaN, so retry that way
