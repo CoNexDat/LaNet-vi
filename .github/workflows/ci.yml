@@ -25,7 +25,10 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4  # v10.1.0
         with:
           enable-cache: true
-          python-version: "3.12"
+          # The floor interpreter: mypy targets 3.10 and must see the stub
+          # versions a 3.10 user actually installs (numpy's 3.11+ stubs use
+          # PEP 695 syntax that mypy rejects under python_version = 3.10).
+          python-version: "3.10"
 
       - name: Install dependencies
         run: uv sync --all-extras
