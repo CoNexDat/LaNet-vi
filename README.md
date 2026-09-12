@@ -259,12 +259,29 @@ If you use LaNet-vi in your research, please cite:
 
 - Beiró, M.G., Alvarez-Hamelin, J.I., Busch, J.R. (2008). "A low complexity visualization tool that helps to perform complex systems analysis". *New Journal of Physics*.
 
+## 🏛️ Heritage
+
+LaNet-vi 5.x is a from-scratch Python rewrite of the original **LaNet-vi** (Large Network
+visualization tool), a C++ program developed since 2005 by Mariano G. Beiró and J. Ignacio
+Alvarez-Hamelin (Universidad de Buenos Aires / CONICET) together with Alain Barrat, Luca
+Dall'Asta and Alessandro Vespignani. The C++ tool introduced the k-core layout this package
+reproduces and produced, among others, the Internet AS-level maps that made the method known.
+
+- Original releases (1.x to 3.0.1, last one in January 2016) are published on SourceForge:
+  <https://sourceforge.net/projects/lanet-vi/> under the Academic Free License 3.0.
+- Original project homepage: <http://lanet-vi.fi.uba.ar/>.
+- The C++ sources are **not** part of this repository or of the PyPI package; they remain
+  available at the links above. See [docs/migration-from-cpp.md](docs/migration-from-cpp.md)
+  for a feature-by-feature comparison and the option mapping.
+
 ## License
 
-MIT License
+The Python implementation is released under the [MIT License](LICENSE), with the original
+authors of the C++ version as co-holders of the copyright. The original C++ LaNet-vi remains
+available under the Academic Free License 3.0 on SourceForge.
 
 ## Authors
 
 - Esteban Carisimo (Python implementation)
-- Mariano Beiró (original C++ version)
+- Mariano G. Beiró (original C++ version)
 - J. Ignacio Alvarez-Hamelin (original C++ version)

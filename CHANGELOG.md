@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- README now has a Heritage section crediting the original C++ LaNet-vi (Beiró,
+  Alvarez-Hamelin et al., 2005–2016), its SourceForge distribution under the Academic Free
+  License 3.0 and the original homepage; the License section states the relation between
+  the MIT-licensed rewrite and the AFL-licensed original.
+- New `docs/migration-from-cpp.md`: option-by-option mapping from the C++ command line to
+  the Python CLI and an honest feature-parity table (the 5.0.0 entry below overstated
+  "all legacy features included"; see that document for what is ported, what differs and
+  what is missing).
+
 ### Security
 
 - Refreshed `uv.lock`: resolves all 79 open Dependabot alerts (1 critical in
