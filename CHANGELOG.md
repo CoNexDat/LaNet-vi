@@ -41,6 +41,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   components (`Component` was constructed with `id`/`index` instead of `component_id`/
   `shell_index`). The d-core path through `Network.decompose()` and the CLI works again
   and is now covered by tests (#21).
+- Edge-list reader (#22): columns may be separated by any whitespace (tabs and repeated
+  spaces used to abort with `invalid literal for int()`); an unused third column is
+  ignored when the graph is not weighted; `--weighted` on a two-column file uses weight
+  1.0 instead of NaN; self-loops are dropped with a warning instead of crashing the
+  decomposition; non-integer node ids and single-column files give a clear error. All of
+  this matches the C++ reader.
+- `--multigraph` no longer crashes k-cores: parallel edges count towards the degree (the
+  C++ behaviour) and, for weighted multigraphs, their weights are summed into the strength.
+- `write_edge_list` (and therefore `lanet-vi generate`) now defaults to space-separated
+  output; its files were tab-separated and could not be read back by `lanet-vi visualize`.
+- Node names may contain spaces (the name is the rest of the line, quotes stripped) and
+  the colours file accepts tabs.
 - `write_decomposition_json` crashed when components were present (it read non-existent
   `Component.id` / `Component.index` attributes).
 - `lanet_vi.community.base` failed to import on Python 3.9 because of `X | None` return

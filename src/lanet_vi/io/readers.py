@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import IO
 
 import networkx as nx
+import numpy as np
 import pandas as pd
 import requests
 
@@ -29,11 +30,17 @@ def read_edge_list(
     weighted: bool = False,
     directed: bool = False,
     multigraph: bool = False,
-    delimiter: str = " ",
+    delimiter: str | None = None,
     comment: str = "#",
 ) -> nx.Graph:
     """
     Read an edge list file and create a NetworkX graph.
+
+    Lines hold ``source target [weight]`` separated by whitespace (or by
+    ``delimiter`` if given). Behaviour follows the C++ LaNet-vi reader: an
+    unused third column is ignored, a missing weight on a weighted graph counts
+    as 1.0, and self-loops are dropped (with a warning) because the
+    decompositions do not accept them.
 
     Parameters
     ----------
@@ -45,8 +52,8 @@ def read_edge_list(
         Whether to create a directed graph
     multigraph : bool
         Whether to allow parallel edges
-    delimiter : str
-        Column delimiter in the file
+    delimiter : Optional[str]
+        Column delimiter; ``None`` (default) accepts any run of whitespace
     comment : str
         Comment character to skip lines
 
@@ -54,6 +61,11 @@ def read_edge_list(
     -------
     nx.Graph
         NetworkX graph constructed from the edge list
+
+    Raises
+    ------
+    ValueError
+        If the file has fewer than two columns or non-integer node ids
 
     Examples
     --------
@@ -65,45 +77,53 @@ def read_edge_list(
     compression = {".bz2": "bz2", ".gz": "gzip"}.get(file_path.suffix, "none")
     logger.info(f"Reading edge list from {file_path} (compression: {compression})")
 
-    # Read edge list with pandas
     with _open_text(file_path) as f:
-        if weighted:
-            df = pd.read_csv(
-                f,
-                sep=delimiter,
-                comment=comment,
-                names=["source", "target", "weight"],
-                dtype={"source": int, "target": int, "weight": float},
-            )
+        df = pd.read_csv(
+            f,
+            sep=delimiter if delimiter is not None else r"\s+",
+            comment=comment,
+            header=None,
+            skip_blank_lines=True,
+        )
+
+    if df.shape[1] < 2:
+        raise ValueError(f"{file_path}: expected at least two columns (source target)")
+
+    try:
+        source = df.iloc[:, 0].astype(int).to_numpy()
+        target = df.iloc[:, 1].astype(int).to_numpy()
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{file_path}: node ids must be integers ({exc})") from exc
+
+    if weighted:
+        if df.shape[1] >= 3:
+            weight = pd.to_numeric(df.iloc[:, 2], errors="coerce").fillna(1.0).to_numpy()
         else:
-            df = pd.read_csv(
-                f,
-                sep=delimiter,
-                comment=comment,
-                names=["source", "target"],
-                dtype={"source": int, "target": int},
-            )
-            df["weight"] = 1.0
+            logger.warning(f"{file_path}: --weighted given but no weight column; using 1.0")
+            weight = np.ones(len(df))
+    elif df.shape[1] >= 3:
+        logger.info(f"{file_path}: ignoring extra columns (graph is not weighted)")
 
     # Create appropriate graph type
     if directed:
-        if multigraph:
-            G = nx.MultiDiGraph()
-        else:
-            G = nx.DiGraph()
+        G: nx.Graph = nx.MultiDiGraph() if multigraph else nx.DiGraph()
     else:
-        if multigraph:
-            G = nx.MultiGraph()
-        else:
-            G = nx.Graph()
+        G = nx.MultiGraph() if multigraph else nx.Graph()
 
-    # Add edges (use values for speed, avoid iterrows)
-    if weighted or multigraph:
-        edges_with_weights = [(int(row[0]), int(row[1]), row[2]) for row in df.values]
-        G.add_weighted_edges_from(edges_with_weights)
+    self_loops = source == target
+    n_self_loops = int(self_loops.sum())
+    if n_self_loops:
+        logger.warning(f"{file_path}: dropping {n_self_loops} self-loop(s)")
+        source, target = source[~self_loops], target[~self_loops]
+        if weighted:
+            weight = weight[~self_loops]
+
+    if weighted:
+        G.add_weighted_edges_from(
+            zip(source.tolist(), target.tolist(), weight.tolist(), strict=True)
+        )
     else:
-        edges = [(int(row[0]), int(row[1])) for row in df.values]
-        G.add_edges_from(edges)
+        G.add_edges_from(zip(source.tolist(), target.tolist(), strict=True))
 
     logger.info(
         f"Loaded graph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges "
@@ -194,18 +214,19 @@ def read_caida_snapshot(
 
 def read_node_names(
     file_path: Path | str,
-    delimiter: str = " ",
     comment: str = "#",
 ) -> dict[int, str]:
     """
     Read node names from a file.
 
+    Each line is ``node_id name``; the name is everything after the first
+    whitespace, so it may contain spaces. Surrounding quotes are removed, as in
+    the C++ reader.
+
     Parameters
     ----------
     file_path : Union[Path, str]
         Path to file with node names (format: node_id name)
-    delimiter : str
-        Column delimiter
     comment : str
         Comment character
 
@@ -220,17 +241,25 @@ def read_node_names(
     >>> names[42]
     'node_name_42'
     """
+    file_path = Path(file_path)
     logger.info(f"Reading node names from {file_path}")
 
-    df = pd.read_csv(
-        file_path,
-        sep=delimiter,
-        comment=comment,
-        names=["node_id", "name"],
-        dtype={"node_id": int, "name": str},
-    )
+    names_dict: dict[int, str] = {}
+    with _open_text(file_path) as f:
+        for lineno, raw in enumerate(f, start=1):
+            line = raw.strip()
+            if not line or line.startswith(comment):
+                continue
+            parts = line.split(None, 1)
+            try:
+                node_id = int(parts[0])
+            except ValueError as exc:
+                raise ValueError(f"{file_path}:{lineno}: node id must be an integer") from exc
+            name = parts[1].strip() if len(parts) > 1 else ""
+            if len(name) >= 2 and name[0] == name[-1] and name[0] in "\"'":
+                name = name[1:-1]
+            names_dict[node_id] = name
 
-    names_dict = dict(zip(df["node_id"], df["name"], strict=True))
     logger.info(f"Loaded {len(names_dict)} node names")
 
     return names_dict
@@ -238,7 +267,7 @@ def read_node_names(
 
 def read_node_colors(
     file_path: Path | str,
-    delimiter: str = " ",
+    delimiter: str | None = None,
     comment: str = "#",
 ) -> dict[int, tuple[float, float, float]]:
     """
@@ -249,8 +278,8 @@ def read_node_colors(
     file_path : Union[Path, str]
         Path to file with node colors (format: node_id r g b)
         RGB values should be in range [0.0, 1.0]
-    delimiter : str
-        Column delimiter
+    delimiter : Optional[str]
+        Column delimiter; ``None`` (default) accepts any run of whitespace
     comment : str
         Comment character
 
@@ -269,7 +298,7 @@ def read_node_colors(
 
     df = pd.read_csv(
         file_path,
-        sep=delimiter,
+        sep=delimiter if delimiter is not None else r"\s+",
         comment=comment,
         names=["node_id", "r", "g", "b"],
         dtype={"node_id": int, "r": float, "g": float, "b": float},
@@ -280,9 +309,10 @@ def read_node_colors(
         logger.error("RGB values must be in range [0.0, 1.0]")
         raise ValueError("RGB values must be in range [0.0, 1.0]")
 
-    colors = {}
-    for _, row in df.iterrows():
-        colors[row["node_id"]] = (row["r"], row["g"], row["b"])
+    colors = {
+        int(node_id): (float(r), float(g), float(b))
+        for node_id, r, g, b in df[["node_id", "r", "g", "b"]].itertuples(index=False)
+    }
 
     logger.info(f"Loaded {len(colors)} node colors")
 

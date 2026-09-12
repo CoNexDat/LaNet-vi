@@ -1,5 +1,7 @@
 """K-core decomposition using NetworkX."""
 
+from itertools import islice
+
 import networkx as nx
 import numpy as np
 
@@ -47,12 +49,14 @@ def compute_kcores(
     )
 
     # Check if graph is weighted (check first 100 edges for performance)
-    is_weighted = any("weight" in graph[u][v] for u, v in list(graph.edges())[:100])
+    is_weighted = any("weight" in data for _, _, data in islice(graph.edges(data=True), 100))
+
+    graph = _prepare_for_cores(graph, is_weighted)
 
     if not is_weighted:
         logger.info("Using unweighted k-core algorithm (NetworkX core_number)")
         # Use NetworkX's k-core number computation
-        core_numbers = nx.core_number(graph)
+        core_numbers = _core_number(graph)
 
         max_core = max(core_numbers.values()) if core_numbers else 0
         min_core = min(core_numbers.values()) if core_numbers else 0
@@ -84,6 +88,69 @@ def compute_kcores(
             min_index=min_core,
             p_function=p_function,
         )
+
+
+def _prepare_for_cores(graph: nx.Graph, is_weighted: bool) -> nx.Graph:
+    """Drop self-loops and, for weighted multigraphs, merge parallel edges.
+
+    The C++ LaNet-vi ignores the self-loop contribution to the core index and
+    sums the weights of parallel edges into the node strength; NetworkX's
+    ``core_number`` refuses both, so normalise here. Unweighted multigraphs are
+    returned as-is and handled by ``_core_number``, which counts multiplicity.
+    """
+    n_loops = nx.number_of_selfloops(graph)
+    if n_loops:
+        logger.warning(f"Ignoring {n_loops} self-loop(s) for the k-core decomposition")
+        graph = graph.copy()
+        graph.remove_edges_from(nx.selfloop_edges(graph))
+
+    if graph.is_multigraph() and is_weighted:
+        logger.info("Merging parallel edges: strength is the sum of their weights")
+        simple: nx.Graph = nx.DiGraph() if graph.is_directed() else nx.Graph()
+        simple.add_nodes_from(graph.nodes(data=True))
+        for u, v, data in graph.edges(data=True):
+            w = float(data.get("weight", 1.0))
+            if simple.has_edge(u, v):
+                simple[u][v]["weight"] += w
+            else:
+                simple.add_edge(u, v, weight=w)
+        graph = simple
+
+    return graph
+
+
+def _core_number(graph: nx.Graph) -> dict[int, int]:
+    """Core numbers where parallel edges count towards the degree.
+
+    Delegates to ``nx.core_number`` for simple graphs and runs the same
+    Batagelj-Zaversnik peeling on multigraphs, as the C++ ``-multigraph``
+    mode did.
+    """
+    if not graph.is_multigraph():
+        return dict(nx.core_number(graph))
+
+    degrees = dict(graph.degree())
+    core = dict(degrees)
+    max_degree = max(degrees.values(), default=0)
+    bins: list[list[int]] = [[] for _ in range(max_degree + 1)]
+    for node, degree in degrees.items():
+        bins[degree].append(node)
+
+    removed: set[int] = set()
+    for k in range(max_degree + 1):
+        bucket = bins[k]
+        while bucket:
+            node = bucket.pop()
+            if node in removed:
+                continue
+            removed.add(node)
+            core[node] = k
+            for neighbour in set(graph.neighbors(node)):
+                if neighbour in removed or core[neighbour] <= k:
+                    continue
+                core[neighbour] = max(k, core[neighbour] - graph.number_of_edges(node, neighbour))
+                bins[core[neighbour]].append(neighbour)
+    return core
 
 
 def _build_p_function(
