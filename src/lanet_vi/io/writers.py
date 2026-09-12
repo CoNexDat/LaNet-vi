@@ -294,7 +294,7 @@ def write_edge_list(
         Include edge weights if available (default: True)
     delimiter : str
         Column delimiter (default: space, the format ``read_edge_list`` and the
-        C++ LaNet-vi expect)
+        C++ LaNet-vi expects)
 
     Examples
     --------

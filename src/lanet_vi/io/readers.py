@@ -109,8 +109,10 @@ def read_edge_list(
 
     if df.empty:
         logger.warning(f"{file_path}: no edges found")
-    if df["target"].isna().all() and not df.empty:
-        raise ValueError(f"{file_path}: expected at least two columns (source target)")
+    missing_target = df["target"].isna()
+    if missing_target.any():
+        row = int(np.flatnonzero(missing_target.to_numpy())[0]) + 1
+        raise ValueError(f"{file_path}: row {row} has fewer than two columns (source target)")
     has_weight_column = df["weight"].notna().any()
 
     source = _integer_column(df["source"], file_path)

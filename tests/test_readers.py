@@ -82,6 +82,14 @@ def test_read_edge_list_rejects_single_column(tmp_path: Path):
         read_edge_list(path)
 
 
+def test_read_edge_list_rejects_row_missing_target(tmp_path: Path):
+    """A single short row in an otherwise valid file is reported with its line number."""
+    path = _write(tmp_path, "1 2\n3\n")
+
+    with pytest.raises(ValueError, match="row 2 has fewer than two columns"):
+        read_edge_list(path)
+
+
 def test_edge_list_round_trip_with_default_delimiters(tmp_path: Path):
     """write_edge_list output is readable by read_edge_list with defaults."""
     G = nx.karate_club_graph()
