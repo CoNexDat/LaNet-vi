@@ -26,7 +26,8 @@ You need a GitHub account. If that is not possible, contact the maintainer liste
 
 Please include:
 
-- The LaNet-vi version (`lanet-vi version` or `pip show lanet-vi`) and Python version.
+- The LaNet-vi version (`pip show lanet-vi` or `python -c "import lanet_vi; print(lanet_vi.__version__)"`)
+  and Python version.
 - What the issue is and what an attacker can do with it.
 - A minimal reproduction: an input file, a command line or a short script.
 - Whether you have already disclosed it anywhere else.
