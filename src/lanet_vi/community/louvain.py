@@ -4,8 +4,6 @@ This module implements community detection using the Louvain method for modulari
 optimization. The implementation uses NetworkX's community detection functions.
 """
 
-from typing import Optional
-
 import networkx as nx
 from networkx.algorithms import community as nx_community
 
@@ -17,9 +15,9 @@ logger = get_logger(__name__)
 
 def detect_communities_louvain(
     graph: nx.Graph,
-    weight: Optional[str] = "weight",
+    weight: str | None = "weight",
     resolution: float = 1.0,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> CommunityResult:
     """Detect communities using the Louvain algorithm.
 
@@ -124,7 +122,7 @@ def detect_communities_louvain(
 
 def detect_communities_greedy_modularity(
     graph: nx.Graph,
-    weight: Optional[str] = "weight",
+    weight: str | None = "weight",
 ) -> CommunityResult:
     """Detect communities using greedy modularity maximization.
 

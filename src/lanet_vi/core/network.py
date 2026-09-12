@@ -2,7 +2,6 @@
 
 import time
 from pathlib import Path
-from typing import Optional, Union
 
 import networkx as nx
 
@@ -69,19 +68,19 @@ class Network:
     >>> net.visualize("output.png")
     """
 
-    def __init__(self, graph: nx.Graph, config: Optional[LaNetConfig] = None):
+    def __init__(self, graph: nx.Graph, config: LaNetConfig | None = None):
         """Initialize Network with graph and configuration."""
         self.graph = graph
         self.config = config if config else LaNetConfig()
-        self.decomposition: Optional[DecompositionResult] = None
+        self.decomposition: DecompositionResult | None = None
         self.node_names: dict[int, str] = {}
         self.node_colors: dict[int, tuple[float, float, float]] = {}
 
     @classmethod
     def from_edge_list(
         cls,
-        file_path: Union[Path, str],
-        config: Optional[LaNetConfig] = None,
+        file_path: Path | str,
+        config: LaNetConfig | None = None,
     ) -> "Network":
         """
         Create Network from edge list file.
@@ -114,7 +113,7 @@ class Network:
 
         return cls(graph, config)
 
-    def load_node_names(self, file_path: Union[Path, str]) -> None:
+    def load_node_names(self, file_path: Path | str) -> None:
         """
         Load node names from file.
 
@@ -125,7 +124,7 @@ class Network:
         """
         self.node_names = read_node_names(file_path)
 
-    def load_node_colors(self, file_path: Union[Path, str]) -> None:
+    def load_node_colors(self, file_path: Path | str) -> None:
         """
         Load custom node colors from file.
 
@@ -138,7 +137,7 @@ class Network:
 
     def decompose(
         self,
-        decomp_type: Optional[DecompositionType] = None,
+        decomp_type: DecompositionType | None = None,
     ) -> DecompositionResult:
         """
         Compute network decomposition.
@@ -334,8 +333,8 @@ class Network:
 
     def visualize(
         self,
-        output_path: Union[Path, str],
-        layout: Optional[VisualizationLayout] = None,
+        output_path: Path | str,
+        layout: VisualizationLayout | None = None,
     ) -> None:
         """
         Generate and save visualization.

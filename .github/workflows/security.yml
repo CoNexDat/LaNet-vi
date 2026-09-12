@@ -1,0 +1,59 @@
+name: Security
+
+# Two audits:
+#  - pip-audit: the locked dependency tree (all extras) against the PyPI
+#    advisory database. Runs whenever the lockfile changes and once a week so
+#    advisories published after the last lock change still surface.
+#  - zizmor: static analysis of the workflow files themselves (unpinned
+#    actions, credential persistence, cache poisoning, template injection).
+on:
+  push:
+    branches: [main]
+    paths: ["uv.lock", "pyproject.toml", ".github/workflows/**"]
+  pull_request:
+    paths: ["uv.lock", "pyproject.toml", ".github/workflows/**"]
+  schedule:
+    - cron: "17 6 * * 1"  # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4  # v10.1.0
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Export locked requirements
+        run: uv export --locked --all-extras --no-emit-project --format requirements-txt -o requirements-audit.txt
+
+      - name: Audit
+        run: uvx pip-audit --strict --desc on --no-deps --disable-pip -r requirements-audit.txt
+
+  workflows:
+    name: zizmor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4  # v10.1.0
+
+      - name: Lint workflows
+        run: uvx zizmor --min-severity low .github/workflows/

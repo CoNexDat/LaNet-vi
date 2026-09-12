@@ -1,6 +1,6 @@
 """Graph data models for LaNet-vi."""
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -29,13 +29,13 @@ class NodeData(BaseModel):
     """
 
     node_id: int
-    name: Optional[str] = None
-    color: Optional[tuple[float, float, float]] = Field(default=None)
-    shell_index: Optional[int] = None
-    dense_index: Optional[int] = None
-    degree: Optional[int] = None
-    strength: Optional[float] = None
-    coordinates: Optional[tuple[float, float]] = None
+    name: str | None = None
+    color: tuple[float, float, float] | None = Field(default=None)
+    shell_index: int | None = None
+    dense_index: int | None = None
+    degree: int | None = None
+    strength: float | None = None
+    coordinates: tuple[float, float] | None = None
 
     model_config = ConfigDict(frozen=False, arbitrary_types_allowed=True)
 
@@ -86,11 +86,11 @@ class Component(BaseModel):
 
     component_id: int
     nodes: list[int]
-    shell_index: Optional[int] = None
-    dense_index: Optional[int] = None
+    shell_index: int | None = None
+    dense_index: int | None = None
     size: int = Field(default=0)
-    center: Optional[tuple[float, float]] = None
-    radius: Optional[float] = None
+    center: tuple[float, float] | None = None
+    radius: float | None = None
 
     def __init__(self, **data: Any) -> None:
         """Initialize component and compute size."""
@@ -127,7 +127,7 @@ class DecompositionResult(BaseModel):
     max_index: int
     min_index: int
     components: list[Component] = Field(default_factory=list)
-    p_function: Optional[list[float]] = None
+    p_function: list[float] | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(frozen=False)

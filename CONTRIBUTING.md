@@ -29,8 +29,8 @@ uv build
 
 ## Project conventions
 
-- Python 3.9+ compatible code (no `match`, no `X | Y` unions at runtime; ruff's `UP`
-  rules are configured for the 3.9 target).
+- Python 3.10+ compatible code (`X | None` unions are fine; ruff's `UP`
+  rules are configured for the 3.10 target).
 - Line length 100, ruff formatter, imports sorted by ruff (`I`).
 - NumPy-style docstrings on public functions and classes (ruff `D` rules).
 - Configuration objects are Pydantic models in `src/lanet_vi/models/config.py`. Add

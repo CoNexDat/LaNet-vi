@@ -25,7 +25,7 @@ def test_write_decomposition_csv_roundtrip(karate: nx.Graph, tmp_path: Path):
     df = pd.read_csv(out)
     assert list(df.columns) == ["node_id", "kcores_index"]
     assert len(df) == karate.number_of_nodes()
-    assert dict(zip(df["node_id"], df["kcores_index"])) == result.node_indices
+    assert dict(zip(df["node_id"], df["kcores_index"], strict=True)) == result.node_indices
 
 
 def test_write_decomposition_json_includes_components(karate: nx.Graph, tmp_path: Path):

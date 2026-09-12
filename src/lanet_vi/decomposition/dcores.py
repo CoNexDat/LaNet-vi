@@ -7,8 +7,6 @@ incoming and outgoing edges separately.
 This implementation is based on the algorithm from legacy/Source/graph_dcores.cpp
 """
 
-from typing import Optional
-
 import networkx as nx
 
 from lanet_vi.logging_config import get_logger
@@ -20,7 +18,7 @@ logger = get_logger(__name__)
 
 def compute_dcores(
     graph: nx.DiGraph,
-    config: Optional[DecompositionConfig] = None,
+    config: DecompositionConfig | None = None,
 ) -> DecompositionResult:
     """
     Compute d-core decomposition for directed graphs.

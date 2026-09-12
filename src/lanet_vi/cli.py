@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Literal, Optional, cast
+from typing import Literal, cast
 
 import typer
 from rich.console import Console
@@ -37,15 +37,13 @@ console = Console()
 def visualize(
     input_file: Path = typer.Option(..., "--input", "-i", help="Input edge list file"),
     output: Path = typer.Option("output.png", "--output", "-o", help="Output visualization file"),
-    config_file: Optional[Path] = typer.Option(
-        None, "--config", "-c", help="YAML configuration file"
-    ),
+    config_file: Path | None = typer.Option(None, "--config", "-c", help="YAML configuration file"),
     decomp: DecompositionType = typer.Option(
         DecompositionType.KCORES, "--decomp", "-d", help="Decomposition type"
     ),
-    names: Optional[Path] = typer.Option(None, "--names", help="Node names file"),
-    colors_file: Optional[Path] = typer.Option(None, "--colors-file", help="Node colors file"),
-    cores_file: Optional[Path] = typer.Option(
+    names: Path | None = typer.Option(None, "--names", help="Node names file"),
+    colors_file: Path | None = typer.Option(None, "--colors-file", help="Node colors file"),
+    cores_file: Path | None = typer.Option(
         None, "--cores-file", help="Export decomposition to file"
     ),
     weighted: bool = typer.Option(False, "--weighted", "-w", help="Graph has edge weights"),
@@ -69,9 +67,7 @@ def visualize(
     min_edge_width: float = typer.Option(0.08, "--min-edge-width", help="Minimum edge width"),
     max_edge_width: float = typer.Option(0.3, "--max-edge-width", help="Maximum edge width"),
     node_size_scale: float = typer.Option(0.5, "--node-size-scale", help="Node size multiplier"),
-    node_edge_color: Optional[str] = typer.Option(
-        None, "--node-edge-color", help="Node edge color"
-    ),
+    node_edge_color: str | None = typer.Option(None, "--node-edge-color", help="Node edge color"),
     show_size_legend: bool = typer.Option(True, "--show-size-legend", help="Show size legend"),
     gradient_edges: bool = typer.Option(
         True, "--gradient-edges", help="Use gradient edge coloring"
@@ -80,7 +76,7 @@ def visualize(
     delta: float = typer.Option(1.3, "--delta", help="Distance between components"),
     gamma: float = typer.Option(1.5, "--gamma", help="Component diameter"),
     font_zoom: float = typer.Option(1.0, "--font-zoom", help="Font zoom factor"),
-    legend_fontsize: Optional[float] = typer.Option(
+    legend_fontsize: float | None = typer.Option(
         None, "--legend-fontsize", help="Legend font size (auto-scales if not set)"
     ),
     from_layer: int = typer.Option(0, "--from-layer", help="Start from this layer"),
@@ -100,7 +96,7 @@ def visualize(
     seed: int = typer.Option(0, "--seed", help="Random seed"),
     draw_circles: bool = typer.Option(False, "--draw-circles", help="Draw component borders"),
     no_cliques: bool = typer.Option(False, "--no-cliques", help="Omit cliques in central core"),
-    color_scale_max: Optional[int] = typer.Option(
+    color_scale_max: int | None = typer.Option(
         None, "--color-scale-max", help="Max value for color scale"
     ),
     show_degree_scale: bool = typer.Option(
@@ -138,7 +134,7 @@ def visualize(
     # Logging options
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress console output"),
-    log_file: Optional[Path] = typer.Option(None, "--log-file", help="Log to file"),
+    log_file: Path | None = typer.Option(None, "--log-file", help="Log to file"),
 ) -> None:
     """
     Visualize a network using k-core or k-dense decomposition.
@@ -326,7 +322,7 @@ def info(
     weighted: bool = typer.Option(False, "--weighted", "-w", help="Graph has edge weights"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress console output"),
-    log_file: Optional[Path] = typer.Option(None, "--log-file", help="Log to file"),
+    log_file: Path | None = typer.Option(None, "--log-file", help="Log to file"),
 ) -> None:
     """Display information about a network file."""
     # Setup logging
@@ -366,33 +362,33 @@ def generate(
     ),
     n: int = typer.Option(..., "--nodes", "-n", help="Number of nodes"),
     # Erdős-Rényi parameters
-    p: Optional[float] = typer.Option(
+    p: float | None = typer.Option(
         None, "--probability", "-p", help="Edge probability (Erdős-Rényi G(n,p))"
     ),
-    m: Optional[int] = typer.Option(
+    m: int | None = typer.Option(
         None, "--edges", "-e", help="Number of edges (Erdős-Rényi G(n,m) or BA/powerlaw attachment)"
     ),
     # Watts-Strogatz parameters
-    k: Optional[int] = typer.Option(
+    k: int | None = typer.Option(
         None,
         "--neighbors",
         "-k",
         help="Each node connected to k nearest neighbors (Watts-Strogatz)",
     ),
-    rewire_p: Optional[float] = typer.Option(
+    rewire_p: float | None = typer.Option(
         None, "--rewire", "-r", help="Rewiring probability (Watts-Strogatz)"
     ),
     # Powerlaw cluster parameter
-    triangle_p: Optional[float] = typer.Option(
+    triangle_p: float | None = typer.Option(
         None, "--triangle-prob", "-t", help="Triangle formation probability (powerlaw-cluster)"
     ),
     # General options
     directed: bool = typer.Option(False, "--directed", help="Generate directed graph"),
     weighted: bool = typer.Option(False, "--weighted", help="Add random edge weights"),
-    seed: Optional[int] = typer.Option(None, "--seed", "-s", help="Random seed"),
+    seed: int | None = typer.Option(None, "--seed", "-s", help="Random seed"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress console output"),
-    log_file: Optional[Path] = typer.Option(None, "--log-file", help="Log to file"),
+    log_file: Path | None = typer.Option(None, "--log-file", help="Log to file"),
 ) -> None:
     r"""
     Generate random graphs for testing and demonstration.

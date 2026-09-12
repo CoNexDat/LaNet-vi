@@ -1,7 +1,5 @@
 """K-core decomposition using NetworkX."""
 
-from typing import Optional
-
 import networkx as nx
 import numpy as np
 
@@ -14,7 +12,7 @@ logger = get_logger(__name__)
 
 def compute_kcores(
     graph: nx.Graph,
-    config: Optional[DecompositionConfig] = None,
+    config: DecompositionConfig | None = None,
 ) -> DecompositionResult:
     """
     Compute k-core decomposition of a graph.

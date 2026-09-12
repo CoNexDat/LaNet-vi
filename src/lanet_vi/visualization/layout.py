@@ -1,7 +1,6 @@
 """Layout algorithms for network visualization, including circle packing."""
 
 import logging
-from typing import Optional
 
 import networkx as nx
 import numpy as np
@@ -389,7 +388,7 @@ def _give_new_random_position(
     max_tries: int,
     rng: np.random.Generator,
     exclude_idx: int = -1,
-    spatial_grid: Optional[SpatialHashGrid] = None,
+    spatial_grid: SpatialHashGrid | None = None,
 ) -> bool:
     """
     Try to find a valid random position for a component.
@@ -473,9 +472,9 @@ def compute_hierarchical_layout(
     components: list[Component],
     config: LayoutConfig,
     max_shell_or_dense: int,
-    all_nodes_by_shell: Optional[dict[int, list[int]]] = None,
-    graph: Optional[nx.Graph] = None,
-    node_shells: Optional[dict[int, int]] = None,
+    all_nodes_by_shell: dict[int, list[int]] | None = None,
+    graph: nx.Graph | None = None,
+    node_shells: dict[int, int] | None = None,
     no_cliques: bool = False,
     epsilon: float = 0.18,
 ) -> dict[int, tuple[float, float]]:

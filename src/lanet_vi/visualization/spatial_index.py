@@ -98,7 +98,7 @@ class SpatialIndex:
         if exclude_self:
             filtered = [
                 idx
-                for idx, dist in zip(indices, distances)
+                for idx, dist in zip(indices, distances, strict=True)
                 if dist > 1e-10  # Not an exact match
             ]
             indices = filtered[:k]
@@ -144,7 +144,7 @@ class SpatialIndex:
         if exclude_self:
             coords = self.tree.data[indices]
             distances = np.linalg.norm(coords - query_point, axis=1)
-            indices = [idx for idx, dist in zip(indices, distances) if dist > 1e-10]
+            indices = [idx for idx, dist in zip(indices, distances, strict=True) if dist > 1e-10]
 
         return [int(self.node_ids[idx]) for idx in indices]
 

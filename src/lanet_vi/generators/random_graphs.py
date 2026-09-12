@@ -4,8 +4,6 @@ This module provides wrappers around NetworkX's random graph generators,
 optimized for LaNet-vi visualization and analysis.
 """
 
-from typing import Optional
-
 import networkx as nx
 
 from lanet_vi.logging_config import get_logger
@@ -15,9 +13,9 @@ logger = get_logger(__name__)
 
 def generate_erdos_renyi(
     n: int,
-    p: Optional[float] = None,
-    m: Optional[int] = None,
-    seed: Optional[int] = None,
+    p: float | None = None,
+    m: int | None = None,
+    seed: int | None = None,
     directed: bool = False,
 ) -> nx.Graph:
     """Generate Erdős-Rényi random graph.
@@ -98,7 +96,7 @@ def generate_erdos_renyi(
 def generate_barabasi_albert(
     n: int,
     m: int,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> nx.Graph:
     """Generate Barabási-Albert scale-free network.
 
@@ -149,7 +147,7 @@ def generate_watts_strogatz(
     n: int,
     k: int,
     p: float,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> nx.Graph:
     """Generate Watts-Strogatz small-world network.
 
@@ -204,7 +202,7 @@ def generate_powerlaw_cluster(
     n: int,
     m: int,
     p: float,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> nx.Graph:
     """Generate Holme-Kim powerlaw cluster graph.
 

@@ -4,7 +4,7 @@ import bz2
 import gzip
 import io
 from pathlib import Path
-from typing import IO, Union
+from typing import IO
 
 import networkx as nx
 import pandas as pd
@@ -25,7 +25,7 @@ def _open_text(file_path: Path) -> IO[str]:
 
 
 def read_edge_list(
-    file_path: Union[Path, str],
+    file_path: Path | str,
     weighted: bool = False,
     directed: bool = False,
     multigraph: bool = False,
@@ -193,7 +193,7 @@ def read_caida_snapshot(
 
 
 def read_node_names(
-    file_path: Union[Path, str],
+    file_path: Path | str,
     delimiter: str = " ",
     comment: str = "#",
 ) -> dict[int, str]:
@@ -230,14 +230,14 @@ def read_node_names(
         dtype={"node_id": int, "name": str},
     )
 
-    names_dict = dict(zip(df["node_id"], df["name"]))
+    names_dict = dict(zip(df["node_id"], df["name"], strict=True))
     logger.info(f"Loaded {len(names_dict)} node names")
 
     return names_dict
 
 
 def read_node_colors(
-    file_path: Union[Path, str],
+    file_path: Path | str,
     delimiter: str = " ",
     comment: str = "#",
 ) -> dict[int, tuple[float, float, float]]:
