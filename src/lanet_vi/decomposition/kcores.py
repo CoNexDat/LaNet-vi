@@ -143,10 +143,10 @@ def _core_number(graph: nx.Graph) -> dict[int, int]:
         """Neighbours of ``node`` with the number of edges shared in either direction."""
         counts: dict[int, int] = {}
         for nb in graph.successors(node) if directed else graph.neighbors(node):
-            counts[nb] = counts.get(nb, 0) + 1
+            counts[nb] = counts.get(nb, 0) + graph.number_of_edges(node, nb)
         if directed:
             for nb in graph.predecessors(node):
-                counts[nb] = counts.get(nb, 0) + 1
+                counts[nb] = counts.get(nb, 0) + graph.number_of_edges(nb, node)
         return counts
 
     max_degree = max(degrees.values(), default=0)
