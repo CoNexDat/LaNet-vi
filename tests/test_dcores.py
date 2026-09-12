@@ -56,3 +56,40 @@ def test_dcores_star_has_lower_core_than_cycle():
     result = compute_dcores(G)
 
     assert result.node_indices[10] <= result.node_indices[0]
+
+
+def test_find_components_by_dcore_groups_by_level():
+    """Components are built with the model's field names and grouped by max(k_in, k_out)."""
+    from lanet_vi.decomposition.dcores import find_components_by_dcore
+
+    G = nx.DiGraph()
+    G.add_edges_from([(0, 1), (1, 2), (2, 0)])  # cycle: level 1
+    G.add_edge(5, 6)  # detached chain: both peel away, level 0
+    G.add_node(99)  # isolated: level 0
+
+    result = find_components_by_dcore(G, compute_dcores(G))
+
+    assert {c.shell_index for c in result.components} == {0, 1}
+    top = [c for c in result.components if c.shell_index == 1]
+    assert len(top) == 1 and sorted(top[0].nodes) == [0, 1, 2]
+    bottom = sorted(sorted(c.nodes) for c in result.components if c.shell_index == 0)
+    assert bottom == [[5, 6], [99]]
+    assert sum(c.size for c in result.components) == G.number_of_nodes()
+    assert [c.component_id for c in result.components] == list(range(len(result.components)))
+
+
+def test_network_decompose_dcores_end_to_end():
+    """Network.decompose(DCORES) no longer raises when building components."""
+    from lanet_vi.core.network import Network
+    from lanet_vi.models.config import DecompositionType, GraphConfig, LaNetConfig
+
+    G = nx.DiGraph()
+    G.add_edges_from([(1, 2), (2, 3), (3, 1), (3, 4), (4, 5), (5, 3), (1, 4)])
+    net = Network(G, config=LaNetConfig(graph=GraphConfig(directed=True)))
+
+    result = net.decompose(DecompositionType.DCORES)
+
+    assert result.decomp_type == "dcores"
+    assert result.components
+    assert set(result.metadata["d_cores"]) == set(G.nodes())
+    assert sum(c.size for c in result.components) == G.number_of_nodes()
