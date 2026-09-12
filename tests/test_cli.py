@@ -289,6 +289,9 @@ def test_deprecated_show_size_legend_alias():
 
     folded = VisualizationConfig(show_size_legend=False)
     assert folded.show_degree_scale is False and folded.show_size_legend is True
+    # The alias never overrides an explicit current field
+    explicit = VisualizationConfig(show_degree_scale=True, show_size_legend=False)
+    assert explicit.show_degree_scale is True
 
     class FakeCtx:
         params = {"show_degree_scale": True}
@@ -306,6 +309,18 @@ def test_deprecated_show_size_legend_alias():
         cfg.write_text("visualization:\n  show_size_legend: false\n")
         config = _build_config(FakeCtx(), cfg)  # type: ignore[arg-type]
     assert config.visualization.show_degree_scale is True
+
+    class NoFlags:
+        params: dict = {}
+
+        def get_parameter_source(self, name: str):  # noqa: D102
+            return None
+
+    with tempfile.TemporaryDirectory() as d:
+        cfg = Path(d) / "c.yaml"
+        cfg.write_text("visualization:\n  show_degree_scale: true\n  show_size_legend: false\n")
+        config = _build_config(NoFlags(), cfg)  # type: ignore[arg-type]
+    assert config.visualization.show_degree_scale is True  # current field wins over alias
 
 
 def test_build_config_reports_malformed_section_via_validation(tmp_path: Path):

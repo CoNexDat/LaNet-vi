@@ -97,6 +97,11 @@ def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
     if config_file is not None:
         for section, values in read_config_yaml(config_file).items():
             if isinstance(values, dict) and isinstance(data.get(section), dict):
+                if section == "visualization" and "show_size_legend" in values:
+                    # Deprecated alias: honour it only when the current field is absent
+                    values = dict(values)
+                    alias = values.pop("show_size_legend")
+                    values.setdefault("show_degree_scale", alias)
                 data[section].update(values)
             else:
                 data[section] = values
@@ -110,11 +115,9 @@ def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
             continue
         value = ctx.params[param]
         data[section][field] = value.value if isinstance(value, Enum) else value
-        if field in ("show_degree_scale", "show_size_legend"):
-            # Keep the new field and its deprecated alias in step so neither can veto
-            # an explicit flag
+        if field == "show_size_legend":
+            # Deprecated CLI alias of --show-degree-scale
             data[section]["show_degree_scale"] = value
-            data[section]["show_size_legend"] = value
 
     return LaNetConfig.model_validate(data)
 
@@ -225,12 +228,12 @@ def visualize(
     community_algorithm: str = typer.Option(
         "louvain",
         "--community-algorithm",
-        help="Community detection algorithm (louvain or greedy_modularity)",
+        help="Community detection algorithm: louvain or greedy_modularity (not wired yet, #23)",
     ),
     community_resolution: float = typer.Option(
         1.0,
         "--community-resolution",
-        help="Resolution parameter for Louvain (higher = more communities)",
+        help="Resolution parameter for Louvain (not wired yet, #23)",
     ),
     color_by_community: bool = typer.Option(
         True,
@@ -246,10 +249,14 @@ def visualize(
     use_spiral_layout: bool = typer.Option(
         False, "--use-spiral-layout", help="Use spiral layout algorithm (not implemented, #18)"
     ),
-    spiral_k: float = typer.Option(10.0, "--spiral-K", help="Spiral scaling constant"),
-    spiral_beta: float = typer.Option(1.5, "--spiral-beta", help="Spiral tightness parameter"),
+    spiral_k: float = typer.Option(
+        10.0, "--spiral-K", help="Spiral scaling constant (not implemented, #18)"
+    ),
+    spiral_beta: float = typer.Option(
+        1.5, "--spiral-beta", help="Spiral tightness parameter (not implemented, #18)"
+    ),
     spiral_separation: float = typer.Option(
-        1.0, "--spiral-separation", help="Target separation between nodes in spiral"
+        1.0, "--spiral-separation", help="Target separation in spiral (not implemented, #18)"
     ),
     # Logging options
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),

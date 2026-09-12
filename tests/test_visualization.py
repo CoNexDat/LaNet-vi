@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import networkx as nx
+import pytest
 
 from lanet_vi.core.network import Network
 from lanet_vi.models.config import (
@@ -62,3 +63,34 @@ def test_layout_positions_cover_all_nodes(karate: nx.Graph):
     assert set(layout.node_sizes) == set(karate.nodes())
     xmin, xmax, ymin, ymax = layout.bounds
     assert xmin <= xmax and ymin <= ymax
+
+
+@pytest.mark.parametrize(
+    ("color_legend", "degree_legend"),
+    [(True, True), (True, False), (False, True), (False, False)],
+)
+def test_legend_switches_gate_their_helpers(
+    karate: nx.Graph, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, color_legend, degree_legend
+):
+    """show_color_legend gates the colour legend and show_degree_scale the degree legend."""
+    from lanet_vi.models.config import LaNetConfig, VisualizationConfig
+    from lanet_vi.visualization import matplotlib_renderer as mr
+
+    calls: list[str] = []
+    monkeypatch.setattr(mr, "_draw_degree_scale", lambda *a, **k: calls.append("color"))
+    monkeypatch.setattr(mr, "_draw_size_legend", lambda *a, **k: calls.append("degree"))
+
+    config = LaNetConfig(
+        visualization=VisualizationConfig(
+            width=300,
+            height=300,
+            show_color_legend=color_legend,
+            show_degree_scale=degree_legend,
+        )
+    )
+    net = Network(karate, config)
+    net.decompose()
+    net.visualize(tmp_path / "out.png")
+
+    assert ("color" in calls) is color_legend
+    assert ("degree" in calls) is degree_legend

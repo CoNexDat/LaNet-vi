@@ -1,7 +1,7 @@
 """Configuration models for LaNet-vi using Pydantic."""
 
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
@@ -183,13 +183,19 @@ class VisualizationConfig(BaseModel):
     # Changed from 1.0 to 0.5 for moderate node sizes
     node_size_scale: float = Field(default=0.5, gt=0.0)
 
-    @model_validator(mode="after")
-    def fold_deprecated_size_legend(self) -> "VisualizationConfig":
-        """Fold the deprecated ``show_size_legend`` alias into ``show_degree_scale``."""
-        if not self.show_size_legend:
-            self.show_degree_scale = False
-            self.show_size_legend = True
-        return self
+    @model_validator(mode="before")
+    @classmethod
+    def fold_deprecated_size_legend(cls, data: Any) -> Any:
+        """Map the deprecated ``show_size_legend`` alias onto ``show_degree_scale``.
+
+        The alias only applies when ``show_degree_scale`` itself is absent, so a
+        file that sets the current field is never overridden by the old one.
+        """
+        if isinstance(data, dict) and "show_size_legend" in data:
+            data = dict(data)
+            alias = data.pop("show_size_legend")
+            data.setdefault("show_degree_scale", alias)
+        return data
 
     @field_validator("width", "height")
     @classmethod
