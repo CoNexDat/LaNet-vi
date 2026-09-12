@@ -376,3 +376,41 @@ def test_yaml_show_node_labels_survives_without_names(small_edge_list: Path, tmp
         )
     assert result.exit_code == 0, result.output
     assert seen["labels"] is True
+
+
+def test_no_node_labels_overrides_names(small_edge_list: Path, tmp_path: Path):
+    """--no-node-labels keeps labels off even when --names is given."""
+    from unittest.mock import patch
+
+    from lanet_vi.core.network import Network
+
+    names = tmp_path / "names.txt"
+    names.write_text("0 zero\n1 one\n")
+    seen: dict[str, bool] = {}
+    original = Network.visualize
+
+    def spy(self, *args, **kwargs):  # noqa: ANN001, ANN202
+        seen["labels"] = self.config.visualization.show_node_labels
+        return original(self, *args, **kwargs)
+
+    with patch.object(Network, "visualize", spy):
+        result = runner.invoke(
+            app,
+            [
+                "visualize",
+                "--input",
+                str(small_edge_list),
+                "--names",
+                str(names),
+                "--no-node-labels",
+                "--output",
+                str(tmp_path / "o.png"),
+                "--width",
+                "300",
+                "--height",
+                "300",
+                "--quiet",
+            ],
+        )
+    assert result.exit_code == 0, result.output
+    assert seen["labels"] is False
