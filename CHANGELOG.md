@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Refreshed `uv.lock`: resolves all 79 open Dependabot alerts (1 critical in
+  jupyter-server, 42 high across Pillow, tornado, urllib3, mistune, jupyterlab and others).
+  Only `requests` and Pillow (via matplotlib) are runtime dependencies; the rest were
+  pulled in by the `dev` extra.
+- New `Security` workflow: `pip-audit` over the locked tree on every lockfile change and
+  weekly, plus `zizmor` over the workflow files.
+- GitHub Actions pinned to commit SHAs, `persist-credentials: false` on every checkout,
+  and no cache restore in the release workflow.
+- `SECURITY.md` now states supported versions, the private reporting channel, response
+  targets and the coordinated-disclosure process.
+
+### Removed
+
+- **Python 3.9 support.** 3.9 reached end of life in October 2025 and the patched
+  releases of Pillow, jupyter-server and others require 3.10+. `requires-python` is now
+  `>=3.10`; the code base uses `X | None` unions and `zip(..., strict=True)`.
+
 ### Fixed
 
 - `write_decomposition_json` crashed when components were present (it read non-existent
