@@ -104,10 +104,16 @@ def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
     for param, (section, field) in _CLI_TO_CONFIG.items():
         if param not in ctx.params or not _given_explicitly(ctx, param):
             continue
+        if not isinstance(data.get(section), dict):
+            # Malformed section in the file (e.g. `visualization: null`): leave it for
+            # model validation to report instead of failing here with a TypeError
+            continue
         value = ctx.params[param]
         data[section][field] = value.value if isinstance(value, Enum) else value
-        if field == "show_degree_scale":
-            # Keep the deprecated alias in step so it cannot veto the explicit flag
+        if field in ("show_degree_scale", "show_size_legend"):
+            # Keep the new field and its deprecated alias in step so neither can veto
+            # an explicit flag
+            data[section]["show_degree_scale"] = value
             data[section]["show_size_legend"] = value
 
     return LaNetConfig.model_validate(data)
@@ -229,12 +235,12 @@ def visualize(
     color_by_community: bool = typer.Option(
         True,
         "--color-by-community/--no-color-by-community",
-        help="Color nodes by community instead of k-core",
+        help="Color nodes by community instead of k-core (not wired into rendering yet, #23)",
     ),
     draw_community_boundaries: bool = typer.Option(
         True,
         "--draw-community-boundaries/--no-draw-community-boundaries",
-        help="Draw boundaries around communities",
+        help="Draw boundaries around communities (not wired into rendering yet, #23)",
     ),
     # Spiral layout options
     use_spiral_layout: bool = typer.Option(
@@ -282,8 +288,10 @@ def visualize(
         task = progress.add_task("Building configuration...", total=None)
 
         config = _build_config(ctx, config_file)
-        if show_node_labels is None:
-            config.visualization.show_node_labels = names is not None
+        if show_node_labels is None and names is not None:
+            # --names implies labels unless the user said otherwise (YAML value kept
+            # when no names file is given)
+            config.visualization.show_node_labels = True
         decomp = DecompositionType(config.decomposition.decomp_type)
 
         progress.update(task, description="Loading network...")

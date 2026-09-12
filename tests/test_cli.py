@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from lanet_vi.cli import app
@@ -305,3 +306,58 @@ def test_deprecated_show_size_legend_alias():
         cfg.write_text("visualization:\n  show_size_legend: false\n")
         config = _build_config(FakeCtx(), cfg)  # type: ignore[arg-type]
     assert config.visualization.show_degree_scale is True
+
+
+def test_build_config_reports_malformed_section_via_validation(tmp_path: Path):
+    """A non-mapping section in the YAML is reported by validation, not a TypeError."""
+    from pydantic import ValidationError
+
+    from lanet_vi.cli import _build_config
+
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text("visualization: null\n")
+
+    class FakeCtx:
+        params = {"width": 1000}
+
+        def get_parameter_source(self, name: str):  # noqa: D102
+            class Src:
+                name = "COMMANDLINE"
+
+            return Src()
+
+    with pytest.raises(ValidationError):
+        _build_config(FakeCtx(), cfg)  # type: ignore[arg-type]
+
+
+def test_yaml_show_node_labels_survives_without_names(small_edge_list: Path, tmp_path: Path):
+    """visualization.show_node_labels: true in YAML is kept when --names is omitted."""
+    from unittest.mock import patch
+
+    from lanet_vi.core.network import Network
+
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text("visualization:\n  show_node_labels: true\n  width: 300\n  height: 300\n")
+    seen = {}
+    original = Network.visualize
+
+    def spy(self, *args, **kwargs):  # noqa: ANN001, ANN202
+        seen["labels"] = self.config.visualization.show_node_labels
+        return original(self, *args, **kwargs)
+
+    with patch.object(Network, "visualize", spy):
+        result = runner.invoke(
+            app,
+            [
+                "visualize",
+                "--input",
+                str(small_edge_list),
+                "--config",
+                str(cfg),
+                "--output",
+                str(tmp_path / "o.png"),
+                "--quiet",
+            ],
+        )
+    assert result.exit_code == 0, result.output
+    assert seen["labels"] is True
