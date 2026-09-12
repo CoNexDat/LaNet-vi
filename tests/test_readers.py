@@ -303,3 +303,13 @@ def test_read_edge_list_rejects_na_like_ids(tmp_path: Path):
 
     with pytest.raises(ValueError, match="integer"):
         read_edge_list(path)
+
+
+def test_network_autodetects_weights_without_config():
+    """Network(G) with weighted edges still takes the strength path by default."""
+    from lanet_vi.core.network import Network
+
+    G = nx.karate_club_graph()
+    nx.set_edge_attributes(G, 1.0, "weight")
+
+    assert Network(G).decompose().p_function is not None

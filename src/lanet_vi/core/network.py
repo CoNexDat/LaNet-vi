@@ -163,8 +163,12 @@ class Network:
         start_time = time.time()
 
         if decomp_type == DecompositionType.KCORES:
+            # --weighted forces the strength path; otherwise keep autodetecting so a
+            # Network built from an already-weighted graph behaves as before
             self.decomposition = compute_kcores(
-                self.graph, self.config.decomposition, weighted=self.config.graph.weighted
+                self.graph,
+                self.config.decomposition,
+                weighted=True if self.config.graph.weighted else None,
             )
             self.decomposition = find_components_by_shell(self.graph, self.decomposition)
         elif decomp_type == DecompositionType.KDENSES:
