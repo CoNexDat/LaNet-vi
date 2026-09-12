@@ -1,7 +1,5 @@
 """Color schemes and utilities for network visualization."""
 
-from typing import Optional
-
 import matplotlib.colors as mcolors
 
 from lanet_vi.models.config import ColorScheme
@@ -91,7 +89,7 @@ def compute_shell_color(
     shell_index: int,
     max_shell_index: int,
     color_scheme: ColorScheme,
-    color_scale_max: Optional[int] = None,
+    color_scale_max: int | None = None,
 ) -> tuple[float, float, float]:
     """
     Compute color for a node based on its shell/dense index.
@@ -196,7 +194,7 @@ def create_matplotlib_colormap(
 
     # Create colormap
     cmap = mcolors.LinearSegmentedColormap.from_list(
-        f"lanet_{color_scheme.value}", list(zip(positions, colors)), N=n_colors
+        f"lanet_{color_scheme.value}", list(zip(positions, colors, strict=True)), N=n_colors
     )
 
     return cmap

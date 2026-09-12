@@ -1,7 +1,5 @@
 """Circular averaging for angular coordinates."""
 
-from typing import Optional
-
 import numpy as np
 
 
@@ -78,9 +76,9 @@ def calculate_phi_from_neighbors(
     node_positions: dict,
     component_center: tuple,
     is_weighted: bool = False,
-    edge_weights: Optional[dict] = None,
+    edge_weights: dict | None = None,
     no_cliques: bool = False,
-    rng: Optional[np.random.Generator] = None,
+    rng: np.random.Generator | None = None,
 ) -> float:
     """
     Calculate phi (angular position) based on neighbors in higher shells.

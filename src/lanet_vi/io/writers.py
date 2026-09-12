@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 import networkx as nx
 import pandas as pd
@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 
 def write_decomposition_csv(
     result: DecompositionResult,
-    output_path: Union[Path, str],
+    output_path: Path | str,
 ) -> None:
     """
     Export decomposition results to CSV.
@@ -48,7 +48,7 @@ def write_decomposition_csv(
 
 def write_decomposition_json(
     result: DecompositionResult,
-    output_path: Union[Path, str],
+    output_path: Path | str,
     include_components: bool = True,
     include_metadata: bool = True,
 ) -> None:
@@ -134,7 +134,7 @@ def write_decomposition_json(
 
 def write_node_attributes(
     node_data: dict[int, dict],
-    output_path: Union[Path, str],
+    output_path: Path | str,
 ) -> None:
     """
     Export node attributes to CSV.
@@ -164,7 +164,7 @@ def write_node_attributes(
 
 def write_graph_json(
     graph: nx.Graph,
-    output_path: Union[Path, str],
+    output_path: Path | str,
     include_node_attrs: bool = True,
     include_edge_attrs: bool = True,
 ) -> None:
@@ -224,7 +224,7 @@ def write_graph_json(
 
 def write_community_json(
     community_result: CommunityResult,
-    output_path: Union[Path, str],
+    output_path: Path | str,
 ) -> None:
     """
     Export community detection results to JSON.
@@ -277,7 +277,7 @@ def write_community_json(
 
 def write_edge_list(
     graph: nx.Graph,
-    output_path: Union[Path, str],
+    output_path: Path | str,
     include_weights: bool = True,
     delimiter: str = "\t",
 ) -> None:
