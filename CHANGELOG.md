@@ -13,10 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Alvarez-Hamelin et al., 2005–2016), its SourceForge distribution under the Academic Free
   License 3.0 and the original homepage; the License section states the relation between
   the MIT-licensed rewrite and the AFL-licensed original.
-- New `docs/migration-from-cpp.md`: option-by-option mapping from the C++ command line to
-  the Python CLI and an honest feature-parity table (the 5.0.0 entry below overstated
-  "all legacy features included"; see that document for what is ported, what differs and
-  what is missing).
+- The 5.0.0 entry below overstated feature parity with the C++ version; it now carries a
+  note pointing to the tracking issues (#18–#26).
 
 ### Security
 
@@ -83,6 +81,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [5.0.0] - 2025-10-18
 
 ### Overview
+
+> **Note (September 2026):** the parity claims in this entry were later found to be
+> overstated. Several features listed as ported are missing, inert or behave differently;
+> see issues #18–#26 for the current state.
 
 Complete Python refactor of LaNet-vi 3.x (C++) with all legacy features included. This version brings all functionality from the latest C++ codebase (previously in `legacy/Source/`) into a modern Python implementation using NetworkX, pandas, and matplotlib.
 
