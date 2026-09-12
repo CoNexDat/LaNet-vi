@@ -48,10 +48,12 @@ def compute_kcores(
         f"{graph.number_of_edges()} edges"
     )
 
+    graph = _without_self_loops(graph)
+
     # Check if graph is weighted (check first 100 edges for performance)
     is_weighted = any("weight" in data for _, _, data in islice(graph.edges(data=True), 100))
 
-    graph = _prepare_for_cores(graph, is_weighted)
+    graph = _merge_parallel_edges(graph) if is_weighted and graph.is_multigraph() else graph
 
     if not is_weighted:
         logger.info("Using unweighted k-core algorithm (NetworkX core_number)")
@@ -90,33 +92,37 @@ def compute_kcores(
         )
 
 
-def _prepare_for_cores(graph: nx.Graph, is_weighted: bool) -> nx.Graph:
-    """Drop self-loops and, for weighted multigraphs, merge parallel edges.
+def _without_self_loops(graph: nx.Graph) -> nx.Graph:
+    """Return ``graph`` without self-loops (copied only if any exist).
 
-    The C++ LaNet-vi ignores the self-loop contribution to the core index and
-    sums the weights of parallel edges into the node strength; NetworkX's
-    ``core_number`` refuses both, so normalise here. Unweighted multigraphs are
-    returned as-is and handled by ``_core_number``, which counts multiplicity.
+    The C++ LaNet-vi ignored the self-loop contribution to the core index and
+    NetworkX's ``core_number`` refuses self-loops altogether.
     """
     n_loops = nx.number_of_selfloops(graph)
-    if n_loops:
-        logger.warning(f"Ignoring {n_loops} self-loop(s) for the k-core decomposition")
-        graph = graph.copy()
-        graph.remove_edges_from(nx.selfloop_edges(graph))
-
-    if graph.is_multigraph() and is_weighted:
-        logger.info("Merging parallel edges: strength is the sum of their weights")
-        simple: nx.Graph = nx.DiGraph() if graph.is_directed() else nx.Graph()
-        simple.add_nodes_from(graph.nodes(data=True))
-        for u, v, data in graph.edges(data=True):
-            w = float(data.get("weight", 1.0))
-            if simple.has_edge(u, v):
-                simple[u][v]["weight"] += w
-            else:
-                simple.add_edge(u, v, weight=w)
-        graph = simple
-
+    if not n_loops:
+        return graph
+    logger.warning(f"Ignoring {n_loops} self-loop(s) for the k-core decomposition")
+    graph = graph.copy()
+    graph.remove_edges_from(nx.selfloop_edges(graph))
     return graph
+
+
+def _merge_parallel_edges(graph: nx.Graph) -> nx.Graph:
+    """Collapse a weighted multigraph into a simple graph, summing parallel weights.
+
+    The C++ ``-multigraph -weighted`` mode summed the weights of parallel edges
+    into the node strength, which is what the p-function needs.
+    """
+    logger.info("Merging parallel edges: strength is the sum of their weights")
+    simple: nx.Graph = nx.DiGraph() if graph.is_directed() else nx.Graph()
+    simple.add_nodes_from(graph.nodes(data=True))
+    for u, v, data in graph.edges(data=True):
+        w = float(data.get("weight", 1.0))
+        if simple.has_edge(u, v):
+            simple[u][v]["weight"] += w
+        else:
+            simple.add_edge(u, v, weight=w)
+    return simple
 
 
 def _core_number(graph: nx.Graph) -> dict[int, int]:
@@ -129,8 +135,20 @@ def _core_number(graph: nx.Graph) -> dict[int, int]:
     if not graph.is_multigraph():
         return dict(nx.core_number(graph))
 
-    degrees = dict(graph.degree())
+    degrees = dict(graph.degree())  # in + out for directed graphs, multiplicity counted
     core = dict(degrees)
+    directed = graph.is_directed()
+
+    def incident(node: int) -> dict[int, int]:
+        """Neighbours of ``node`` with the number of edges shared in either direction."""
+        counts: dict[int, int] = {}
+        for nb in graph.successors(node) if directed else graph.neighbors(node):
+            counts[nb] = counts.get(nb, 0) + 1
+        if directed:
+            for nb in graph.predecessors(node):
+                counts[nb] = counts.get(nb, 0) + 1
+        return counts
+
     max_degree = max(degrees.values(), default=0)
     bins: list[list[int]] = [[] for _ in range(max_degree + 1)]
     for node, degree in degrees.items():
@@ -145,10 +163,10 @@ def _core_number(graph: nx.Graph) -> dict[int, int]:
                 continue
             removed.add(node)
             core[node] = k
-            for neighbour in set(graph.neighbors(node)):
+            for neighbour, multiplicity in incident(node).items():
                 if neighbour in removed or core[neighbour] <= k:
                     continue
-                core[neighbour] = max(k, core[neighbour] - graph.number_of_edges(node, neighbour))
+                core[neighbour] = max(k, core[neighbour] - multiplicity)
                 bins[core[neighbour]].append(neighbour)
     return core
 

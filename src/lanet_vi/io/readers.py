@@ -25,6 +25,15 @@ def _open_text(file_path: Path) -> IO[str]:
     return open(file_path)
 
 
+def _integer_column(column: pd.Series, file_path: Path) -> np.ndarray:
+    """Return ``column`` as an int array, rejecting non-numeric or fractional ids."""
+    values = pd.to_numeric(column, errors="coerce")
+    if values.isna().any() or not np.all(np.mod(values.to_numpy(), 1) == 0):
+        bad = column[values.isna() | (np.mod(values, 1) != 0)].iloc[0]
+        raise ValueError(f"{file_path}: node ids must be integers (found {bad!r})")
+    return np.asarray(values.to_numpy(), dtype=np.int64)
+
+
 def read_edge_list(
     file_path: Path | str,
     weighted: bool = False,
@@ -89,15 +98,21 @@ def read_edge_list(
     if df.shape[1] < 2:
         raise ValueError(f"{file_path}: expected at least two columns (source target)")
 
-    try:
-        source = df.iloc[:, 0].astype(int).to_numpy()
-        target = df.iloc[:, 1].astype(int).to_numpy()
-    except (TypeError, ValueError) as exc:
-        raise ValueError(f"{file_path}: node ids must be integers ({exc})") from exc
+    source = _integer_column(df.iloc[:, 0], file_path)
+    target = _integer_column(df.iloc[:, 1], file_path)
 
     if weighted:
         if df.shape[1] >= 3:
-            weight = pd.to_numeric(df.iloc[:, 2], errors="coerce").fillna(1.0).to_numpy()
+            raw = df.iloc[:, 2]
+            weight_series = pd.to_numeric(raw, errors="coerce")
+            bad = weight_series.isna() & raw.notna()
+            if bad.any():
+                first = int(np.flatnonzero(bad.to_numpy())[0])
+                raise ValueError(
+                    f"{file_path}: weight {raw.iloc[first]!r} on row {first + 1} is not a number"
+                )
+            # A missing third field (short row) counts as weight 1.0, as in the C++ reader
+            weight = weight_series.fillna(1.0).to_numpy()
         else:
             logger.warning(f"{file_path}: --weighted given but no weight column; using 1.0")
             weight = np.ones(len(df))
@@ -109,6 +124,9 @@ def read_edge_list(
         G: nx.Graph = nx.MultiDiGraph() if multigraph else nx.DiGraph()
     else:
         G = nx.MultiGraph() if multigraph else nx.Graph()
+
+    # Register every node first so one that only appears in a self-loop is kept
+    G.add_nodes_from(np.unique(np.concatenate([source, target])).tolist())
 
     self_loops = source == target
     n_self_loops = int(self_loops.sum())
@@ -214,19 +232,23 @@ def read_caida_snapshot(
 
 def read_node_names(
     file_path: Path | str,
+    delimiter: str | None = None,
     comment: str = "#",
 ) -> dict[int, str]:
     """
     Read node names from a file.
 
     Each line is ``node_id name``; the name is everything after the first
-    whitespace, so it may contain spaces. Surrounding quotes are removed, as in
+    separator, so it may contain spaces. Surrounding quotes are removed, as in
     the C++ reader.
 
     Parameters
     ----------
     file_path : Union[Path, str]
         Path to file with node names (format: node_id name)
+    delimiter : Optional[str]
+        Separator between the id and the name; ``None`` (default) means any
+        run of whitespace
     comment : str
         Comment character
 
@@ -250,7 +272,7 @@ def read_node_names(
             line = raw.strip()
             if not line or line.startswith(comment):
                 continue
-            parts = line.split(None, 1)
+            parts = line.split(delimiter, 1)
             try:
                 node_id = int(parts[0])
             except ValueError as exc:

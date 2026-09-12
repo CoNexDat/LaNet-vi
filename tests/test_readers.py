@@ -136,3 +136,67 @@ def test_read_node_colors_accepts_tabs(tmp_path: Path):
     colors = read_node_colors(path)
 
     assert colors == {1: (1.0, 0.0, 0.0), 2: (0.0, 1.0, 0.0)}
+
+
+def test_read_edge_list_rejects_fractional_ids(tmp_path: Path):
+    """Float-valued ids such as 1.5 are rejected rather than truncated."""
+    path = _write(tmp_path, "1.5 2\n")
+
+    with pytest.raises(ValueError, match="integer"):
+        read_edge_list(path)
+
+
+def test_read_edge_list_rejects_non_numeric_weight(tmp_path: Path):
+    """A malformed weight is an error; only an absent weight defaults to 1.0."""
+    path = _write(tmp_path, "1 2 not-a-number\n")
+
+    with pytest.raises(ValueError, match="not a number"):
+        read_edge_list(path, weighted=True)
+
+
+def test_read_edge_list_short_row_weight_defaults_to_one(tmp_path: Path):
+    """A row without a third field on a weighted graph gets weight 1.0."""
+    path = _write(tmp_path, "1 2 0.5\n2 3\n")
+
+    G = read_edge_list(path, weighted=True)
+
+    assert G[1][2]["weight"] == 0.5
+    assert G[2][3]["weight"] == 1.0
+
+
+def test_read_edge_list_keeps_node_that_only_has_a_self_loop(tmp_path: Path):
+    """Dropping a self-loop must not drop the node."""
+    path = _write(tmp_path, "1 1\n2 3\n")
+
+    G = read_edge_list(path)
+
+    assert 1 in G and G.number_of_edges() == 1
+
+
+def test_read_node_names_honours_explicit_delimiter(tmp_path: Path):
+    """The delimiter argument still works for callers that pass one."""
+    path = _write(tmp_path, "1,New York\n2,Paris\n", "names.csv")
+
+    assert read_node_names(path, delimiter=",") == {1: "New York", 2: "Paris"}
+
+
+def test_kcores_weighted_graph_with_only_self_loops():
+    """A weighted graph whose only edges are self-loops does not crash."""
+    G = nx.Graph()
+    G.add_edge(1, 1, weight=2.0)
+    G.add_node(2)
+
+    result = compute_kcores(G)
+
+    assert result.node_indices == {1: 0, 2: 0}
+
+
+def test_multidigraph_kcores_count_both_directions():
+    """For a directed multigraph, removing a node decrements predecessors too."""
+    x, y, u, v = 0, 1, 2, 3
+    G = nx.MultiDiGraph()
+    G.add_edges_from([(x, y), (y, x), (x, u), (u, v)])
+
+    result = compute_kcores(G)  # type: ignore[arg-type]
+
+    assert result.node_indices == {x: 2, y: 2, u: 1, v: 1}
