@@ -4,9 +4,11 @@ D-cores extend k-cores to directed graphs by considering both in-degree and out-
 Each node is assigned a (k_in, k_out) pair indicating its core membership based on
 incoming and outgoing edges separately.
 
-Each direction is peeled independently (in-degree cores and out-degree cores), which
-matches the earlier C++ ``graph_dcores_old.cpp``. The later C++ ``graph_dcores.cpp``
-computes a per-``l`` table instead; see ``docs/migration-from-cpp.md``.
+Each direction is peeled independently: ``k_in`` is the largest k such that the node
+belongs to the subgraph where every node has in-degree >= k, and ``k_out`` likewise for
+out-degree. (The original C++ tool also had a variant that, for each out-degree threshold
+l, computed the in-degree core number within the (0, l)-out-core; that per-l table is not
+implemented here.)
 """
 
 from collections import defaultdict
