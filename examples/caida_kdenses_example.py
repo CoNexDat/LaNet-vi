@@ -95,7 +95,7 @@ def visualize_caida_kdenses():
 
     # K-denses typically produces fewer shells than k-cores
     print(f"\n      K-denses range: {result.min_index}-{result.max_index}")
-    print("      (Compare with k-cores which typically ranges 1-79 for this dataset)")
+    print("      (Compare with k-cores, which range 1-149 for this dataset)")
 
     # Generate visualization
     print("\n[4/5] Generating visualization...")

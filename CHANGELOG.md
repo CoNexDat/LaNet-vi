@@ -45,7 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it silently missed triangles on real edge lists. Parallel edges and self-loops are
   ignored. Per-edge indices are exposed as `result.metadata["edge_indices"]` (JSON export
   writes them as `[u, v, index]` triples). Verified against a brute-force k-truss on random
-  graphs.
+  graphs. The CAIDA 20251001 example now spans k-dense 2–105 (was 2–55); its image is
+  regenerated.
 - The colour legend is titled after the decomposition (`k-dense`, `d-core`) instead of
   always `k-core` (#10).
 - `--directed --decomp dcores` crashed with a Pydantic `ValidationError` while building
