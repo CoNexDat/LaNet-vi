@@ -279,7 +279,7 @@ def write_edge_list(
     graph: nx.Graph,
     output_path: Path | str,
     include_weights: bool = True,
-    delimiter: str = "\t",
+    delimiter: str = " ",
 ) -> None:
     """
     Write graph to edge list file using pandas.
@@ -293,11 +293,12 @@ def write_edge_list(
     include_weights : bool
         Include edge weights if available (default: True)
     delimiter : str
-        Column delimiter (default: tab)
+        Column delimiter (default: space, the format ``read_edge_list`` and the
+        C++ LaNet-vi expects)
 
     Examples
     --------
-    >>> write_edge_list(G, "network.txt", delimiter=" ")
+    >>> write_edge_list(G, "network.txt")
     """
     output_path = Path(output_path)
 

@@ -13,6 +13,7 @@ logger = get_logger(__name__)
 def compute_kcores(
     graph: nx.Graph,
     config: DecompositionConfig | None = None,
+    weighted: bool | None = None,
 ) -> DecompositionResult:
     """
     Compute k-core decomposition of a graph.
@@ -26,6 +27,9 @@ def compute_kcores(
         Input graph
     config : Optional[DecompositionConfig]
         Decomposition configuration
+    weighted : Optional[bool]
+        Force the weighted (strength-based) or unweighted algorithm. ``None``
+        (default) picks the weighted one if any edge has a ``weight`` attribute.
 
     Returns
     -------
@@ -46,13 +50,24 @@ def compute_kcores(
         f"{graph.number_of_edges()} edges"
     )
 
-    # Check if graph is weighted (check first 100 edges for performance)
-    is_weighted = any("weight" in graph[u][v] for u, v in list(graph.edges())[:100])
+    graph = _without_self_loops(graph)
+
+    # Weighted if the caller says so; otherwise if any edge carries a weight
+    # (short-circuits at the first weighted edge). An edgeless graph has no
+    # strengths to bin, so it always takes the unweighted path (all cores 0).
+    is_weighted = graph.number_of_edges() > 0 and (
+        weighted
+        if weighted is not None
+        else any("weight" in data for _, _, data in graph.edges(data=True))
+    )
+
+    if is_weighted and (graph.is_multigraph() or graph.is_directed()):
+        graph = _as_weighted_simple_graph(graph)
 
     if not is_weighted:
         logger.info("Using unweighted k-core algorithm (NetworkX core_number)")
         # Use NetworkX's k-core number computation
-        core_numbers = nx.core_number(graph)
+        core_numbers = _core_number(graph)
 
         max_core = max(core_numbers.values()) if core_numbers else 0
         min_core = min(core_numbers.values()) if core_numbers else 0
@@ -84,6 +99,88 @@ def compute_kcores(
             min_index=min_core,
             p_function=p_function,
         )
+
+
+def _without_self_loops(graph: nx.Graph) -> nx.Graph:
+    """Return ``graph`` without self-loops (copied only if any exist).
+
+    The C++ LaNet-vi ignored the self-loop contribution to the core index and
+    NetworkX's ``core_number`` refuses self-loops altogether.
+    """
+    n_loops = nx.number_of_selfloops(graph)
+    if not n_loops:
+        return graph
+    logger.warning(f"Ignoring {n_loops} self-loop(s) for the k-core decomposition")
+    graph = graph.copy()
+    graph.remove_edges_from(nx.selfloop_edges(graph))
+    return graph
+
+
+def _as_weighted_simple_graph(graph: nx.Graph) -> nx.Graph:
+    """Collapse a weighted multigraph or digraph into an undirected simple graph.
+
+    Weights of parallel and reciprocal edges are summed, so a node's strength is
+    the total weight incident to it in either direction. This matches the C++
+    ``-multigraph -weighted`` mode (parallel weights summed into the strength)
+    and keeps the weighted path consistent with the unweighted one, which uses
+    in-degree plus out-degree on directed graphs.
+    """
+    logger.info("Merging parallel/reciprocal edges: strength is the sum of their weights")
+    simple = nx.Graph()
+    simple.add_nodes_from(graph.nodes(data=True))
+    for u, v, data in graph.edges(data=True):
+        w = float(data.get("weight", 1.0))
+        if simple.has_edge(u, v):
+            simple[u][v]["weight"] += w
+        else:
+            simple.add_edge(u, v, weight=w)
+    return simple
+
+
+def _core_number(graph: nx.Graph) -> dict[int, int]:
+    """Core numbers where parallel edges count towards the degree.
+
+    Delegates to ``nx.core_number`` for simple graphs and runs the same
+    Batagelj-Zaversnik peeling on multigraphs, as the C++ ``-multigraph``
+    mode did.
+    """
+    if not graph.is_multigraph():
+        return dict(nx.core_number(graph))
+
+    degrees = dict(graph.degree())  # in + out for directed graphs, multiplicity counted
+    core = dict(degrees)
+    directed = graph.is_directed()
+
+    def incident(node: int) -> dict[int, int]:
+        """Neighbours of ``node`` with the number of edges shared in either direction."""
+        counts: dict[int, int] = {}
+        for nb in graph.successors(node) if directed else graph.neighbors(node):
+            counts[nb] = counts.get(nb, 0) + graph.number_of_edges(node, nb)
+        if directed:
+            for nb in graph.predecessors(node):
+                counts[nb] = counts.get(nb, 0) + graph.number_of_edges(nb, node)
+        return counts
+
+    max_degree = max(degrees.values(), default=0)
+    bins: list[list[int]] = [[] for _ in range(max_degree + 1)]
+    for node, degree in degrees.items():
+        bins[degree].append(node)
+
+    removed: set[int] = set()
+    for k in range(max_degree + 1):
+        bucket = bins[k]
+        while bucket:
+            node = bucket.pop()
+            if node in removed:
+                continue
+            removed.add(node)
+            core[node] = k
+            for neighbour, multiplicity in incident(node).items():
+                if neighbour in removed or core[neighbour] <= k:
+                    continue
+                core[neighbour] = max(k, core[neighbour] - multiplicity)
+                bins[core[neighbour]].append(neighbour)
+    return core
 
 
 def _build_p_function(
@@ -249,7 +346,10 @@ def find_components_by_shell(
         subgraph = graph.subgraph(shell_nodes).copy()
 
         # Find connected components
-        for comp_nodes in nx.connected_components(subgraph):
+        components_of = (
+            nx.weakly_connected_components if subgraph.is_directed() else nx.connected_components
+        )
+        for comp_nodes in components_of(subgraph):
             components.append(
                 Component(
                     component_id=component_id,
