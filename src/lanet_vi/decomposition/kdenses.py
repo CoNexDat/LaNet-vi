@@ -1,17 +1,28 @@
-"""K-dense decomposition using triangle-based dual graph approach."""
+"""K-dense (m-core) decomposition by triangle-pair peeling.
+
+This ports ``graph_kdenses.cpp`` / ``graph_triangled_kcores.cpp`` from the C++ LaNet-vi.
+The C++ builds a dual graph whose vertices are the edges of the input graph and whose
+edges join the three sides of every triangle, then peels it: whenever a dual vertex is
+removed, the two other sides of each triangle it belonged to lose one triangle. That is
+the k-truss decomposition of the input graph. The k-dense index of an edge is its
+trussness (``2`` for edges in no triangle, ``3`` for edges in a triangle whose sides are
+in no other triangle, ...) and the k-dense index of a vertex is the maximum over its
+incident edges.
+"""
 
 import networkx as nx
 
 from lanet_vi.models.graph import Component, DecompositionResult
 
+#: k-dense index of an isolated vertex or an edge that lies in no triangle.
+MIN_DENSE_INDEX = 2
+
 
 def compute_kdenses(graph: nx.Graph) -> DecompositionResult:
     """
-    Compute k-dense decomposition of a graph.
+    Compute the k-dense decomposition of a graph.
 
-    K-dense decomposition is based on triangle density. It constructs a dual graph
-    where edges become vertices and triangles become edges, then applies k-core
-    decomposition to the dual graph.
+    Parallel edges and self-loops are ignored, as in the C++ reader.
 
     Parameters
     ----------
@@ -21,186 +32,131 @@ def compute_kdenses(graph: nx.Graph) -> DecompositionResult:
     Returns
     -------
     DecompositionResult
-        K-dense decomposition results with dense indices
+        ``node_indices`` maps every node to its k-dense index (``>= 2``);
+        ``metadata["edge_indices"]`` maps every simple edge ``(u, v)``, ``u < v``, to its
+        k-dense index, which the C++ uses to colour edges.
 
     Notes
     -----
-    The k-dense index of a vertex is computed as:
-    dense_index = max(k-core of adjacent edges in dual graph) / 2 + 2
+    The k-dense index of an edge is ``2 + s`` where ``s`` is its truss support number:
+    the largest ``s`` such that the edge belongs to a subgraph in which every edge closes
+    at least ``s`` triangles. The k-dense index of a vertex is the maximum k-dense index
+    of its incident edges, or ``2`` if it has none.
 
     Examples
     --------
     >>> G = nx.karate_club_graph()
     >>> result = compute_kdenses(G)
     >>> print(f"Max dense index: {result.max_index}")
+    Max dense index: 5
     """
     if graph.is_directed():
         raise ValueError("K-dense decomposition requires an undirected graph")
 
-    # Build dual graph of triangles
-    dual_graph, edge_to_vertex_map = _build_triangle_dual_graph(graph)
+    nodes = list(graph.nodes())
+    index_of = {node: i for i, node in enumerate(nodes)}
+    adjacency = _simple_adjacency(graph, index_of)
 
-    # Apply k-core decomposition to dual graph
-    if dual_graph.number_of_nodes() > 0:
-        dual_cores = nx.core_number(dual_graph)
-    else:
-        dual_cores = {}
+    support = _edge_truss_support(adjacency)
 
-    # Map k-dense values back to original vertices
-    dense_indices = _compute_vertex_dense_indices(graph, edge_to_vertex_map, dual_cores)
+    edge_indices: dict[tuple[int, int], int] = {}
+    dense_indices: dict[int, int] = {node: MIN_DENSE_INDEX for node in nodes}
+    for (iu, iv), s in support.items():
+        dense = MIN_DENSE_INDEX + s
+        u, v = nodes[iu], nodes[iv]
+        edge_indices[(u, v) if u < v else (v, u)] = dense
+        if dense > dense_indices[u]:
+            dense_indices[u] = dense
+        if dense > dense_indices[v]:
+            dense_indices[v] = dense
 
     return DecompositionResult(
         decomp_type="kdenses",
         node_indices=dense_indices,
-        max_index=max(dense_indices.values()) if dense_indices else 2,
-        min_index=min(dense_indices.values()) if dense_indices else 2,
+        max_index=max(dense_indices.values()) if dense_indices else MIN_DENSE_INDEX,
+        min_index=min(dense_indices.values()) if dense_indices else MIN_DENSE_INDEX,
+        metadata={"edge_indices": edge_indices},
     )
 
 
-def _build_triangle_dual_graph(
-    graph: nx.Graph,
-) -> tuple[nx.Graph, dict[tuple[int, int], int]]:
+def _simple_adjacency(graph: nx.Graph, index_of: dict[int, int]) -> list[set[int]]:
     """
-    Build dual graph where edges are vertices and triangles are edges.
+    Build an integer-indexed adjacency of the simple graph underlying ``graph``.
+
+    Parallel edges collapse and self-loops are dropped, so the result matches what the
+    C++ reader produced (it always loaded a simple graph before looking for triangles).
 
     Parameters
     ----------
     graph : nx.Graph
-        Original graph
+        Input graph (``nx.MultiGraph`` accepted)
+    index_of : Dict[int, int]
+        Node → position in ``list(graph.nodes())``
 
     Returns
     -------
-    dual_graph : nx.Graph
-        Dual graph
-    edge_to_vertex_map : Dict[Tuple[int, int], int]
-        Mapping from original edge (u, v) to dual vertex ID
+    List[Set[int]]
+        ``adjacency[i]`` is the set of neighbour positions of node ``i``
     """
-    dual_graph = nx.Graph()
-    edge_to_vertex_map: dict[tuple[int, int], int] = {}
-    edge_counter = 0
-
-    # Find all triangles using NetworkX (for diagnostics)
-    _triangles = nx.triangles(graph)  # Reserved for future validation
-
-    # Process each node's triangles
-    for node in graph.nodes():
-        neighbors = list(graph.neighbors(node))
-
-        # Check each pair of neighbors for triangles
-        for i, neighbor1 in enumerate(neighbors):
-            if neighbor1 <= node:
-                continue
-
-            for neighbor2 in neighbors[i + 1 :]:
-                if neighbor2 <= neighbor1:
-                    continue
-
-                # Check if this forms a triangle
-                if graph.has_edge(neighbor1, neighbor2):
-                    # Triangle found: node - neighbor1 - neighbor2
-                    v1, v2, v3 = sorted([node, neighbor1, neighbor2])
-
-                    # Get or create dual vertices for each edge
-                    edge1 = _get_or_create_dual_vertex(edge_to_vertex_map, (v1, v2), edge_counter)
-                    if edge1 == edge_counter:
-                        edge_counter += 1
-
-                    edge2 = _get_or_create_dual_vertex(edge_to_vertex_map, (v2, v3), edge_counter)
-                    if edge2 == edge_counter:
-                        edge_counter += 1
-
-                    edge3 = _get_or_create_dual_vertex(edge_to_vertex_map, (v1, v3), edge_counter)
-                    if edge3 == edge_counter:
-                        edge_counter += 1
-
-                    # Add edges in dual graph (triangle becomes edges between its 3 edges)
-                    dual_graph.add_edge(edge1, edge2)
-                    dual_graph.add_edge(edge2, edge3)
-                    dual_graph.add_edge(edge1, edge3)
-
-    return dual_graph, edge_to_vertex_map
+    adjacency: list[set[int]] = [set() for _ in index_of]
+    for u, v in graph.edges():
+        if u == v:
+            continue
+        iu, iv = index_of[u], index_of[v]
+        adjacency[iu].add(iv)
+        adjacency[iv].add(iu)
+    return adjacency
 
 
-def _get_or_create_dual_vertex(
-    edge_map: dict[tuple[int, int], int],
-    edge: tuple[int, int],
-    counter: int,
-) -> int:
+def _edge_truss_support(adjacency: list[set[int]]) -> dict[tuple[int, int], int]:
     """
-    Get existing dual vertex ID or create new one for an edge.
+    Peel the graph by triangle support (k-truss decomposition).
+
+    This is the algorithm of ``Graph_Triangled_KCores::findTriangledCores``: every edge
+    starts with its triangle count, edges are removed in increasing order of support, and
+    removing an edge decrements the support of the two other sides of each triangle it
+    still closes (never below the support currently being peeled).
 
     Parameters
     ----------
-    edge_map : Dict[Tuple[int, int], int]
-        Current edge to vertex mapping
-    edge : Tuple[int, int]
-        Edge (u, v) with u < v
-    counter : int
-        Next available vertex ID
+    adjacency : List[Set[int]]
+        Simple, undirected adjacency over integer node ids
 
     Returns
     -------
-    int
-        Dual vertex ID for this edge
+    Dict[Tuple[int, int], int]
+        Truss support number of every edge ``(u, v)`` with ``u < v``
     """
-    # Ensure edge is in canonical form (u < v)
-    u, v = edge
-    if u > v:
-        u, v = v, u
-    edge = (u, v)
+    support: dict[tuple[int, int], int] = {}
+    for u, neighbours in enumerate(adjacency):
+        for v in neighbours:
+            if u < v:
+                support[(u, v)] = len(neighbours & adjacency[v])
+    if not support:
+        return {}
 
-    if edge not in edge_map:
-        edge_map[edge] = counter
-        return counter
-    return edge_map[edge]
+    # Bucket queue keyed by current support, as in Batagelj-Zaversnik.
+    buckets: list[set[tuple[int, int]]] = [set() for _ in range(max(support.values()) + 1)]
+    for edge, s in support.items():
+        buckets[s].add(edge)
 
-
-def _compute_vertex_dense_indices(
-    graph: nx.Graph,
-    edge_to_vertex_map: dict[tuple[int, int], int],
-    dual_cores: dict[int, int],
-) -> dict[int, int]:
-    """
-    Compute dense index for each vertex in original graph.
-
-    The dense index of a vertex is the maximum k-core value of its
-    incident edges in the dual graph, divided by 2 and offset by 2.
-
-    Parameters
-    ----------
-    graph : nx.Graph
-        Original graph
-    edge_to_vertex_map : Dict[Tuple[int, int], int]
-        Mapping from edge to dual vertex
-    dual_cores : Dict[int, int]
-        K-core numbers in dual graph
-
-    Returns
-    -------
-    Dict[int, int]
-        Dense index for each vertex
-    """
-    dense_indices: dict[int, int] = {}
-
-    for node in graph.nodes():
-        max_edge_core = 0
-
-        # Check all incident edges
-        for neighbor in graph.neighbors(node):
-            # Get edge in canonical form
-            u, v = sorted([node, neighbor])
-            edge = (u, v)
-
-            if edge in edge_to_vertex_map:
-                dual_vertex = edge_to_vertex_map[edge]
-                if dual_vertex in dual_cores:
-                    edge_core = dual_cores[dual_vertex]
-                    max_edge_core = max(max_edge_core, edge_core)
-
-        # Dense index formula from C++ code
-        dense_indices[node] = max_edge_core // 2 + 2
-
-    return dense_indices
+    live = [set(neighbours) for neighbours in adjacency]
+    result: dict[tuple[int, int], int] = {}
+    for k, bucket in enumerate(buckets):
+        while bucket:
+            u, v = bucket.pop()
+            result[(u, v)] = k
+            live[u].discard(v)
+            live[v].discard(u)
+            # Every remaining common neighbour closed a triangle with (u, v) that is now gone.
+            for w in live[u] & live[v]:
+                for side in ((u, w) if u < w else (w, u), (v, w) if v < w else (w, v)):
+                    s = support[side]
+                    if s > k:
+                        buckets[s].discard(side)
+                        support[side] = s - 1
+                        buckets[s - 1].add(side)
+    return result
 
 
 def find_components_by_dense(

@@ -122,3 +122,35 @@ def test_labels_are_drawn_for_every_named_node_including_zero(
     net.visualize(tmp_path / "out.png")
 
     assert "0" in drawn and "one" in drawn
+
+
+@pytest.mark.parametrize(
+    ("decomp_type", "title"),
+    [
+        (DecompositionType.KCORES, "k-core"),
+        (DecompositionType.KDENSES, "k-dense"),
+        (DecompositionType.DCORES, "d-core"),
+    ],
+)
+def test_color_legend_title_follows_decomposition(
+    karate: nx.Graph, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, decomp_type, title
+):
+    """The colour legend is titled after the decomposition, not always "k-core" (#10)."""
+    from matplotlib.axes import Axes
+
+    titles: list[str] = []
+    original_legend = Axes.legend
+
+    def spy(self, *args, **kwargs):  # noqa: ANN001, ANN202
+        if "title" in kwargs:
+            titles.append(kwargs["title"])
+        return original_legend(self, *args, **kwargs)
+
+    monkeypatch.setattr(Axes, "legend", spy)
+
+    graph = karate.to_directed() if decomp_type is DecompositionType.DCORES else karate
+    net = Network(graph, _small_config())
+    net.decompose(decomp_type)
+    net.visualize(tmp_path / "out.png")
+
+    assert title in titles

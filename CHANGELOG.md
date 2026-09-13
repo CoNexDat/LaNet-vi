@@ -37,6 +37,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- K-dense decomposition (#19) now implements the C++ triangle-pair peeling (the k-truss
+  decomposition): every edge starts with its triangle count and removing an edge lowers the
+  count of the two other sides of each triangle it closed. The previous code took a plain
+  vertex k-core of the edge/triangle dual graph, which over-estimates the index of edges
+  whose triangles share a side, and its triangle enumeration assumed sorted adjacency, so
+  it silently missed triangles on real edge lists. Parallel edges and self-loops are
+  ignored. Per-edge indices are exposed as `result.metadata["edge_indices"]` (JSON export
+  writes them as `[u, v, index]` triples). Verified against a brute-force k-truss on random
+  graphs. The CAIDA 20251001 example now spans k-dense 2–105 (was 2–55); its image is
+  regenerated.
+- The colour legend is titled after the decomposition (`k-dense`, `d-core`) instead of
+  always `k-core` (#10).
 - `--directed --decomp dcores` crashed with a Pydantic `ValidationError` while building
   components (`Component` was constructed with `id`/`index` instead of `component_id`/
   `shell_index`). The d-core path through `Network.decompose()` and the CLI works again

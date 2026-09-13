@@ -95,7 +95,7 @@ def visualize_caida_kdenses():
 
     # K-denses typically produces fewer shells than k-cores
     print(f"\n      K-denses range: {result.min_index}-{result.max_index}")
-    print("      (Compare with k-cores which typically ranges 1-79 for this dataset)")
+    print("      (Compare with k-cores, which range 1-149 for this dataset)")
 
     # Generate visualization
     print("\n[4/5] Generating visualization...")
@@ -130,8 +130,9 @@ def visualize_caida_kdenses():
 
     print("\nAbout K-Denses:")
     print("  K-denses decomposition identifies cohesive subgraphs based on")
-    print("  triangle density rather than node degree. A node belongs to the")
-    print("  k-dense if it participates in at least k triangles.")
+    print("  triangles rather than node degree. An edge belongs to the k-dense")
+    print("  if it closes at least k-2 triangles inside it; a node takes the")
+    print("  index of its densest edge.")
     print("")
     print("  Comparison with K-cores:")
     print("  • K-denses: Triangle-based → identifies tight communities")

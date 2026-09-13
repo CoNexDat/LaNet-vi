@@ -81,8 +81,14 @@ The visualization clearly shows this hierarchical structure with colored concent
 
 LaNet-vi also supports **k-dense decomposition** (also called m-core):
 
-- Based on **triangle density** rather than degree
-- A k-dense subgraph requires k triangles per node
+- Based on **triangles** rather than degree
+- The k-dense of a graph is the maximal subgraph in which every edge closes at least
+  k − 2 triangles inside the subgraph (the k-truss); the m-core numbering counts the
+  triangles, m = k − 2
+- Every edge is assigned the largest k whose k-dense contains it (2 for an edge in no
+  triangle), and a node takes the largest index among its edges
+- Computed by peeling edges in order of triangle count, exactly as the C++ LaNet-vi
+  (removing an edge lowers the count of the two other sides of each triangle it closed)
 - Identifies more cohesive structures than k-cores
 - Useful for community detection and clustering analysis
 
