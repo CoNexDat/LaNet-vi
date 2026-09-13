@@ -104,7 +104,11 @@ visualization:
   # Whether to draw component border circles
   draw_circles: true
 
-  # Whether to show k-core/k-dense legend
+  # Whether to show the shell / dense index colour legend
+  show_color_legend: true
+
+  # Whether to show the degree (node size) legend, as the C++ -showDegreeScale
+  # (show_size_legend is a deprecated alias of this setting)
   show_degree_scale: true
 
   # Maximum value for color scale normalization (null = auto)

@@ -1,9 +1,9 @@
 """Configuration models for LaNet-vi using Pydantic."""
 
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 
 class BackgroundColor(str, Enum):
@@ -127,7 +127,9 @@ class VisualizationConfig(BaseModel):
     draw_circles : bool
         Whether to draw component border circles
     show_degree_scale : bool
-        Whether to show degree scale in the picture
+        Whether to show the degree (node size) legend, as the C++ ``-showDegreeScale``
+    show_color_legend : bool
+        Whether to show the shell/dense index colour legend
     color_scale_max_value : Optional[int]
         Maximum value for color scale normalization
     gradient_edges : bool
@@ -164,6 +166,7 @@ class VisualizationConfig(BaseModel):
     unit_length: float = Field(default=1.0, gt=0.0)
     draw_circles: bool = False
     show_degree_scale: bool = True
+    show_color_legend: bool = True
     color_scale_max_value: int | None = Field(default=None, gt=0)
     gradient_edges: bool = Field(default=True)
     # Changed from 0.3 to 0.6 for better visibility
@@ -175,9 +178,24 @@ class VisualizationConfig(BaseModel):
     label_kcore_min: int | None = Field(default=None, ge=1)
     label_kcore_max: int | None = Field(default=None, ge=1)
     node_edge_color: str | None = Field(default=None)
+    # Deprecated alias of show_degree_scale (kept so old YAML files still load)
     show_size_legend: bool = Field(default=True)
     # Changed from 1.0 to 0.5 for moderate node sizes
     node_size_scale: float = Field(default=0.5, gt=0.0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def fold_deprecated_size_legend(cls, data: Any) -> Any:
+        """Map the deprecated ``show_size_legend`` alias onto ``show_degree_scale``.
+
+        The alias only applies when ``show_degree_scale`` itself is absent, so a
+        file that sets the current field is never overridden by the old one.
+        """
+        if isinstance(data, dict) and "show_size_legend" in data:
+            data = dict(data)
+            alias = data.pop("show_size_legend")
+            data.setdefault("show_degree_scale", alias)
+        return data
 
     @field_validator("width", "height")
     @classmethod

@@ -82,12 +82,12 @@ def render_network(
     if node_names:
         _draw_labels(ax, layout, node_names, config, decomposition)
 
-    # Draw degree scale legend if requested
-    if config.show_degree_scale:
+    # Colour legend (shell / dense index); unconditional in the C++
+    if config.show_color_legend:
         _draw_degree_scale(ax, decomposition, config)
 
-    # Draw size legend if requested
-    if config.show_size_legend:
+    # Degree (node size) legend: the C++ -showDegreeScale
+    if config.show_degree_scale:
         _draw_size_legend(ax, graph, config)
 
     # Save figure
@@ -277,7 +277,7 @@ def _draw_labels(
     text_color = "black" if config.background == BackgroundColor.WHITE else "white"
 
     for node, (x, y) in layout.node_positions.items():
-        if node not in node_names or node_names[node] == "0":
+        if node not in node_names:
             continue
 
         # Apply k-core filtering if not labeling all nodes

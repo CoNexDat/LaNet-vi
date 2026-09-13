@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import networkx as nx
+import pytest
 
 from lanet_vi.core.network import Network
 from lanet_vi.models.config import (
@@ -62,3 +63,62 @@ def test_layout_positions_cover_all_nodes(karate: nx.Graph):
     assert set(layout.node_sizes) == set(karate.nodes())
     xmin, xmax, ymin, ymax = layout.bounds
     assert xmin <= xmax and ymin <= ymax
+
+
+@pytest.mark.parametrize(
+    ("color_legend", "degree_legend"),
+    [(True, True), (True, False), (False, True), (False, False)],
+)
+def test_legend_switches_gate_their_helpers(
+    karate: nx.Graph, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, color_legend, degree_legend
+):
+    """show_color_legend gates the colour legend and show_degree_scale the degree legend."""
+    from lanet_vi.models.config import LaNetConfig, VisualizationConfig
+    from lanet_vi.visualization import matplotlib_renderer as mr
+
+    calls: list[str] = []
+    monkeypatch.setattr(mr, "_draw_degree_scale", lambda *a, **k: calls.append("color"))
+    monkeypatch.setattr(mr, "_draw_size_legend", lambda *a, **k: calls.append("degree"))
+
+    config = LaNetConfig(
+        visualization=VisualizationConfig(
+            width=300,
+            height=300,
+            show_color_legend=color_legend,
+            show_degree_scale=degree_legend,
+        )
+    )
+    net = Network(karate, config)
+    net.decompose()
+    net.visualize(tmp_path / "out.png")
+
+    assert ("color" in calls) is color_legend
+    assert ("degree" in calls) is degree_legend
+
+
+def test_labels_are_drawn_for_every_named_node_including_zero(
+    karate: nx.Graph, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A node named "0" is labelled like any other (the old skip is gone)."""
+    from matplotlib.axes import Axes
+
+    from lanet_vi.models.config import LaNetConfig, VisualizationConfig
+
+    drawn: list[str] = []
+    original_text = Axes.text
+
+    def spy(self, x, y, s, *args, **kwargs):  # noqa: ANN001, ANN202
+        drawn.append(str(s))
+        return original_text(self, x, y, s, *args, **kwargs)
+
+    monkeypatch.setattr(Axes, "text", spy)
+
+    config = LaNetConfig(
+        visualization=VisualizationConfig(width=300, height=300, show_node_labels=True)
+    )
+    net = Network(karate, config)
+    net.node_names = {0: "0", 1: "one"}
+    net.decompose()
+    net.visualize(tmp_path / "out.png")
+
+    assert "0" in drawn and "one" in drawn
