@@ -130,7 +130,7 @@ uv run python examples/caida_kdenses_example.py
 
 **K-denses (triangle-based):**
 - Identifies cohesive communities
-- Node in k-dense if it participates in ≥k triangles
+- Edge in k-dense if it closes ≥k−2 triangles within the k-dense; a node takes its densest edge
 - Narrower range of shells (2-55 for this dataset)
 - Reveals tightly-knit groups with strong interconnections
 

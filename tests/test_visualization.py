@@ -126,7 +126,11 @@ def test_labels_are_drawn_for_every_named_node_including_zero(
 
 @pytest.mark.parametrize(
     ("decomp_type", "title"),
-    [(DecompositionType.KCORES, "k-core"), (DecompositionType.KDENSES, "k-dense")],
+    [
+        (DecompositionType.KCORES, "k-core"),
+        (DecompositionType.KDENSES, "k-dense"),
+        (DecompositionType.DCORES, "d-core"),
+    ],
 )
 def test_color_legend_title_follows_decomposition(
     karate: nx.Graph, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, decomp_type, title
@@ -144,7 +148,8 @@ def test_color_legend_title_follows_decomposition(
 
     monkeypatch.setattr(Axes, "legend", spy)
 
-    net = Network(karate, _small_config())
+    graph = karate.to_directed() if decomp_type is DecompositionType.DCORES else karate
+    net = Network(graph, _small_config())
     net.decompose(decomp_type)
     net.visualize(tmp_path / "out.png")
 

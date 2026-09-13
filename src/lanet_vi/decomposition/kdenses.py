@@ -33,8 +33,8 @@ def compute_kdenses(graph: nx.Graph) -> DecompositionResult:
     -------
     DecompositionResult
         ``node_indices`` maps every node to its k-dense index (``>= 2``);
-        ``metadata["edge_indices"]`` maps every simple edge ``(u, v)`` to its k-dense
-        index, which the C++ uses to colour edges.
+        ``metadata["edge_indices"]`` maps every simple edge ``(u, v)``, ``u < v``, to its
+        k-dense index, which the C++ uses to colour edges.
 
     Notes
     -----
@@ -61,13 +61,14 @@ def compute_kdenses(graph: nx.Graph) -> DecompositionResult:
 
     edge_indices: dict[tuple[int, int], int] = {}
     dense_indices: dict[int, int] = {node: MIN_DENSE_INDEX for node in nodes}
-    for (u, v), s in support.items():
+    for (iu, iv), s in support.items():
         dense = MIN_DENSE_INDEX + s
-        edge_indices[(nodes[u], nodes[v])] = dense
-        if dense > dense_indices[nodes[u]]:
-            dense_indices[nodes[u]] = dense
-        if dense > dense_indices[nodes[v]]:
-            dense_indices[nodes[v]] = dense
+        u, v = nodes[iu], nodes[iv]
+        edge_indices[(u, v) if u < v else (v, u)] = dense
+        if dense > dense_indices[u]:
+            dense_indices[u] = dense
+        if dense > dense_indices[v]:
+            dense_indices[v] = dense
 
     return DecompositionResult(
         decomp_type="kdenses",

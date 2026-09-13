@@ -73,6 +73,9 @@ def test_kdenses_independent_of_edge_order():
 
     assert compute_kdenses(first).node_indices == {0: 3, 1: 3, 2: 3}
     assert compute_kdenses(second).node_indices == {0: 3, 1: 3, 2: 3}
+    # Edge keys are canonical (u < v) whatever the insertion order
+    assert compute_kdenses(first).metadata["edge_indices"] == {(0, 1): 3, (0, 2): 3, (1, 2): 3}
+    assert compute_kdenses(second).metadata["edge_indices"] == {(0, 1): 3, (0, 2): 3, (1, 2): 3}
 
 
 def test_kdenses_complete_graph():
