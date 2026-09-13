@@ -4,8 +4,14 @@ D-cores extend k-cores to directed graphs by considering both in-degree and out-
 Each node is assigned a (k_in, k_out) pair indicating its core membership based on
 incoming and outgoing edges separately.
 
-This implementation is based on the algorithm from legacy/Source/graph_dcores.cpp
+Each direction is peeled independently: ``k_in`` is the largest k such that the node
+belongs to the subgraph where every node has in-degree >= k, and ``k_out`` likewise for
+out-degree. (The original C++ tool also had a variant that, for each out-degree threshold
+l, computed the in-degree core number within the (0, l)-out-core; that per-l table is not
+implemented here.)
 """
+
+from collections import defaultdict
 
 import networkx as nx
 
@@ -175,7 +181,11 @@ def find_components_by_dcore(
     decomposition: DecompositionResult,
 ) -> DecompositionResult:
     """
-    Find connected components within each d-core level.
+    Find weakly connected components within each d-core level.
+
+    Nodes are grouped by ``max(k_in, k_out)``, the same value stored in
+    ``decomposition.node_indices`` and used by the layout, so the resulting
+    components line up with the rings drawn for the other decompositions.
 
     Parameters
     ----------
@@ -188,49 +198,28 @@ def find_components_by_dcore(
     -------
     DecompositionResult
         Updated decomposition with component information
-
-    Notes
-    -----
-    Uses weakly connected components for directed graphs.
     """
     logger.debug("Finding components for d-core decomposition")
 
-    # Get d-core pairs from metadata
-    if "d_cores" not in decomposition.metadata:
-        logger.warning("No d-core pairs in metadata, using simple indices")
-        d_cores = {node: (idx, idx) for node, idx in decomposition.node_indices.items()}
-    else:
-        d_cores = decomposition.metadata["d_cores"]
+    nodes_by_level: dict[int, list[int]] = defaultdict(list)
+    for node, level in decomposition.node_indices.items():
+        nodes_by_level[level].append(node)
 
-    # Group nodes by (k_in, k_out) pair
-    from collections import defaultdict
-
-    cores_dict = defaultdict(list)
-
-    for node, (k_in, k_out) in d_cores.items():
-        # Use simple max index for grouping
-        k = max(k_in, k_out)
-        cores_dict[k].append(node)
-
-    # Find components in each core level
-    components = []
+    components: list[Component] = []
     component_id = 0
 
-    for core_level in sorted(cores_dict.keys(), reverse=True):
-        nodes_in_core = cores_dict[core_level]
+    for core_level in sorted(nodes_by_level, reverse=True):
+        subgraph = graph.subgraph(nodes_by_level[core_level])
 
-        # Create subgraph
-        subgraph = graph.subgraph(nodes_in_core)
-
-        # Find weakly connected components
         for comp_nodes in nx.weakly_connected_components(subgraph):
-            component = Component(
-                id=component_id,
-                index=core_level,
-                nodes=list(comp_nodes),
-                size=len(comp_nodes),
+            components.append(
+                Component(
+                    component_id=component_id,
+                    nodes=list(comp_nodes),
+                    shell_index=core_level,
+                    size=len(comp_nodes),
+                )
             )
-            components.append(component)
             component_id += 1
 
     decomposition.components = components

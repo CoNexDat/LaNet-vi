@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `--directed --decomp dcores` crashed with a Pydantic `ValidationError` while building
+  components (`Component` was constructed with `id`/`index` instead of `component_id`/
+  `shell_index`). The d-core path through `Network.decompose()` and the CLI works again
+  and is now covered by tests (#21).
 - `write_decomposition_json` crashed when components were present (it read non-existent
   `Component.id` / `Component.index` attributes).
 - `lanet_vi.community.base` failed to import on Python 3.9 because of `X | None` return
