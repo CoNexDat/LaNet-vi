@@ -302,6 +302,10 @@ def _draw_labels(
         )
 
 
+#: Legend title per decomposition type (the C++ prints the index name next to the scale).
+_LEGEND_TITLES = {"kcores": "k-core", "kdenses": "k-dense", "dcores": "d-core"}
+
+
 def _draw_degree_scale(
     ax: plt.Axes,
     decomposition: DecompositionResult,
@@ -383,7 +387,7 @@ def _draw_degree_scale(
         loc="center right",  # Moved from "upper right" to match reference image
         frameon=False,  # Remove frame completely
         fontsize=fontsize,
-        title="k-core",
+        title=_LEGEND_TITLES.get(decomposition.decomp_type, decomposition.decomp_type),
         labelcolor=text_color,  # Set label text color
         title_fontproperties={"size": fontsize, "weight": "bold"},
     )

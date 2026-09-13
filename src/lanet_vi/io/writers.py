@@ -113,7 +113,7 @@ def write_decomposition_json(
     # Include metadata (d-cores pairs, community info, etc.)
     if include_metadata and result.metadata:
         # Handle special metadata types
-        processed_metadata = {}
+        processed_metadata: dict[str, Any] = {}
         for key, value in result.metadata.items():
             if key == "d_cores":
                 # Convert (k_in, k_out) tuples to lists for JSON serialization
@@ -121,6 +121,9 @@ def write_decomposition_json(
                     str(node): list(pair) if isinstance(pair, tuple) else pair
                     for node, pair in value.items()
                 }
+            elif key == "edge_indices":
+                # Tuple keys are not JSON keys; emit [u, v, index] triples
+                processed_metadata[key] = [[u, v, idx] for (u, v), idx in value.items()]
             else:
                 processed_metadata[key] = value
 
