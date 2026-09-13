@@ -110,7 +110,7 @@ uv run python examples/caida_kdenses_example.py
 
 - **Nodes:** 78,370 Autonomous Systems
 - **Edges:** 489,407 AS relationships
-- **K-dense range:** 2 to 55
+- **K-dense range:** 2 to 105
 - **Components:** 66,396
 
 (Numbers from the 20251001 snapshot; they change between snapshots.)
@@ -138,19 +138,19 @@ uv run python examples/caida_kdenses_example.py
 
 The k-denses visualization reveals cohesive communities in Internet topology:
 
-**Inner core (red/orange, k=40-55):**
+**Inner core (red/orange, k≈70-105):**
 - Most densely interconnected AS groups
 - Hypergiants and Tier-1 providers forming tight meshes
 - High triangle density (many mutual peering relationships)
 - Critical infrastructure with redundant paths
 
-**Middle rings (yellow/green, k=10-40):**
+**Middle rings (yellow/green, k≈20-70):**
 - Regional ISP communities
 - Transit provider clusters
 - Moderate triangle density
 - Local interconnection hubs
 
-**Outer rings (blue/purple, k=2-10):**
+**Outer rings (blue/purple, k=2-20):**
 - Peripheral AS groups
 - Stub networks with minimal peering
 - Low triangle density
@@ -158,7 +158,7 @@ The k-denses visualization reveals cohesive communities in Internet topology:
 
 ### Comparison with K-Cores
 
-K-denses produces far fewer shells than k-cores for the same network (55 vs 149), indicating that triangle-based decomposition is more selective. While k-cores shows the broad hierarchical structure, k-denses highlights where ASes form tightly-knit communities with mutual relationships.
+K-denses produces fewer shells than k-cores for the same network (2-105 vs 1-149) and pushes most ASes to the periphery (59% of the ASes are in no triangle at all and sit at k=2), indicating that triangle-based decomposition is more selective. While k-cores shows the broad hierarchical structure, k-denses highlights where ASes form tightly-knit communities with mutual relationships.
 
 For Internet topology analysis:
 - Use **k-cores** to understand overall hierarchical structure
