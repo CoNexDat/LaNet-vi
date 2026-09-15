@@ -486,5 +486,5 @@ def test_config_file_with_non_mapping_top_level_is_a_usage_error(
     )
 
     assert result.exit_code != 0
-    assert "--config" in result.output
+    assert "top level must be a mapping" in result.output  # rich may style "--config"
     assert "Traceback" not in result.output
