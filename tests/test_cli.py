@@ -324,8 +324,8 @@ def test_deprecated_show_size_legend_alias():
 
 
 def test_build_config_reports_malformed_section_via_validation(tmp_path: Path):
-    """A non-mapping section in the YAML is reported by validation, not a TypeError."""
-    from pydantic import ValidationError
+    """A non-mapping section in the YAML is reported as a usage error, not a TypeError."""
+    import typer
 
     from lanet_vi.cli import _build_config
 
@@ -341,7 +341,7 @@ def test_build_config_reports_malformed_section_via_validation(tmp_path: Path):
 
             return Src()
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(typer.BadParameter, match="visualization"):
         _build_config(FakeCtx(), cfg)  # type: ignore[arg-type]
 
 
@@ -414,3 +414,51 @@ def test_no_node_labels_overrides_names(small_edge_list: Path, tmp_path: Path):
         )
     assert result.exit_code == 0, result.output
     assert seen["labels"] is False
+
+
+def test_weighted_strength_flags_reach_the_decomposition(small_edge_list: Path, tmp_path: Path):
+    """--maximum-strength and --strength-intervals custom/--strength-intervals-file (#20)."""
+    from unittest.mock import patch
+
+    from lanet_vi.core.network import Network
+
+    seen: dict[str, object] = {}
+    original = Network.visualize
+
+    def spy(self, *args, **kwargs):  # noqa: ANN001, ANN202
+        seen["decomposition"] = self.config.decomposition
+        seen["p_function"] = self.decomposition.p_function
+        return original(self, *args, **kwargs)
+
+    intervals = tmp_path / "intervals.txt"
+    intervals.write_text("1\n2\n")
+    common = [
+        "visualize",
+        "--input",
+        str(small_edge_list),
+        "--output",
+        str(tmp_path / "o.png"),
+        "--weighted",
+        "--width",
+        "300",
+        "--height",
+        "300",
+        "--quiet",
+    ]
+
+    with patch.object(Network, "visualize", spy):
+        result = runner.invoke(app, [*common, "--granularity", "2", "--maximum-strength", "6"])
+    assert result.exit_code == 0, result.output
+    assert seen["decomposition"].maximum_strength == 6.0
+    assert seen["p_function"] == [0.0, 3.0, 6.0]
+
+    with patch.object(Network, "visualize", spy):
+        custom = ["--strength-intervals", "custom", "--strength-intervals-file", str(intervals)]
+        result = runner.invoke(app, [*common, *custom])
+    assert result.exit_code == 0, result.output
+    assert seen["decomposition"].strength_intervals_file == intervals
+    assert seen["p_function"] == [0.0, 1.0, 2.0]
+
+    result = runner.invoke(app, [*common, "--strength-intervals", "custom"])
+    assert result.exit_code != 0
+    assert "strength_intervals_file" in result.output

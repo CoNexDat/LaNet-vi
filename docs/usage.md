@@ -174,9 +174,14 @@ lanet-vi visualize --input large_network.txt \\
 ```bash
 lanet-vi visualize --input weighted_network.txt \\
   --weighted \\
-  --decomp kdenses \\
-  --output kdense_viz.png
+  --granularity 20 \\
+  --strength-intervals equalNodesPerInterval \\
+  --output weighted_viz.png
 ```
+
+`--maximum-strength` fixes the top of the strength scale (useful to compare networks) and
+`--strength-intervals custom --strength-intervals-file bounds.txt` reads the interval
+boundaries, one per line, from a file. See [concepts.md](concepts.md#weighted-k-cores).
 
 **Using configuration file:**
 

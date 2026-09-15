@@ -77,6 +77,28 @@ In the CAIDA AS-relationships dataset:
 
 The visualization clearly shows this hierarchical structure with colored concentric rings.
 
+## Weighted K-Cores
+
+With `--weighted`, the degree is replaced by the **strength** (sum of incident edge
+weights) and the integer shells by strength intervals, as in the C++ LaNet-vi:
+
+- A *p-function* splits the strength range into `--granularity` intervals (default:
+  as many as the maximum degree). `--strength-intervals` chooses how:
+  `equalIntervalSize` (default; equal width up to the largest strength or
+  `--maximum-strength`), `equalNodesPerInterval` (boundaries taken from the sorted
+  strengths so every interval holds the same number of nodes), `equalLogIntervalSize`
+  (geometric progression) or `custom` (boundaries read one per line from
+  `--strength-intervals-file`)
+- Every node starts in the interval of its total strength, then shells are peeled in
+  increasing order: when a node of shell k is removed, each neighbour is re-binned
+  using only the strength it still receives from nodes above shell k, and never moves
+  below k. A node has index ≥ k iff it belongs to a subgraph where every member
+  receives strength in interval ≥ k from the other members — the generalised k-core
+- Indices run 1..granularity (0 for an isolated node). The C++ 3.0.1 numbered two of
+  the interval methods 2..granularity+1 because of a duplicated 0.0 boundary
+- `--maximum-strength` fixes the top boundary so pictures of different networks share
+  the same scale
+
 ## K-Dense Decomposition
 
 LaNet-vi also supports **k-dense decomposition** (also called m-core):

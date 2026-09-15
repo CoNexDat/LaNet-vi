@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
+from pydantic import ValidationError
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
@@ -35,6 +36,8 @@ _CLI_TO_CONFIG: dict[str, tuple[str, str]] = {
     "from_layer": ("decomposition", "from_layer"),
     "granularity": ("decomposition", "granularity"),
     "strength_intervals": ("decomposition", "strength_intervals"),
+    "maximum_strength": ("decomposition", "maximum_strength"),
+    "strength_intervals_file": ("decomposition", "strength_intervals_file"),
     "no_cliques": ("decomposition", "no_cliques"),
     "background": ("visualization", "background"),
     "color_scheme": ("visualization", "color_scheme"),
@@ -119,7 +122,13 @@ def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
             # Deprecated CLI alias of --show-degree-scale
             data[section]["show_degree_scale"] = value
 
-    return LaNetConfig.model_validate(data)
+    try:
+        return LaNetConfig.model_validate(data)
+    except ValidationError as exc:
+        problems = "; ".join(
+            f"{'.'.join(str(loc) for loc in err['loc'])}: {err['msg']}" for err in exc.errors()
+        )
+        raise typer.BadParameter(f"Invalid configuration: {problems}") from exc
 
 
 app = typer.Typer(
@@ -185,11 +194,23 @@ def visualize(
     from_layer: int = typer.Option(
         0, "--from-layer", help="Start from this layer (not implemented yet, #23)"
     ),
-    granularity: int = typer.Option(-1, "--granularity", help="Groups in weighted graphs"),
+    granularity: int = typer.Option(
+        -1, "--granularity", help="Groups in weighted graphs (-1: maximum degree)"
+    ),
     strength_intervals: StrengthIntervalMethod = typer.Option(
         StrengthIntervalMethod.EQUAL_SIZE,
         "--strength-intervals",
-        help="Strength interval method",
+        help="How to build the strength intervals of weighted graphs",
+    ),
+    maximum_strength: float | None = typer.Option(
+        None,
+        "--maximum-strength",
+        help="Upper limit of the strength intervals (to compare pictures of different networks)",
+    ),
+    strength_intervals_file: Path | None = typer.Option(
+        None,
+        "--strength-intervals-file",
+        help="Interval boundaries, one per line, for --strength-intervals custom",
     ),
     coord_distribution: CoordDistributionAlgorithm = typer.Option(
         CoordDistributionAlgorithm.CLASSIC,

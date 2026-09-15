@@ -134,7 +134,7 @@ Supports `.txt`, `.txt.gz`, `.txt.bz2` formats.
 
 **Decomposition:**
 - `--decomp [kcores|kdenses|dcores]`: Decomposition algorithm (default: kcores)
-- `--weighted`: Graph has edge weights
+- `--weighted`: Graph has edge weights (strength-based k-cores; see `--granularity`, `--strength-intervals`, `--maximum-strength`)
 - `--directed`: Graph is directed (required for dcores)
 
 **Visualization:**

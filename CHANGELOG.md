@@ -37,6 +37,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Weighted k-cores (#20) now peel, as the C++ `findCores` weighted branch does: every
+  node starts in the strength interval of its total strength and, when a shell is
+  removed, its neighbours are re-binned using only the strength they still receive from
+  nodes above that shell. The previous code only binned total strengths (a histogram,
+  not a core decomposition; it disagreed with the C++ on 1,570 of 2,070 random
+  configurations). Default granularity is the maximum degree again (the cap at 100 is
+  gone). Indices run `1..granularity` in every interval method (0 for isolated nodes);
+  the C++ 3.0.1 ran `2..granularity+1` in `equalIntervalSize` and
+  `equalNodesPerInterval` because of a duplicated `0.0` boundary. `equalLogIntervalSize`
+  starts from the smallest positive strength instead of dividing by zero.
+- New `--maximum-strength` (config `maximum_strength`, the C++ `-maximumStrength`) and
+  `--strength-intervals custom` with `--strength-intervals-file` (config
+  `strength_intervals_file`, the C++ 4.0.0 `-strengthsIntervalsFile`) (#20).
+- Invalid configuration (from the YAML file or the flags) is reported as a usage error
+  instead of a Pydantic traceback.
 - K-dense decomposition (#19) now implements the C++ triangle-pair peeling (the k-truss
   decomposition): every edge starts with its triangle count and removing an edge lowers the
   count of the two other sides of each triangle it closed. The previous code took a plain
