@@ -102,7 +102,7 @@ def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
     if config_file is not None:
         try:
             file_data = read_config_yaml(config_file)
-        except (ValueError, yaml.YAMLError) as exc:
+        except (OSError, ValueError, yaml.YAMLError) as exc:
             raise typer.BadParameter(str(exc), param_hint="--config") from exc
         for section, values in file_data.items():
             if isinstance(values, dict) and isinstance(data.get(section), dict):

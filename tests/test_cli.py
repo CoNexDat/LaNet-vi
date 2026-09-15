@@ -479,6 +479,10 @@ def test_config_file_with_non_mapping_top_level_is_a_usage_error(
     assert result.exit_code == 2
     assert isinstance(result.exception, SystemExit)
 
+    result = _invoke_with_config(small_edge_list, tmp_path, tmp_path / "missing.yaml")
+    assert result.exit_code == 2
+    assert isinstance(result.exception, SystemExit)
+
 
 def _invoke_with_config(small_edge_list: Path, tmp_path: Path, cfg: Path):  # noqa: ANN202
     return runner.invoke(

@@ -65,8 +65,10 @@ def compute_kcores(
         else any("weight" in data for _, _, data in graph.edges(data=True))
     )
 
-    if is_weighted and (graph.is_multigraph() or graph.is_directed()):
-        graph = _as_weighted_simple_graph(graph)
+    if is_weighted:
+        _check_weights_non_negative(graph)
+        if graph.is_multigraph() or graph.is_directed():
+            graph = _as_weighted_simple_graph(graph)
 
     if not is_weighted:
         logger.info("Using unweighted k-core algorithm (NetworkX core_number)")
@@ -188,25 +190,27 @@ def _core_number(graph: nx.Graph) -> dict[int, int]:
     return core
 
 
-def _node_strengths(graph: nx.Graph) -> dict[int, float]:
-    """Strength (sum of incident edge weights, missing weight = 1.0) of every node.
+def _check_weights_non_negative(graph: nx.Graph) -> None:
+    """Refuse negative weights on the raw edges, before parallel edges are merged.
 
-    Negative weights are refused: the strength scale starts at 0 and the peeling relies
-    on strengths only decreasing as neighbours are removed.
+    The strength scale starts at 0 and the peeling relies on strengths only decreasing
+    as neighbours are removed.
     """
-    strengths: dict[int, float] = {}
-    for node in graph.nodes():
-        total = 0.0
-        for other, data in graph[node].items():
-            w = data.get("weight", 1.0)
-            if w < 0:
-                raise ValueError(
-                    f"Edge ({node}, {other}) has negative weight {w}; strength-based "
-                    "k-cores need non-negative weights"
-                )
-            total += w
-        strengths[node] = total
-    return strengths
+    for u, v, data in graph.edges(data=True):
+        w = data.get("weight", 1.0)
+        if w < 0:
+            raise ValueError(
+                f"Edge ({u}, {v}) has negative weight {w}; strength-based k-cores need "
+                "non-negative weights"
+            )
+
+
+def _node_strengths(graph: nx.Graph) -> dict[int, float]:
+    """Strength (sum of incident edge weights, missing weight = 1.0) of every node."""
+    return {
+        node: sum(data.get("weight", 1.0) for data in graph[node].values())
+        for node in graph.nodes()
+    }
 
 
 def _build_p_function(

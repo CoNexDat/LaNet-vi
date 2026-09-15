@@ -410,6 +410,18 @@ def test_weighted_negative_weights_are_rejected():
     with pytest.raises(ValueError, match="negative weight"):
         compute_kcores(G, DecompositionConfig(), weighted=True)
 
+    # Checked on the raw edges: parallel -1 and +2 must not slip through as +1
+    multi = nx.MultiGraph()
+    multi.add_weighted_edges_from([(0, 1, -1.0), (0, 1, 2.0)])
+    with pytest.raises(ValueError, match="negative weight"):
+        compute_kcores(multi, DecompositionConfig(), weighted=True)
+
+
+def test_maximum_strength_must_be_finite():
+    """Inf would make every boundary infinite."""
+    with pytest.raises(ValueError):
+        DecompositionConfig(maximum_strength=float("inf"))
+
 
 def test_weighted_hub_with_many_leaves_is_fast():
     """The residual strength is kept incrementally, so a hub is not rescanned per leaf."""

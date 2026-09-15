@@ -241,7 +241,7 @@ class DecompositionConfig(BaseModel):
     from_layer: int = Field(default=0, ge=0)
     granularity: int = Field(default=-1, ge=-1)
     strength_intervals: StrengthIntervalMethod = StrengthIntervalMethod.EQUAL_SIZE
-    maximum_strength: float | None = Field(default=None, gt=0.0)
+    maximum_strength: float | None = Field(default=None, gt=0.0, allow_inf_nan=False)
     strength_intervals_file: Path | None = None
     no_cliques: bool = False
 
