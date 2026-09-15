@@ -485,6 +485,8 @@ def test_config_file_with_non_mapping_top_level_is_a_usage_error(
         ],
     )
 
-    assert result.exit_code != 0
-    assert "top level must be a mapping" in result.output  # rich may style "--config"
-    assert "Traceback" not in result.output
+    # BadParameter exits with code 2 through SystemExit; a raw ValueError would surface
+    # as result.exception instead (and its message is wrapped/styled by rich, so it is
+    # not asserted on)
+    assert result.exit_code == 2
+    assert isinstance(result.exception, SystemExit)
