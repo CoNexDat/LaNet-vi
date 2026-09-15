@@ -1,4 +1,8 @@
-"""K-core decomposition using NetworkX."""
+"""K-core decomposition (degree-based and, for weighted graphs, strength-based)."""
+
+import math
+from bisect import bisect_left
+from pathlib import Path
 
 import networkx as nx
 import numpy as np
@@ -61,8 +65,11 @@ def compute_kcores(
         else any("weight" in data for _, _, data in graph.edges(data=True))
     )
 
-    if is_weighted and (graph.is_multigraph() or graph.is_directed()):
-        graph = _as_weighted_simple_graph(graph)
+    max_degree = max((d for _, d in graph.degree()), default=0)  # parallel edges count
+    if is_weighted:
+        _check_weights_non_negative(graph)
+        if graph.is_multigraph() or graph.is_directed():
+            graph = _as_weighted_simple_graph(graph)
 
     if not is_weighted:
         logger.info("Using unweighted k-core algorithm (NetworkX core_number)")
@@ -82,11 +89,12 @@ def compute_kcores(
 
     else:
         logger.info("Using weighted k-core algorithm (strength-based p-function)")
-        # Weighted graph: use strength-based p-function
-        p_function = _build_p_function(graph, config)
+        # Weighted graph: bin strengths with the p-function, then peel
+        strengths = _node_strengths(graph)
+        p_function = _build_p_function(strengths, max_degree, config)
         logger.debug(f"Built p-function with {len(p_function)} intervals")
 
-        core_numbers = _compute_weighted_cores(graph, p_function)
+        core_numbers = _compute_weighted_cores(graph, strengths, p_function)
 
         max_core = max(core_numbers.values()) if core_numbers else 0
         min_core = min(core_numbers.values()) if core_numbers else 0
@@ -183,73 +191,107 @@ def _core_number(graph: nx.Graph) -> dict[int, int]:
     return core
 
 
+def _check_weights_non_negative(graph: nx.Graph) -> None:
+    """Refuse negative or non-finite weights on the raw edges, before any merge.
+
+    The strength scale starts at 0 and the peeling relies on strengths only decreasing
+    as neighbours are removed.
+    """
+    for u, v, data in graph.edges(data=True):
+        w = data.get("weight", 1.0)
+        if not math.isfinite(w) or w < 0:
+            raise ValueError(
+                f"Edge ({u}, {v}) has weight {w}; strength-based k-cores need finite, "
+                "non-negative weights"
+            )
+
+
+def _node_strengths(graph: nx.Graph) -> dict[int, float]:
+    """Strength (sum of incident edge weights, missing weight = 1.0) of every node."""
+    strengths = {
+        node: sum(data.get("weight", 1.0) for data in graph[node].values())
+        for node in graph.nodes()
+    }
+    overflowed = [node for node, s in strengths.items() if not math.isfinite(s)]
+    if overflowed:
+        raise ValueError(f"Strength of node {overflowed[0]} overflows to infinity")
+    return strengths
+
+
 def _build_p_function(
-    graph: nx.Graph,
+    strengths: dict[int, float],
+    max_degree: int,
     config: DecompositionConfig,
 ) -> list[float]:
     """
-    Build p-function for weighted graph decomposition.
+    Build the p-function (strength interval boundaries) for weighted decomposition.
 
-    The p-function defines strength intervals that partition nodes
-    into groups based on their weighted degree (strength).
+    Port of ``Graph_KCores::buildPFunction``. ``p_function[0]`` is ``0.0`` and a node
+    of strength ``s`` gets index ``i`` when ``p_function[i - 1] < s <= p_function[i]``
+    (see ``_p_index``), so ``granularity`` intervals give indices ``1..granularity``
+    and an isolated node gets ``0``, like the unweighted core number.
 
     Parameters
     ----------
-    graph : nx.Graph
-        Weighted graph
+    strengths : Dict[int, float]
+        Node strengths
+    max_degree : int
+        Maximum degree of the input graph (parallel edges counted): the default
+        granularity, as in the C++
     config : DecompositionConfig
-        Configuration with granularity and interval method
+        Granularity, interval method, maximum strength and custom intervals file
 
     Returns
     -------
     List[float]
-        Strength interval boundaries
+        Non-decreasing boundaries starting at ``0.0``
+
+    Notes
+    -----
+    The C++ 3.0.1 pushed ``0.0`` twice for ``equalNodesPerInterval`` and
+    ``equalIntervalSize`` (but not for ``equalLogIntervalSize``), so its indices ran
+    ``2..granularity + 1`` in those two modes. This port numbers every mode
+    ``1..granularity``.
     """
-    # Calculate node strengths (sum of edge weights)
-    strengths = []
-    for node in graph.nodes():
-        strength = sum(
-            graph[node][neighbor].get("weight", 1.0) for neighbor in graph.neighbors(node)
-        )
-        strengths.append(strength)
+    sorted_strengths = sorted(strengths.values())
+    n = len(sorted_strengths)
 
-    strengths = sorted(strengths)
+    if config.strength_intervals == StrengthIntervalMethod.CUSTOM:
+        return read_custom_intervals(config.strength_intervals_file)
 
-    # Determine granularity
-    if config.granularity == -1:
-        # Use maximum degree as granularity, but cap at 100 for performance
-        max_degree = max(dict(graph.degree()).values())
-        granularity = min(max_degree, 100)
-    else:
-        granularity = config.granularity
+    granularity = max_degree if config.granularity == -1 else config.granularity
+    granularity = max(granularity, 1)  # the weighted path is only taken with edges
 
-    # Build p-function based on interval method
     p_function = [0.0]
 
     if config.strength_intervals == StrengthIntervalMethod.EQUAL_NODES:
-        # Equal number of nodes per interval
-        n = len(graph.nodes())
+        # Boundaries taken from the sorted strengths, the same number of nodes per interval
         for i in range(1, granularity + 1):
             if i < granularity:
                 idx = int(np.ceil((n - 1) * i / granularity))
-                p_function.append(strengths[idx])
+                p_function.append(sorted_strengths[idx])
             else:
-                p_function.append(strengths[-1])
+                p_function.append(sorted_strengths[-1])
 
     elif config.strength_intervals == StrengthIntervalMethod.EQUAL_LOG_SIZE:
-        # Logarithmic intervals
-        a = strengths[0] if strengths[0] > 0 else 0.01
-        b = config.maximum_strength if config.maximum_strength else strengths[-1]
+        # Geometric progression from the smallest strength to the largest. The C++
+        # divided by the smallest strength as is; a zero (isolated node) would make
+        # the ratio infinite, so the smallest positive strength is used instead.
+        positive = [x for x in sorted_strengths if x > 0]
+        b = config.maximum_strength if config.maximum_strength else sorted_strengths[-1]
+        # A maximum below the smallest strength would make the progression descend
+        a = min(positive[0] if positive else 1.0, b)
 
         for i in range(1, granularity + 1):
-            if i < granularity:
-                p_function.append(a * ((b / a) ** (i / granularity)))
+            if i < granularity and a > 0:
+                # log-space so an extreme b/a ratio cannot overflow to inf
+                log_boundary = math.log(a) + (i / granularity) * (math.log(b) - math.log(a))
+                p_function.append(min(math.exp(log_boundary), b))
             else:
-                p_function.append(b)
+                p_function.append(b)  # all weights zero: every boundary is 0.0
 
     else:  # EQUAL_SIZE (default)
-        # Equal interval size
-        max_strength = config.maximum_strength if config.maximum_strength else strengths[-1]
+        max_strength = config.maximum_strength if config.maximum_strength else sorted_strengths[-1]
         interval_size = max_strength / granularity
 
         for i in range(1, granularity + 1):
@@ -261,47 +303,102 @@ def _build_p_function(
     return p_function
 
 
+def read_custom_intervals(path: Path | None) -> list[float]:
+    """
+    Read the p-function boundaries of ``strength_intervals = custom`` from a file.
+
+    One boundary per line, as the C++ ``-strengthsIntervalsFile``. A positive strength
+    in ``(0, p1]`` gets index 1, ``(p(i-1), pi]`` index ``i``, and anything above ``pn``
+    the last index ``n``; a strength of exactly 0 (isolated node) gets index 0, like
+    every other interval method.
+    """
+    if path is None:
+        raise ValueError("strength_intervals 'custom' needs strength_intervals_file")
+    boundaries: list[float] = []
+    with open(path) as f:
+        for line in f:
+            token = line.strip()
+            if not token or token.startswith("#"):
+                continue
+            boundaries.append(float(token))
+    if not boundaries:
+        raise ValueError(f"No strength intervals found in {path}")
+    if any(not math.isfinite(b) or b < 0 for b in boundaries):
+        raise ValueError(f"Strength intervals in {path} must be finite and non-negative")
+    if boundaries != sorted(boundaries):
+        raise ValueError(f"Strength intervals in {path} must be non-decreasing")
+    return [0.0, *boundaries]
+
+
+def _p_index(p_function: list[float], strength: float) -> int:
+    """Interval index of ``strength``: smallest ``i`` with ``p_function[i] >= strength``.
+
+    Port of ``Vertex::applyPFunction``; strengths above the last boundary get the last
+    index.
+    """
+    return min(bisect_left(p_function, strength), len(p_function) - 1)
+
+
 def _compute_weighted_cores(
     graph: nx.Graph,
+    strengths: dict[int, float],
     p_function: list[float],
 ) -> dict[int, int]:
     """
-    Compute core numbers for weighted graph using p-function.
+    Strength-based k-core decomposition (port of the weighted ``findCores``).
 
-    Assigns each node to a p-value (interval index) based on its strength,
-    then applies k-core-like peeling algorithm.
+    Every node starts at the interval index of its total strength. Shells are then
+    peeled in increasing order: when a node of the current shell ``k`` is removed,
+    each neighbour still above ``k`` is re-binned using only the strength it receives
+    from neighbours not yet removed, and moved down to ``max(new index, k)``. The
+    result is the generalised k-core: a node has index ``>= k`` iff it belongs to a
+    subgraph where every node receives strength in an interval ``>= k`` from the
+    others.
+
+    The C++ re-summed a neighbour's remaining strength on every re-binning (quadratic
+    in the degree of a hub); here the remaining strength is kept incrementally, so each
+    edge is subtracted once. Both peel to the same fixed point.
 
     Parameters
     ----------
     graph : nx.Graph
         Weighted graph
+    strengths : Dict[int, float]
+        Total strength of every node
     p_function : List[float]
         Strength interval boundaries
 
     Returns
     -------
     Dict[int, int]
-        Mapping from node to core number (p-value)
+        Mapping from node to shell index
     """
-    # Calculate node strengths and assign p-values
-    node_p_values = {}
-    for node in graph.nodes():
-        strength = sum(
-            graph[node][neighbor].get("weight", 1.0) for neighbor in graph.neighbors(node)
-        )
+    core = {node: _p_index(p_function, s) for node, s in strengths.items()}
+    if not core:
+        return core
 
-        # Find p-value (which interval the strength falls into)
-        p_value = 0
-        for i, threshold in enumerate(p_function[1:], start=1):
-            if strength <= threshold:
-                p_value = i
-                break
-        if p_value == 0:
-            p_value = len(p_function) - 1
+    buckets: list[set[int]] = [set() for _ in range(len(p_function))]
+    for node, k in core.items():
+        buckets[k].add(node)
 
-        node_p_values[node] = p_value
-
-    return node_p_values
+    remaining = dict(strengths)  # strength from neighbours not yet removed
+    done: set[int] = set()
+    for k, bucket in enumerate(buckets):
+        while bucket:
+            node = bucket.pop()
+            done.add(node)
+            for neighbour, data in graph[node].items():
+                if neighbour in done:
+                    continue
+                remaining[neighbour] -= data.get("weight", 1.0)
+                if core[neighbour] <= k:
+                    continue
+                new_k = max(_p_index(p_function, remaining[neighbour]), k)
+                if new_k != core[neighbour]:
+                    buckets[core[neighbour]].discard(neighbour)
+                    core[neighbour] = new_k
+                    buckets[new_k].add(neighbour)
+    return core
 
 
 def find_components_by_shell(

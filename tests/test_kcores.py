@@ -1,12 +1,14 @@
 """Tests for k-core decomposition."""
 
+import math
 from pathlib import Path
 
 import networkx as nx
+import pytest
 
 from lanet_vi.decomposition.kcores import compute_kcores
 from lanet_vi.io.readers import read_edge_list
-from lanet_vi.models.config import DecompositionConfig
+from lanet_vi.models.config import DecompositionConfig, StrengthIntervalMethod
 
 
 def test_kcores_simple_graph():
@@ -193,3 +195,296 @@ def test_network_autodetects_weights_without_config():
     nx.set_edge_attributes(G, 1.0, "weight")
 
     assert Network(G).decompose().p_function is not None
+
+
+# --- weighted (strength-based) k-cores: the C++ peeling (#20)
+
+
+def _p_index(p_function: list[float], strength: float) -> int:
+    """Smallest i with p_function[i] >= strength (last index if above all boundaries)."""
+    for i, boundary in enumerate(p_function):
+        if boundary >= strength:
+            return i
+    return len(p_function) - 1
+
+
+def _brute_force_weighted_cores(G: nx.Graph, p_function: list[float]) -> dict[int, int]:
+    """Generalised core by fixed point, independent of the peeling order.
+
+    A node has index >= k iff it belongs to the maximal subgraph in which every node
+    receives, from the other nodes of the subgraph, a strength whose interval is >= k.
+    """
+    index = {v: 0 for v in G}
+    for k in range(1, len(p_function)):
+        survivors = set(G)
+        changed = True
+        while changed:
+            changed = False
+            for v in list(survivors):
+                strength = sum(G[v][x].get("weight", 1.0) for x in G[v] if x in survivors)
+                if _p_index(p_function, strength) < k:
+                    survivors.remove(v)
+                    changed = True
+        for v in survivors:
+            index[v] = k
+    return index
+
+
+def _random_weighted_graph(seed: int) -> nx.Graph:
+    import random
+
+    rng = random.Random(seed)
+    G = nx.gnp_random_graph(rng.randint(6, 30), rng.uniform(0.15, 0.5), seed=seed)
+    for u, v in G.edges():
+        G[u][v]["weight"] = rng.choice([0.5, 1.0, 2.0, 3.0, 5.0, 10.0])
+    return G
+
+
+def test_weighted_cores_peel_instead_of_binning_total_strength():
+    """Issue #20: a hub whose strength comes from weak leaves must drop to their shell."""
+    # Triangle of weight-3 edges plus hub 3 tied to it by a weight-1 edge and carrying
+    # five leaves of weight 1: the hub's total strength (6) equals a triangle node's.
+    G = nx.Graph()
+    G.add_weighted_edges_from([(0, 1, 3.0), (1, 2, 3.0), (2, 0, 3.0), (0, 3, 1.0)])
+    G.add_weighted_edges_from([(3, leaf, 1.0) for leaf in range(4, 9)])
+    config = DecompositionConfig(granularity=3, maximum_strength=6.0)  # 0, 2, 4, 6
+
+    result = compute_kcores(G, config, weighted=True)
+
+    # Leaves: strength 1 -> interval 1. Once they are peeled the hub keeps only the
+    # weight-1 edge to node 0 -> interval 1 (binning alone would have given it 3).
+    assert result.p_function == [0.0, 2.0, 4.0, 6.0]
+    assert result.node_indices == {0: 3, 1: 3, 2: 3, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1}
+
+
+def test_weighted_cores_indices_start_at_one_and_isolated_nodes_at_zero():
+    """Indices run 1..granularity (the C++ 3.0.1 ran 2..granularity+1 in two modes)."""
+    G = nx.Graph()
+    G.add_weighted_edges_from([(0, 1, 1.0), (1, 2, 1.0)])
+    G.add_node(9)
+
+    result = compute_kcores(G, DecompositionConfig(granularity=4), weighted=True)
+
+    assert result.max_index == 2  # node 1 has strength 2 = boundary 4 of 4 -> then peels
+    assert result.node_indices[9] == 0
+    assert min(v for n, v in result.node_indices.items() if n != 9) >= 1
+
+
+@pytest.mark.parametrize("method", list(StrengthIntervalMethod)[:3])
+@pytest.mark.parametrize("granularity", [-1, 4])
+@pytest.mark.parametrize("seed", range(8))
+def test_weighted_cores_match_fixed_point_oracle(
+    method: StrengthIntervalMethod, granularity: int, seed: int
+):
+    """Every interval method and granularity agrees with the fixed-point definition."""
+    G = _random_weighted_graph(seed)
+    config = DecompositionConfig(strength_intervals=method, granularity=granularity)
+
+    result = compute_kcores(G, config, weighted=True)
+
+    assert result.p_function is not None
+    assert result.node_indices == _brute_force_weighted_cores(G, result.p_function)
+
+
+def test_weighted_default_granularity_is_the_maximum_degree():
+    """No cap at 100: a hub of degree 120 gives 120 intervals, as in the C++."""
+    G = nx.star_graph(120)
+    for u, v in G.edges():
+        G[u][v]["weight"] = 1.0
+
+    result = compute_kcores(G, DecompositionConfig(), weighted=True)
+
+    assert result.p_function is not None
+    assert len(result.p_function) == 121  # 0.0 plus 120 boundaries
+
+
+def test_weighted_maximum_strength_fixes_the_top_boundary():
+    """maximum_strength normalises the intervals so different networks are comparable."""
+    G = nx.Graph()
+    G.add_weighted_edges_from([(0, 1, 2.0), (1, 2, 2.0)])
+
+    result = compute_kcores(
+        G, DecompositionConfig(granularity=4, maximum_strength=8.0), weighted=True
+    )
+
+    assert result.p_function == [0.0, 2.0, 4.0, 6.0, 8.0]
+
+
+def test_weighted_custom_intervals_from_file(tmp_path: Path):
+    """strength_intervals = custom reads the boundaries from a file (C++ 4.0.0)."""
+    intervals = tmp_path / "intervals.txt"
+    intervals.write_text("# boundaries\n1.5\n\n4\n")
+    G = nx.Graph()
+    G.add_weighted_edges_from([(0, 1, 1.0), (1, 2, 1.0), (2, 0, 1.0), (2, 3, 5.0)])
+    config = DecompositionConfig(
+        strength_intervals=StrengthIntervalMethod.CUSTOM, strength_intervals_file=intervals
+    )
+
+    result = compute_kcores(G, config, weighted=True)
+
+    assert result.p_function == [0.0, 1.5, 4.0]
+    # Strengths: 0 -> 2, 1 -> 2, 2 -> 7 (above the last boundary: last index), 3 -> 5
+    assert result.node_indices == _brute_force_weighted_cores(G, [0.0, 1.5, 4.0])
+    assert result.node_indices[2] == 2 and result.node_indices[3] == 2
+
+
+def test_weighted_custom_intervals_need_a_file(tmp_path: Path):
+    """Custom intervals without a file, an empty file or unsorted boundaries are rejected."""
+    G = nx.Graph()
+    G.add_edge(0, 1, weight=1.0)
+
+    with pytest.raises(ValueError, match="strength_intervals_file"):
+        DecompositionConfig(strength_intervals=StrengthIntervalMethod.CUSTOM)
+
+    empty = tmp_path / "empty.txt"
+    empty.write_text("\n")
+    unsorted = tmp_path / "unsorted.txt"
+    unsorted.write_text("4\n1\n")
+    for path, message in ((empty, "No strength intervals"), (unsorted, "non-decreasing")):
+        config = DecompositionConfig(
+            strength_intervals=StrengthIntervalMethod.CUSTOM, strength_intervals_file=path
+        )
+        with pytest.raises(ValueError, match=message):
+            compute_kcores(G, config, weighted=True)
+
+
+def test_weighted_two_column_file_uses_unit_weights(tmp_path: Path):
+    """--weighted on a two-column edge list behaves like weight 1.0 everywhere (no NaN)."""
+    path = tmp_path / "edges.txt"
+    path.write_text("0 1\n1 2\n2 0\n2 3\n")
+    G = read_edge_list(path, weighted=True)
+
+    result = compute_kcores(G, DecompositionConfig(granularity=3), weighted=True)
+
+    assert result.p_function == [0.0, 1.0, 2.0, 3.0]
+    assert result.node_indices == {0: 2, 1: 2, 2: 2, 3: 1}
+
+
+def test_weighted_custom_intervals_reject_non_finite_or_negative(tmp_path: Path):
+    """nan, inf and negative boundaries would break the p-function contract."""
+    G = nx.Graph()
+    G.add_edge(0, 1, weight=1.0)
+    for content in ("nan\n", "1\ninf\n", "-1\n2\n"):
+        path = tmp_path / "bad.txt"
+        path.write_text(content)
+        config = DecompositionConfig(
+            strength_intervals=StrengthIntervalMethod.CUSTOM, strength_intervals_file=path
+        )
+        with pytest.raises(ValueError, match="finite and non-negative"):
+            compute_kcores(G, config, weighted=True)
+
+
+def test_weighted_log_intervals_stay_monotone_with_small_maximum_strength():
+    """maximum_strength below the smallest strength must not produce a descending scale."""
+    G = nx.Graph()
+    G.add_weighted_edges_from([(0, 1, 1.0), (1, 2, 1.0)])
+    config = DecompositionConfig(
+        strength_intervals=StrengthIntervalMethod.EQUAL_LOG_SIZE,
+        granularity=3,
+        maximum_strength=0.5,
+    )
+
+    result = compute_kcores(G, config, weighted=True)
+
+    assert result.p_function is not None
+    assert result.p_function == sorted(result.p_function)
+    assert result.p_function[-1] == 0.5
+
+
+def test_weighted_all_zero_weights_do_not_crash_any_interval_method():
+    """Zero weights are valid input; every method yields a flat scale and index 0."""
+    G = nx.Graph()
+    G.add_weighted_edges_from([(0, 1, 0.0), (1, 2, 0.0)])
+    for method in list(StrengthIntervalMethod)[:3]:
+        config = DecompositionConfig(strength_intervals=method, granularity=3)
+
+        result = compute_kcores(G, config, weighted=True)
+
+        assert result.p_function == [0.0, 0.0, 0.0, 0.0]
+        assert set(result.node_indices.values()) == {0}
+
+
+def test_weighted_negative_weights_are_rejected():
+    """Negative weights would make the strength scale descend; refuse them clearly."""
+    G = nx.Graph()
+    G.add_weighted_edges_from([(0, 1, 1.0), (1, 2, -1.0)])
+    with pytest.raises(ValueError, match="negative weight"):
+        compute_kcores(G, DecompositionConfig(), weighted=True)
+
+    # Checked on the raw edges: parallel -1 and +2 must not slip through as +1
+    multi = nx.MultiGraph()
+    multi.add_weighted_edges_from([(0, 1, -1.0), (0, 1, 2.0)])
+    with pytest.raises(ValueError, match="negative weight"):
+        compute_kcores(multi, DecompositionConfig(), weighted=True)
+
+
+def test_weighted_non_finite_weights_are_rejected():
+    """nan/inf weights would poison the strength scale."""
+    for bad in (float("nan"), float("inf")):
+        G = nx.Graph()
+        G.add_weighted_edges_from([(0, 1, 1.0), (1, 2, bad)])
+        with pytest.raises(ValueError, match="finite"):
+            compute_kcores(G, DecompositionConfig(), weighted=True)
+
+
+def test_granularity_zero_is_rejected():
+    """Granularity is -1 (maximum degree) or >= 1; 0 is not silently coerced."""
+    with pytest.raises(ValueError, match="granularity"):
+        DecompositionConfig(granularity=0)
+
+
+def test_maximum_strength_must_be_finite():
+    """Inf would make every boundary infinite."""
+    with pytest.raises(ValueError):
+        DecompositionConfig(maximum_strength=float("inf"))
+
+
+def test_weighted_hub_with_many_leaves():
+    """A 20k-leaf star at default granularity (20k intervals): the hub ends with its leaves.
+
+    Each leaf removal crosses one interval, so this is the case where re-summing the
+    hub's strength per re-binning (as the C++ did) would be quadratic; the incremental
+    residual keeps it linear, which is what lets this test run in well under a second.
+    """
+    G = nx.star_graph(20000)
+    for u, v in G.edges():
+        G[u][v]["weight"] = 1.0
+
+    result = compute_kcores(G, DecompositionConfig(), weighted=True)
+
+    assert result.p_function is not None and len(result.p_function) == 20001
+    assert result.node_indices[0] == 1
+    assert all(idx == 1 for node, idx in result.node_indices.items() if node != 0)
+
+
+def test_weighted_default_granularity_counts_parallel_edges():
+    """The default granularity is the maximum degree of the input, parallel edges included."""
+    multi = nx.MultiGraph()
+    multi.add_weighted_edges_from([(0, 1, 1.0)] * 5 + [(1, 2, 1.0)])
+
+    result = compute_kcores(multi, DecompositionConfig(), weighted=True)
+
+    assert result.p_function is not None and len(result.p_function) == 7  # 0.0 + 6
+
+
+def test_weighted_strength_overflow_is_rejected():
+    """Finite weights whose sum overflows must not reach the p-function."""
+    G = nx.Graph()
+    G.add_weighted_edges_from([(0, 1, 1e308), (0, 2, 1e308)])
+    with pytest.raises(ValueError, match="overflows"):
+        compute_kcores(G, DecompositionConfig(), weighted=True)
+
+
+def test_weighted_log_intervals_survive_extreme_ratio():
+    """An extreme strength range stays finite and sorted in log mode."""
+    G = nx.Graph()
+    G.add_weighted_edges_from([(0, 1, 1e-300), (2, 3, 1e300)])
+    config = DecompositionConfig(
+        strength_intervals=StrengthIntervalMethod.EQUAL_LOG_SIZE, granularity=4
+    )
+
+    result = compute_kcores(G, config, weighted=True)
+
+    assert result.p_function is not None
+    assert all(math.isfinite(b) for b in result.p_function)
+    assert result.p_function == sorted(result.p_function)
