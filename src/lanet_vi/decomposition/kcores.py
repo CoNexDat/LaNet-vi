@@ -189,11 +189,24 @@ def _core_number(graph: nx.Graph) -> dict[int, int]:
 
 
 def _node_strengths(graph: nx.Graph) -> dict[int, float]:
-    """Strength (sum of incident edge weights, missing weight = 1.0) of every node."""
-    return {
-        node: sum(data.get("weight", 1.0) for data in graph[node].values())
-        for node in graph.nodes()
-    }
+    """Strength (sum of incident edge weights, missing weight = 1.0) of every node.
+
+    Negative weights are refused: the strength scale starts at 0 and the peeling relies
+    on strengths only decreasing as neighbours are removed.
+    """
+    strengths: dict[int, float] = {}
+    for node in graph.nodes():
+        total = 0.0
+        for other, data in graph[node].items():
+            w = data.get("weight", 1.0)
+            if w < 0:
+                raise ValueError(
+                    f"Edge ({node}, {other}) has negative weight {w}; strength-based "
+                    "k-cores need non-negative weights"
+                )
+            total += w
+        strengths[node] = total
+    return strengths
 
 
 def _build_p_function(
@@ -234,7 +247,7 @@ def _build_p_function(
     n = len(sorted_strengths)
 
     if config.strength_intervals == StrengthIntervalMethod.CUSTOM:
-        return _read_custom_intervals(config.strength_intervals_file)
+        return read_custom_intervals(config.strength_intervals_file)
 
     # Default granularity: the maximum degree, as in the C++
     if config.granularity == -1:
@@ -282,7 +295,7 @@ def _build_p_function(
     return p_function
 
 
-def _read_custom_intervals(path: Path | None) -> list[float]:
+def read_custom_intervals(path: Path | None) -> list[float]:
     """
     Read the p-function boundaries of ``strength_intervals = custom`` from a file.
 
@@ -328,10 +341,14 @@ def _compute_weighted_cores(
     Every node starts at the interval index of its total strength. Shells are then
     peeled in increasing order: when a node of the current shell ``k`` is removed,
     each neighbour still above ``k`` is re-binned using only the strength it receives
-    from neighbours whose index is still above ``k``, and moved down to
-    ``max(new index, k)``. The result is the generalised k-core: a node has index
-    ``>= k`` iff it belongs to a subgraph where every node receives strength in an
-    interval ``>= k`` from the others.
+    from neighbours not yet removed, and moved down to ``max(new index, k)``. The
+    result is the generalised k-core: a node has index ``>= k`` iff it belongs to a
+    subgraph where every node receives strength in an interval ``>= k`` from the
+    others.
+
+    The C++ re-summed a neighbour's remaining strength on every re-binning (quadratic
+    in the degree of a hub); here the remaining strength is kept incrementally, so each
+    edge is subtracted once. Both peel to the same fixed point.
 
     Parameters
     ----------
@@ -355,22 +372,19 @@ def _compute_weighted_cores(
     for node, k in core.items():
         buckets[k].add(node)
 
+    remaining = dict(strengths)  # strength from neighbours not yet removed
     done: set[int] = set()
     for k, bucket in enumerate(buckets):
         while bucket:
             node = bucket.pop()
             done.add(node)
-            for neighbour in graph.neighbors(node):
-                if neighbour in done or core[neighbour] <= k:
+            for neighbour, data in graph[node].items():
+                if neighbour in done:
                     continue
-                # Strength from neighbours that survive shell k (excludes ``node`` and
-                # anything already at k), as Vertex::getP(pFunction, kcores, k)
-                remaining = sum(
-                    data.get("weight", 1.0)
-                    for other, data in graph[neighbour].items()
-                    if core[other] > k
-                )
-                new_k = max(_p_index(p_function, remaining), k)
+                remaining[neighbour] -= data.get("weight", 1.0)
+                if core[neighbour] <= k:
+                    continue
+                new_k = max(_p_index(p_function, remaining[neighbour]), k)
                 if new_k != core[neighbour]:
                     buckets[core[neighbour]].discard(neighbour)
                     core[neighbour] = new_k

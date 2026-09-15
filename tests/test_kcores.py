@@ -401,3 +401,27 @@ def test_weighted_all_zero_weights_do_not_crash_any_interval_method():
 
         assert result.p_function == [0.0, 0.0, 0.0, 0.0]
         assert set(result.node_indices.values()) == {0}
+
+
+def test_weighted_negative_weights_are_rejected():
+    """Negative weights would make the strength scale descend; refuse them clearly."""
+    G = nx.Graph()
+    G.add_weighted_edges_from([(0, 1, 1.0), (1, 2, -1.0)])
+    with pytest.raises(ValueError, match="negative weight"):
+        compute_kcores(G, DecompositionConfig(), weighted=True)
+
+
+def test_weighted_hub_with_many_leaves_is_fast():
+    """The residual strength is kept incrementally, so a hub is not rescanned per leaf."""
+    import time
+
+    G = nx.star_graph(20000)
+    for u, v in G.edges():
+        G[u][v]["weight"] = 1.0
+
+    start = time.perf_counter()
+    result = compute_kcores(G, DecompositionConfig(), weighted=True)  # granularity 20000
+    elapsed = time.perf_counter() - start
+
+    assert result.node_indices[0] == 1  # the hub ends with its leaves
+    assert elapsed < 5.0

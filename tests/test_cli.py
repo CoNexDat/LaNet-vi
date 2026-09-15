@@ -494,3 +494,47 @@ def _invoke_with_config(small_edge_list: Path, tmp_path: Path, cfg: Path):  # no
             "--quiet",
         ],
     )
+
+
+def test_unusable_custom_intervals_file_is_a_usage_error(small_edge_list: Path, tmp_path: Path):
+    """A missing or malformed --strength-intervals-file fails before the network loads."""
+    for path, content in ((tmp_path / "missing.txt", None), (tmp_path / "bad.txt", "3\n1\n")):
+        if content is not None:
+            path.write_text(content)
+        result = runner.invoke(
+            app,
+            [
+                "visualize",
+                "--input",
+                str(small_edge_list),
+                "--output",
+                str(tmp_path / "o.png"),
+                "--weighted",
+                "--strength-intervals",
+                "custom",
+                "--strength-intervals-file",
+                str(path),
+                "--quiet",
+            ],
+        )
+        assert result.exit_code == 2, result.output
+        assert isinstance(result.exception, SystemExit)
+
+
+def test_decomposition_value_errors_are_usage_errors(small_edge_list: Path, tmp_path: Path):
+    """--decomp dcores on an undirected graph is reported by the CLI, not a traceback."""
+    result = runner.invoke(
+        app,
+        [
+            "visualize",
+            "--input",
+            str(small_edge_list),
+            "--output",
+            str(tmp_path / "o.png"),
+            "--decomp",
+            "dcores",
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 2, result.output
+    assert isinstance(result.exception, SystemExit)

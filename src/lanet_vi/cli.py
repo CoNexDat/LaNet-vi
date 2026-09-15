@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from lanet_vi.core.network import Network
+from lanet_vi.decomposition.kcores import read_custom_intervals
 from lanet_vi.io.config_loader import read_config_yaml, save_config_to_yaml
 from lanet_vi.io.writers import write_decomposition_csv, write_decomposition_json
 from lanet_vi.logging_config import setup_logging
@@ -128,12 +129,20 @@ def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
             data[section]["show_degree_scale"] = value
 
     try:
-        return LaNetConfig.model_validate(data)
+        config = LaNetConfig.model_validate(data)
     except ValidationError as exc:
         problems = "; ".join(
             f"{'.'.join(str(loc) for loc in err['loc'])}: {err['msg']}" for err in exc.errors()
         )
         raise typer.BadParameter(f"Invalid configuration: {problems}") from exc
+
+    if config.decomposition.strength_intervals == StrengthIntervalMethod.CUSTOM:
+        # Fail before loading the network if the boundaries file is unusable
+        try:
+            read_custom_intervals(config.decomposition.strength_intervals_file)
+        except (OSError, ValueError) as exc:
+            raise typer.BadParameter(str(exc), param_hint="--strength-intervals-file") from exc
+    return config
 
 
 app = typer.Typer(
@@ -341,7 +350,12 @@ def visualize(
 
         # Decompose
         progress.update(task, description=f"Computing {decomp.value} decomposition...")
-        result = network.decompose()
+        try:
+            result = network.decompose()
+        except ValueError as exc:
+            # Input/option combinations the decomposition refuses (negative weights,
+            # d-cores on an undirected graph, ...): a usage error, not a traceback
+            raise typer.BadParameter(str(exc)) from exc
 
         console.print(
             f"[green]✓[/green] Decomposition complete: "
