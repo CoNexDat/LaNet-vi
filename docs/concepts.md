@@ -94,10 +94,12 @@ weights) and the integer shells by strength intervals, as in the C++ LaNet-vi:
   using only the strength it still receives from nodes above shell k, and never moves
   below k. A node has index ≥ k iff it belongs to a subgraph where every member
   receives strength in interval ≥ k from the other members — the generalised k-core
-- Indices run 1..granularity (0 for an isolated node). The C++ 3.0.1 numbered two of
-  the interval methods 2..granularity+1 because of a duplicated 0.0 boundary
-- `--maximum-strength` fixes the top boundary so pictures of different networks share
-  the same scale
+- Indices run 1..granularity (0 for an isolated node); with `custom` there is one
+  index per boundary in the file instead. The C++ 3.0.1 numbered two of the interval
+  methods 2..granularity+1 because of a duplicated 0.0 boundary
+- `--maximum-strength` fixes the top boundary of `equalIntervalSize` and
+  `equalLogIntervalSize` so pictures of different networks share the same scale
+  (`equalNodesPerInterval` takes its boundaries from the data and `custom` from the file)
 
 ## K-Dense Decomposition
 

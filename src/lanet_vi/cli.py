@@ -98,7 +98,11 @@ def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
     data: dict[str, Any] = LaNetConfig().model_dump(mode="json")
 
     if config_file is not None:
-        for section, values in read_config_yaml(config_file).items():
+        try:
+            file_data = read_config_yaml(config_file)
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc), param_hint="--config") from exc
+        for section, values in file_data.items():
             if isinstance(values, dict) and isinstance(data.get(section), dict):
                 if section == "visualization" and "show_size_legend" in values:
                     # Deprecated alias: honour it only when the current field is absent

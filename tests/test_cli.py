@@ -462,3 +462,29 @@ def test_weighted_strength_flags_reach_the_decomposition(small_edge_list: Path, 
     result = runner.invoke(app, [*common, "--strength-intervals", "custom"])
     assert result.exit_code != 0
     assert "strength_intervals_file" in result.output
+
+
+def test_config_file_with_non_mapping_top_level_is_a_usage_error(
+    small_edge_list: Path, tmp_path: Path
+):
+    """A YAML file whose top level is a list is reported by the CLI, not a traceback."""
+    cfg = tmp_path / "list.yaml"
+    cfg.write_text("- 1\n- 2\n")
+
+    result = runner.invoke(
+        app,
+        [
+            "visualize",
+            "--input",
+            str(small_edge_list),
+            "--output",
+            str(tmp_path / "o.png"),
+            "--config",
+            str(cfg),
+            "--quiet",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--config" in result.output
+    assert "Traceback" not in result.output

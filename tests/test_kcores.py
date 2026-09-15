@@ -357,3 +357,34 @@ def test_weighted_two_column_file_uses_unit_weights(tmp_path: Path):
 
     assert result.p_function == [0.0, 1.0, 2.0, 3.0]
     assert result.node_indices == {0: 2, 1: 2, 2: 2, 3: 1}
+
+
+def test_weighted_custom_intervals_reject_non_finite_or_negative(tmp_path: Path):
+    """nan, inf and negative boundaries would break the p-function contract."""
+    G = nx.Graph()
+    G.add_edge(0, 1, weight=1.0)
+    for content in ("nan\n", "1\ninf\n", "-1\n2\n"):
+        path = tmp_path / "bad.txt"
+        path.write_text(content)
+        config = DecompositionConfig(
+            strength_intervals=StrengthIntervalMethod.CUSTOM, strength_intervals_file=path
+        )
+        with pytest.raises(ValueError, match="finite and non-negative"):
+            compute_kcores(G, config, weighted=True)
+
+
+def test_weighted_log_intervals_stay_monotone_with_small_maximum_strength():
+    """maximum_strength below the smallest strength must not produce a descending scale."""
+    G = nx.Graph()
+    G.add_weighted_edges_from([(0, 1, 1.0), (1, 2, 1.0)])
+    config = DecompositionConfig(
+        strength_intervals=StrengthIntervalMethod.EQUAL_LOG_SIZE,
+        granularity=3,
+        maximum_strength=0.5,
+    )
+
+    result = compute_kcores(G, config, weighted=True)
+
+    assert result.p_function is not None
+    assert result.p_function == sorted(result.p_function)
+    assert result.p_function[-1] == 0.5

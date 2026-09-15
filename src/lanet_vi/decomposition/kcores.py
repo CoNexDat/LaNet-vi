@@ -1,5 +1,6 @@
 """K-core decomposition (degree-based and, for weighted graphs, strength-based)."""
 
+import math
 from bisect import bisect_left
 from pathlib import Path
 
@@ -258,8 +259,9 @@ def _build_p_function(
         # divided by the smallest strength as is; a zero (isolated node) would make
         # the ratio infinite, so the smallest positive strength is used instead.
         positive = [x for x in sorted_strengths if x > 0]
-        a = positive[0] if positive else 1.0
         b = config.maximum_strength if config.maximum_strength else sorted_strengths[-1]
+        # A maximum below the smallest strength would make the progression descend
+        a = min(positive[0] if positive else 1.0, b)
 
         for i in range(1, granularity + 1):
             if i < granularity:
@@ -299,6 +301,8 @@ def _read_custom_intervals(path: Path | None) -> list[float]:
             boundaries.append(float(token))
     if not boundaries:
         raise ValueError(f"No strength intervals found in {path}")
+    if any(not math.isfinite(b) or b < 0 for b in boundaries):
+        raise ValueError(f"Strength intervals in {path} must be finite and non-negative")
     if boundaries != sorted(boundaries):
         raise ValueError(f"Strength intervals in {path} must be non-decreasing")
     return [0.0, *boundaries]
