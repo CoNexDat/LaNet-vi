@@ -41,8 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   node starts in the strength interval of its total strength and, when a shell is
   removed, its neighbours are re-binned using only the strength they still receive from
   nodes above that shell. The previous code only binned total strengths (a histogram,
-  not a core decomposition; it disagreed with the C++ on 1,570 of 2,070 random
-  configurations). Default granularity is the maximum degree again (the cap at 100 is
+  not a core decomposition; it disagreed with the C++ on 1,570 of the 2,070 random
+  configurations checked, see PR #31). Default granularity is the maximum degree again (the cap at 100 is
   gone). Indices run `1..granularity` in every interval method (0 for isolated nodes);
   the C++ 3.0.1 ran `2..granularity+1` in `equalIntervalSize` and
   `equalNodesPerInterval` because of a duplicated `0.0` boundary. `equalLogIntervalSize`

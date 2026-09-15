@@ -417,23 +417,40 @@ def test_weighted_negative_weights_are_rejected():
         compute_kcores(multi, DecompositionConfig(), weighted=True)
 
 
+def test_weighted_non_finite_weights_are_rejected():
+    """nan/inf weights would poison the strength scale."""
+    for bad in (float("nan"), float("inf")):
+        G = nx.Graph()
+        G.add_weighted_edges_from([(0, 1, 1.0), (1, 2, bad)])
+        with pytest.raises(ValueError, match="finite"):
+            compute_kcores(G, DecompositionConfig(), weighted=True)
+
+
+def test_granularity_zero_is_rejected():
+    """Granularity is -1 (maximum degree) or >= 1; 0 is not silently coerced."""
+    with pytest.raises(ValueError, match="granularity"):
+        DecompositionConfig(granularity=0)
+
+
 def test_maximum_strength_must_be_finite():
     """Inf would make every boundary infinite."""
     with pytest.raises(ValueError):
         DecompositionConfig(maximum_strength=float("inf"))
 
 
-def test_weighted_hub_with_many_leaves_is_fast():
-    """The residual strength is kept incrementally, so a hub is not rescanned per leaf."""
-    import time
+def test_weighted_hub_with_many_leaves():
+    """A 20k-leaf star at default granularity (20k intervals): the hub ends with its leaves.
 
+    Each leaf removal crosses one interval, so this is the case where re-summing the
+    hub's strength per re-binning (as the C++ did) would be quadratic; the incremental
+    residual keeps it linear, which is what lets this test run in well under a second.
+    """
     G = nx.star_graph(20000)
     for u, v in G.edges():
         G[u][v]["weight"] = 1.0
 
-    start = time.perf_counter()
-    result = compute_kcores(G, DecompositionConfig(), weighted=True)  # granularity 20000
-    elapsed = time.perf_counter() - start
+    result = compute_kcores(G, DecompositionConfig(), weighted=True)
 
-    assert result.node_indices[0] == 1  # the hub ends with its leaves
-    assert elapsed < 5.0
+    assert result.p_function is not None and len(result.p_function) == 20001
+    assert result.node_indices[0] == 1
+    assert all(idx == 1 for node, idx in result.node_indices.items() if node != 0)

@@ -239,11 +239,19 @@ class DecompositionConfig(BaseModel):
     decomp_type: DecompositionType = DecompositionType.KCORES
     measure: MeasureType = MeasureType.MCORE
     from_layer: int = Field(default=0, ge=0)
-    granularity: int = Field(default=-1, ge=-1)
+    granularity: int = Field(default=-1, ge=-1)  # -1: maximum degree; otherwise >= 1
     strength_intervals: StrengthIntervalMethod = StrengthIntervalMethod.EQUAL_SIZE
     maximum_strength: float | None = Field(default=None, gt=0.0, allow_inf_nan=False)
     strength_intervals_file: Path | None = None
     no_cliques: bool = False
+
+    @field_validator("granularity")
+    @classmethod
+    def granularity_is_sentinel_or_positive(cls, value: int) -> int:
+        """``-1`` means "maximum degree"; any other value must be at least 1."""
+        if value == 0:
+            raise ValueError("granularity must be -1 (maximum degree) or at least 1")
+        return value
 
     @model_validator(mode="after")
     def custom_intervals_need_a_file(self) -> "DecompositionConfig":

@@ -191,16 +191,16 @@ def _core_number(graph: nx.Graph) -> dict[int, int]:
 
 
 def _check_weights_non_negative(graph: nx.Graph) -> None:
-    """Refuse negative weights on the raw edges, before parallel edges are merged.
+    """Refuse negative or non-finite weights on the raw edges, before any merge.
 
     The strength scale starts at 0 and the peeling relies on strengths only decreasing
     as neighbours are removed.
     """
     for u, v, data in graph.edges(data=True):
         w = data.get("weight", 1.0)
-        if w < 0:
+        if not math.isfinite(w) or w < 0:
             raise ValueError(
-                f"Edge ({u}, {v}) has negative weight {w}; strength-based k-cores need "
+                f"Edge ({u}, {v}) has weight {w}; strength-based k-cores need finite, "
                 "non-negative weights"
             )
 
@@ -253,12 +253,11 @@ def _build_p_function(
     if config.strength_intervals == StrengthIntervalMethod.CUSTOM:
         return read_custom_intervals(config.strength_intervals_file)
 
-    # Default granularity: the maximum degree, as in the C++
+    # Default granularity: the maximum degree, as in the C++ (>= 1 since there are edges)
     if config.granularity == -1:
         granularity = max((d for _, d in graph.degree()), default=1)
     else:
         granularity = config.granularity
-    granularity = max(granularity, 1)
 
     p_function = [0.0]
 
