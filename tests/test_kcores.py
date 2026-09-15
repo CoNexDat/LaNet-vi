@@ -1,5 +1,6 @@
 """Tests for k-core decomposition."""
 
+import math
 from pathlib import Path
 
 import networkx as nx
@@ -454,3 +455,36 @@ def test_weighted_hub_with_many_leaves():
     assert result.p_function is not None and len(result.p_function) == 20001
     assert result.node_indices[0] == 1
     assert all(idx == 1 for node, idx in result.node_indices.items() if node != 0)
+
+
+def test_weighted_default_granularity_counts_parallel_edges():
+    """The default granularity is the maximum degree of the input, parallel edges included."""
+    multi = nx.MultiGraph()
+    multi.add_weighted_edges_from([(0, 1, 1.0)] * 5 + [(1, 2, 1.0)])
+
+    result = compute_kcores(multi, DecompositionConfig(), weighted=True)
+
+    assert result.p_function is not None and len(result.p_function) == 7  # 0.0 + 6
+
+
+def test_weighted_strength_overflow_is_rejected():
+    """Finite weights whose sum overflows must not reach the p-function."""
+    G = nx.Graph()
+    G.add_weighted_edges_from([(0, 1, 1e308), (0, 2, 1e308)])
+    with pytest.raises(ValueError, match="overflows"):
+        compute_kcores(G, DecompositionConfig(), weighted=True)
+
+
+def test_weighted_log_intervals_survive_extreme_ratio():
+    """An extreme strength range stays finite and sorted in log mode."""
+    G = nx.Graph()
+    G.add_weighted_edges_from([(0, 1, 1e-300), (2, 3, 1e300)])
+    config = DecompositionConfig(
+        strength_intervals=StrengthIntervalMethod.EQUAL_LOG_SIZE, granularity=4
+    )
+
+    result = compute_kcores(G, config, weighted=True)
+
+    assert result.p_function is not None
+    assert all(math.isfinite(b) for b in result.p_function)
+    assert result.p_function == sorted(result.p_function)

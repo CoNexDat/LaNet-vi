@@ -65,6 +65,7 @@ def compute_kcores(
         else any("weight" in data for _, _, data in graph.edges(data=True))
     )
 
+    max_degree = max((d for _, d in graph.degree()), default=0)  # parallel edges count
     if is_weighted:
         _check_weights_non_negative(graph)
         if graph.is_multigraph() or graph.is_directed():
@@ -90,7 +91,7 @@ def compute_kcores(
         logger.info("Using weighted k-core algorithm (strength-based p-function)")
         # Weighted graph: bin strengths with the p-function, then peel
         strengths = _node_strengths(graph)
-        p_function = _build_p_function(strengths, graph, config)
+        p_function = _build_p_function(strengths, max_degree, config)
         logger.debug(f"Built p-function with {len(p_function)} intervals")
 
         core_numbers = _compute_weighted_cores(graph, strengths, p_function)
@@ -207,15 +208,19 @@ def _check_weights_non_negative(graph: nx.Graph) -> None:
 
 def _node_strengths(graph: nx.Graph) -> dict[int, float]:
     """Strength (sum of incident edge weights, missing weight = 1.0) of every node."""
-    return {
+    strengths = {
         node: sum(data.get("weight", 1.0) for data in graph[node].values())
         for node in graph.nodes()
     }
+    overflowed = [node for node, s in strengths.items() if not math.isfinite(s)]
+    if overflowed:
+        raise ValueError(f"Strength of node {overflowed[0]} overflows to infinity")
+    return strengths
 
 
 def _build_p_function(
     strengths: dict[int, float],
-    graph: nx.Graph,
+    max_degree: int,
     config: DecompositionConfig,
 ) -> list[float]:
     """
@@ -230,8 +235,9 @@ def _build_p_function(
     ----------
     strengths : Dict[int, float]
         Node strengths
-    graph : nx.Graph
-        Weighted graph (for the default granularity, its maximum degree)
+    max_degree : int
+        Maximum degree of the input graph (parallel edges counted): the default
+        granularity, as in the C++
     config : DecompositionConfig
         Granularity, interval method, maximum strength and custom intervals file
 
@@ -253,11 +259,8 @@ def _build_p_function(
     if config.strength_intervals == StrengthIntervalMethod.CUSTOM:
         return read_custom_intervals(config.strength_intervals_file)
 
-    # Default granularity: the maximum degree, as in the C++ (>= 1 since there are edges)
-    if config.granularity == -1:
-        granularity = max((d for _, d in graph.degree()), default=1)
-    else:
-        granularity = config.granularity
+    granularity = max_degree if config.granularity == -1 else config.granularity
+    granularity = max(granularity, 1)  # the weighted path is only taken with edges
 
     p_function = [0.0]
 
@@ -281,7 +284,9 @@ def _build_p_function(
 
         for i in range(1, granularity + 1):
             if i < granularity and a > 0:
-                p_function.append(a * ((b / a) ** (i / granularity)))
+                # log-space so an extreme b/a ratio cannot overflow to inf
+                log_boundary = math.log(a) + (i / granularity) * (math.log(b) - math.log(a))
+                p_function.append(min(math.exp(log_boundary), b))
             else:
                 p_function.append(b)  # all weights zero: every boundary is 0.0
 
@@ -302,9 +307,10 @@ def read_custom_intervals(path: Path | None) -> list[float]:
     """
     Read the p-function boundaries of ``strength_intervals = custom`` from a file.
 
-    One boundary per line, as the C++ ``-strengthsIntervalsFile``: the first interval
-    is ``(-inf, p1]`` (index 1) and the last ``(pn, inf)`` shares index ``n`` with
-    ``(p(n-1), pn]``.
+    One boundary per line, as the C++ ``-strengthsIntervalsFile``. A positive strength
+    in ``(0, p1]`` gets index 1, ``(p(i-1), pi]`` index ``i``, and anything above ``pn``
+    the last index ``n``; a strength of exactly 0 (isolated node) gets index 0, like
+    every other interval method.
     """
     if path is None:
         raise ValueError("strength_intervals 'custom' needs strength_intervals_file")

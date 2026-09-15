@@ -38,13 +38,18 @@ decomposition:
   granularity: -1
 
   # Method for strength intervals in weighted graphs:
-  # - "equalNodesPerInterval"
-  # - "equalIntervalSize"
-  # - "equalLogIntervalSize"
+  # - "equalNodesPerInterval"  (same number of nodes per interval)
+  # - "equalIntervalSize"      (equal width up to maximum_strength / largest strength)
+  # - "equalLogIntervalSize"   (geometric progression)
+  # - "custom"                 (boundaries read from strength_intervals_file)
   strength_intervals: "equalIntervalSize"
 
-  # Upper limit for strength intervals (null = auto)
+  # Upper limit for strength intervals (null = largest strength); only used by
+  # equalIntervalSize and equalLogIntervalSize
   maximum_strength: null
+
+  # Boundaries, one per line, for strength_intervals: "custom" (null = none)
+  strength_intervals_file: null
 
   # Whether to omit cliques in central core
   no_cliques: false
