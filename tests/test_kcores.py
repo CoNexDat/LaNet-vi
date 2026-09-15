@@ -388,3 +388,16 @@ def test_weighted_log_intervals_stay_monotone_with_small_maximum_strength():
     assert result.p_function is not None
     assert result.p_function == sorted(result.p_function)
     assert result.p_function[-1] == 0.5
+
+
+def test_weighted_all_zero_weights_do_not_crash_any_interval_method():
+    """Zero weights are valid input; every method yields a flat scale and index 0."""
+    G = nx.Graph()
+    G.add_weighted_edges_from([(0, 1, 0.0), (1, 2, 0.0)])
+    for method in list(StrengthIntervalMethod)[:3]:
+        config = DecompositionConfig(strength_intervals=method, granularity=3)
+
+        result = compute_kcores(G, config, weighted=True)
+
+        assert result.p_function == [0.0, 0.0, 0.0, 0.0]
+        assert set(result.node_indices.values()) == {0}

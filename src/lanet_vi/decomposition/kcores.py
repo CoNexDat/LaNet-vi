@@ -264,10 +264,10 @@ def _build_p_function(
         a = min(positive[0] if positive else 1.0, b)
 
         for i in range(1, granularity + 1):
-            if i < granularity:
+            if i < granularity and a > 0:
                 p_function.append(a * ((b / a) ** (i / granularity)))
             else:
-                p_function.append(b)
+                p_function.append(b)  # all weights zero: every boundary is 0.0
 
     else:  # EQUAL_SIZE (default)
         max_strength = config.maximum_strength if config.maximum_strength else sorted_strengths[-1]

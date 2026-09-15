@@ -467,11 +467,21 @@ def test_weighted_strength_flags_reach_the_decomposition(small_edge_list: Path, 
 def test_config_file_with_non_mapping_top_level_is_a_usage_error(
     small_edge_list: Path, tmp_path: Path
 ):
-    """A YAML file whose top level is a list is reported by the CLI, not a traceback."""
+    """A list at the top level or malformed YAML is reported by the CLI, not a traceback."""
     cfg = tmp_path / "list.yaml"
     cfg.write_text("- 1\n- 2\n")
+    result = _invoke_with_config(small_edge_list, tmp_path, cfg)
+    assert result.exit_code == 2
+    assert isinstance(result.exception, SystemExit)
 
-    result = runner.invoke(
+    cfg.write_text("visualization: [unterminated\n")
+    result = _invoke_with_config(small_edge_list, tmp_path, cfg)
+    assert result.exit_code == 2
+    assert isinstance(result.exception, SystemExit)
+
+
+def _invoke_with_config(small_edge_list: Path, tmp_path: Path, cfg: Path):  # noqa: ANN202
+    return runner.invoke(
         app,
         [
             "visualize",
@@ -484,9 +494,3 @@ def test_config_file_with_non_mapping_top_level_is_a_usage_error(
             "--quiet",
         ],
     )
-
-    # BadParameter exits with code 2 through SystemExit; a raw ValueError would surface
-    # as result.exception instead (and its message is wrapped/styled by rich, so it is
-    # not asserted on)
-    assert result.exit_code == 2
-    assert isinstance(result.exception, SystemExit)
