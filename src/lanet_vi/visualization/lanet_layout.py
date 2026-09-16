@@ -374,11 +374,14 @@ class _Placer:
                             if self.params.weighted
                             else float(self.node_index[w] + 1 - shell_h)
                         )
-                        if new_amount != 0:
+                        # With an edge index below the node index (k-dense, d-cores) a
+                        # higher neighbour can sit in another branch that is placed later;
+                        # the C++ read a zero position for it, here it is skipped
+                        if new_amount != 0 and w in self.positions:
                             wx, wy = self.positions[w]
                             angle = math.atan2(wy - comp.y, wx - comp.x) + ang_init
                             phi = circular_average(phi, amount, angle, new_amount)
-                        amount += new_amount
+                            amount += new_amount
                     phi -= ang_init
                     if amount == 0:
                         phi = TWO_PI * rng.random()

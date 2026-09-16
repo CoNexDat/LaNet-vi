@@ -244,12 +244,13 @@ class Network:
         )
         node_positions = lanet.positions
 
-        # Nested components (centres and radii) for the border circles, largest first
+        # Nested components (centres and radii) for the border circles, largest first.
+        # As the C++ addComponents, only components with clusters of their own get one.
         min_size = self.config.layout.min_component_size
         is_dense = decomposition.decomp_type == "kdenses"
         filtered_components = []
         for i, comp in enumerate(lanet.root.walk()):
-            if comp.size < min_size or (comp.index == 0 and comp.parent is None):
+            if comp.size < min_size or not comp.clusters:
                 continue
             filtered_components.append(
                 Component(

@@ -213,3 +213,18 @@ def test_node_radius_follows_the_cpp_formula():
     assert node_radius(0, 10, 5.0, 100.0, weighted=True) == pytest.approx(
         0.4 * math.log(6.0) / math.log(100.0)
     )
+
+
+def test_higher_neighbour_in_another_branch_is_tolerated():
+    """k-dense-like indices: a node's high neighbour may be reachable only through a weak edge."""
+    # Triangle 0-1-2 (index 3 nodes, index-3 edges) and node 3 with index 3 attached to 0 by
+    # an index-2 edge; node 4 (index 2) attached to 3 by an index-2 edge.
+    G = nx.Graph([(0, 1), (1, 2), (2, 0), (0, 3), (3, 4)])
+    index = {0: 3, 1: 3, 2: 3, 3: 3, 4: 2}
+    strong = {(0, 1), (1, 2), (0, 2)}
+
+    def edge_index(u: int, v: int) -> int:
+        return 3 if ((u, v) if u < v else (v, u)) in strong else 2
+
+    layout = compute_lanet_layout(G, index, LayoutParameters(), seed=0, edge_index=edge_index)
+    assert set(layout.positions) == set(G.nodes())
