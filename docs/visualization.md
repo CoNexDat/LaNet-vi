@@ -6,24 +6,41 @@ LaNet-vi creates hierarchical network visualizations using a circular, shell-bas
 
 ## Layout Algorithm
 
-### Circular Shell Layout
+The placement is the one of the C++ LaNet-vi (Alvarez-Hamelin, Dall'Asta, Barrat &
+Vespignani, NIPS 2005; `-coordDistributionAlgorithm classic`):
 
-Nodes are positioned in concentric rings based on their k-core number:
+1. **Nested components.** Inside the component of index *k* (all its nodes have index
+   ≥ *k*), the connected pieces of the nodes with index > *k* become child components of
+   index *k* + 1; the nodes with index exactly *k* form the component's *clusters*. The
+   whole graph is the root component of index 0, so every k-core, k-dense or d-core
+   level is a layer of this tree.
+2. **Radii.** The top core of a branch gets a disc whose radius grows with the square
+   root of the sum of the squared log-degrees of its nodes; each enclosing shell adds one
+   unit of radius. Shells are therefore rings one unit apart, the highest index innermost.
+3. **Centres.** A component with siblings is offset from its parent's centre by
+   `rho = 1 - size / siblings` (a lone child is concentric), at an angle that grows with
+   the cumulative size of the siblings before it, and drawn at a smaller scale
+   `u = sqrt(size / siblings) / delta`.
+4. **Nodes.** A node of index *k* sits at `rho = R (1 - epsilon) + epsilon R avg`, where
+   `avg` measures how deep its higher-index neighbours are (closer to the centre when
+   they are deep), and at the circular average of the angles of those neighbours, which
+   are placed first. Top cores are split into cliques, each laid along a U-shaped path in
+   its own angular sector. `--no-cliques` spreads top cores uniformly and gives every
+   cluster its own sector instead (formula (2) of the paper).
+5. `gamma` scales the whole picture; `--draw-circles` draws every component's disc.
 
-```
-Higher k-core → Closer to center → Inner rings
-Lower k-core → Further from center → Outer rings
-```
-
-**Algorithm:**
-1. Each k-shell gets a radius: `r = (max_k - k + 1) * spacing`
-2. Nodes are placed around the ring at that radius
-3. Angular position determined by neighbor relationships
-4. Radial jitter (`epsilon`) adds variation within each ring
+Node radius is `0.4 (log(1 + d) / log(d_max))^0.7` layout units (strength-based for
+weighted graphs), never less than one pixel; `--node-size-scale` multiplies it.
 
 **Parameters:**
-- `epsilon`: Controls radial spread (0.0 = tight line, 1.0 = wide band)
-- `seed`: Random seed for reproducible layouts
+- `epsilon` (0.18): thickness of each ring as a fraction of its radius
+- `delta` (1.3): how much smaller sibling components are drawn
+- `gamma` (1.5): component diameter / picture scale
+- `unit_length` (1.0): the root scale `u`
+- `seed`: random seed (cluster order, ties, the random angle frame)
+
+The `pow`/`log` coordinate distributions of the C++ (circle packing of siblings) are not
+ported yet (#18).
 
 ## Node Visualization
 
@@ -193,8 +210,8 @@ config.visualization.min_edge_width = 0.03  # Thinner edges
 ```python
 config.visualization.edges_percent = 1.0  # Show all edges
 config.visualization.edge_alpha = 0.8     # More opaque
-config.visualization.node_size_scale = 1.0  # Normal size
-config.visualization.epsilon = 0.3        # More spread
+config.visualization.node_size_scale = 2.0  # Larger nodes
+config.visualization.epsilon = 0.3        # Thicker rings
 ```
 
 ### For Publication-Quality
@@ -206,14 +223,7 @@ config.visualization.background = "white"
 config.visualization.edge_alpha = 0.6
 ```
 
-## Advanced: Spiral Layout
+## Spiral Layout
 
-Alternative to circular layout:
-
-```python
-config.layout.use_spiral_layout = True
-config.layout.spiral_K = 15.0
-config.layout.spiral_beta = 2.0
-```
-
-Creates curved, semicircular arrangements useful for aesthetic presentations.
+`config.layout.use_spiral_layout` and the `spiral_*` settings are accepted but not
+implemented (#18); the classic placement is always used.
