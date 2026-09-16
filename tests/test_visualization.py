@@ -154,3 +154,25 @@ def test_color_legend_title_follows_decomposition(
     net.visualize(tmp_path / "out.png")
 
     assert title in titles
+
+
+def test_layout_components_are_the_nested_components_with_circles(karate: nx.Graph):
+    """Border circles come from the nested component tree, only for components with clusters."""
+    from lanet_vi.models.config import LayoutConfig
+
+    G = nx.Graph(karate.edges())  # drop networkx's weight attribute: plain k-cores
+    config = LaNetConfig(
+        visualization=VisualizationConfig(width=300, height=300, gamma=1.5),
+        layout=LayoutConfig(min_component_size=1),
+    )
+    net = Network(G, config)
+    net.decompose()
+    layout = net.compute_layout()
+
+    # One component per shell 1..4, concentric, radius = ratio * u * gamma, one unit apart
+    assert [c.shell_index for c in layout.components] == [1, 2, 3, 4]
+    assert all(c.center == (0.0, 0.0) for c in layout.components)
+    radii = [c.radius for c in layout.components]
+    assert all(a - b == pytest.approx(1.5) for a, b in zip(radii, radii[1:], strict=False))
+    assert layout.bounds[1] >= max(x for x, _ in layout.node_positions.values())
+    assert layout.bounds[1] == pytest.approx(radii[0])  # the C++ camera frame
