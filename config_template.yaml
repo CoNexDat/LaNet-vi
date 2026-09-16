@@ -64,9 +64,9 @@ visualization:
   height: 1080
 
   # Layout parameters
-  epsilon: 0.18  # Ring overlapping possibility
-  delta: 1.3     # Distance between components
-  gamma: 1.5     # Component diameter
+  epsilon: 0.18  # Ring thickness as a fraction of its radius
+  delta: 1.3     # Shrink factor of sibling components
+  gamma: 1.5     # Component diameter (scales the whole picture)
 
   # Font size multiplier for labels
   font_zoom: 1.0
