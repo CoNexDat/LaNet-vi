@@ -14,9 +14,13 @@ from lanet_vi.models.config import (
     DecompositionType,
     LaNetConfig,
 )
-from lanet_vi.models.graph import DecompositionResult, VisualizationLayout
+from lanet_vi.models.graph import Component, DecompositionResult, VisualizationLayout
 from lanet_vi.visualization.colors import compute_shell_color
-from lanet_vi.visualization.layout import compute_hierarchical_layout
+from lanet_vi.visualization.lanet_layout import (
+    LayoutParameters,
+    compute_lanet_layout,
+    node_radius,
+)
 from lanet_vi.visualization.matplotlib_renderer import render_network, select_visible_edges
 
 logger = get_logger(__name__)
@@ -214,33 +218,50 @@ class Network:
         logger.info("Computing visualization layout")
         _start_time = time.time()  # Reserved for future profiling
 
-        # Filter components by minimum size (for component circles only, not node positioning)
-        # This only affects which components get border circles drawn, all nodes are still
-        # positioned
-        min_size = self.config.layout.min_component_size
-        filtered_components = [
-            comp for comp in self.decomposition.components if comp.size >= min_size
-        ]
+        decomposition = self.decomposition
+        vis = self.config.visualization
+        weighted = bool(self.config.graph.weighted)
 
-        # Group ALL nodes by shell index for shell-based layout
-        # This ensures every node gets positioned, not just nodes in large components
-        from collections import defaultdict
+        # Edge index: for k-dense the edge's own index (metadata), else min of the endpoints
+        edge_indices = decomposition.metadata.get("edge_indices")
+        node_index = decomposition.node_indices
 
-        all_nodes_by_shell = defaultdict(list)
-        for node, shell_idx in self.decomposition.node_indices.items():
-            all_nodes_by_shell[shell_idx].append(node)
+        def edge_index(u: int, v: int) -> int:
+            if edge_indices is not None:
+                return int(edge_indices.get((u, v) if u < v else (v, u), 2))
+            return min(node_index[u], node_index[v])
 
-        # Compute hierarchical positions for ALL nodes
-        node_positions = compute_hierarchical_layout(
-            filtered_components,  # Components for border circles
-            self.config.layout,
-            self.decomposition.max_index,
-            all_nodes_by_shell=dict(all_nodes_by_shell),  # All nodes for positioning
-            graph=self.graph,  # For neighbor lookup
-            node_shells=self.decomposition.node_indices,  # For shell-based neighbor filtering
-            no_cliques=self.config.decomposition.no_cliques,  # Algorithm mode
-            epsilon=self.config.visualization.epsilon,  # Radial spread control
+        params = LayoutParameters(
+            epsilon=vis.epsilon,
+            delta=vis.delta,
+            gamma=vis.gamma,
+            u=vis.unit_length,
+            no_cliques=self.config.decomposition.no_cliques,
+            weighted=weighted,
         )
+        lanet = compute_lanet_layout(
+            self.graph, node_index, params, seed=self.config.layout.seed, edge_index=edge_index
+        )
+        node_positions = lanet.positions
+
+        # Nested components (centres and radii) for the border circles, largest first
+        min_size = self.config.layout.min_component_size
+        is_dense = decomposition.decomp_type == "kdenses"
+        filtered_components = []
+        for i, comp in enumerate(lanet.root.walk()):
+            if comp.size < min_size or (comp.index == 0 and comp.parent is None):
+                continue
+            filtered_components.append(
+                Component(
+                    component_id=i,
+                    nodes=[v for cluster in comp.clusters for v in cluster],
+                    shell_index=None if is_dense else comp.index,
+                    dense_index=comp.index if is_dense else None,
+                    size=comp.size,
+                    center=(comp.x, comp.y),
+                    radius=comp.ratio * comp.u * vis.gamma,
+                )
+            )
 
         # Compute node colors
         node_colors = {}
@@ -258,25 +279,26 @@ class Network:
                     self.config.visualization.color_scale_max_value,
                 )
 
-        # Compute node sizes (proportional to degree, using log scale for large graphs)
+        # Node radii in layout units, as the C++ computeHostRatio (scaled by node_size_scale)
         degrees = dict(self.graph.degree())
         max_degree = max(degrees.values()) if degrees else 1
-        n_nodes = self.graph.number_of_nodes()
-
-        # Use logarithmic scaling for large networks to keep nodes visible
-        scale = self.config.visualization.node_size_scale
-        if n_nodes > 1000:
-            import math
-
-            node_sizes = {
-                node: scale * (1.0 + 8.0 * math.log(1 + degrees[node]) / math.log(1 + max_degree))
-                for node in self.graph.nodes()
-            }
-        else:
-            node_sizes = {
-                node: scale * (3.0 + 10.0 * (degrees[node] / max_degree))
-                for node in self.graph.nodes()
-            }
+        strengths: dict[int, float] = {}
+        if weighted:
+            for v in self.graph:
+                strengths[v] = sum(float(d.get("weight", 1.0)) for d in self.graph[v].values())
+        max_strength = max(strengths.values(), default=0.0)
+        scale = vis.node_size_scale
+        node_sizes = {
+            node: scale
+            * node_radius(
+                degrees[node],
+                max_degree,
+                strengths.get(node, 0.0),
+                max_strength,
+                weighted=weighted and not self.graph.is_multigraph(),
+            )
+            for node in self.graph.nodes()
+        }
 
         # Select visible edges
         visible_edges = select_visible_edges(
@@ -318,13 +340,16 @@ class Network:
                 )
                 edge_widths[(u, v)] = width
 
-        # Compute bounds
-        if node_positions:
-            xs = [pos[0] for pos in node_positions.values()]
-            ys = [pos[1] for pos in node_positions.values()]
-            bounds = (min(xs), max(xs), min(ys), max(ys))
-        else:
-            bounds = (0.0, 1.0, 0.0, 1.0)
+        # Bounds: the square the C++ camera framed, widened if a node falls outside it
+        frame = lanet.frame if lanet.frame > 0 else 1.0
+        xs = [pos[0] for pos in node_positions.values()] or [0.0]
+        ys = [pos[1] for pos in node_positions.values()] or [0.0]
+        bounds = (
+            min(-frame, min(xs)),
+            max(frame, max(xs)),
+            min(-frame, min(ys)),
+            max(frame, max(ys)),
+        )
 
         return VisualizationLayout(
             node_positions=node_positions,
@@ -333,7 +358,7 @@ class Network:
             visible_edges=visible_edges,
             edge_colors=edge_colors,
             edge_widths=edge_widths,
-            components=filtered_components,  # Only include components >= min_component_size
+            components=filtered_components,  # nested components >= min_component_size
             bounds=bounds,
         )
 
