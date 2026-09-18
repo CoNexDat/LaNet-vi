@@ -1,7 +1,7 @@
 """Circle packing of sibling components (the C++ ``distribute_components``).
 
-Not yet wired to the layout: the classic placement lives in ``lanet_layout``; this is the
-basis for the ``pow``/``log`` coordinate distributions (#18).
+Currently unused: the classic placement lives in ``lanet_layout``; this module is kept as
+the basis for the ``pow``/``log`` coordinate distributions (#18).
 """
 
 import logging

@@ -228,3 +228,62 @@ def test_higher_neighbour_in_another_branch_is_tolerated():
 
     layout = compute_lanet_layout(G, index, LayoutParameters(), seed=0, edge_index=edge_index)
     assert set(layout.positions) == set(G.nodes())
+
+
+def test_single_isolated_node_and_edgeless_graph():
+    """No edges: the log(max strength) guard keeps the layout finite."""
+    G = nx.Graph()
+    G.add_nodes_from([0, 1, 2])
+    layout = compute_lanet_layout(G, {0: 0, 1: 0, 2: 0}, LayoutParameters(), seed=0)
+    assert set(layout.positions) == {0, 1, 2}
+    assert all(math.isfinite(x) and math.isfinite(y) for x, y in layout.positions.values())
+    single = compute_lanet_layout(nx.Graph([(0, 0)]), {0: 0}, LayoutParameters(), seed=0)
+    assert set(single.positions) == {0}
+
+
+def test_unweighted_average_matches_formula_one():
+    """Rho = R (1 - eps) + eps R avg with avg = sum(max - k_nb + 1) / (L (max - k))."""
+    # Node 5 (core 2) hangs from 0 and 1 of a K5 (core 4): L = 2, max = 4, depth = 2,
+    # sum = 2 * (4 - 4 + 1) = 2 -> avg = 0.5 (an extra / L that once slipped in gave 0.25)
+    G = nx.complete_graph(5)
+    G.add_edges_from([(5, 0), (5, 1)])
+    core = nx.core_number(G)
+    assert core[5] == 2
+    params = LayoutParameters(epsilon=0.5, gamma=1.0, u=1.0, no_cliques=True)
+    layout = compute_lanet_layout(G, core, params, seed=0)
+    comp = layout.root
+    while comp.index != 2:
+        comp = comp.children[0]
+    x, y = layout.positions[5]
+    assert math.hypot(x - comp.x, y - comp.y) == pytest.approx(comp.ratio * (0.5 + 0.5 * 0.5))
+
+
+def test_deep_core_hierarchy_does_not_hit_the_recursion_limit():
+    """A chain of 1500 nested cores is placed iteratively."""
+    # Nested cliques would be huge; fake the indices on a path instead: node i has index i
+    # and the edge (i, i+1) index i, so every node is its own nested component
+    n = 1500
+    G = nx.path_graph(n)
+    index = {i: i for i in range(n)}
+    layout = compute_lanet_layout(
+        G, index, LayoutParameters(), seed=0, edge_index=lambda u, v: min(index[u], index[v])
+    )
+    assert len(layout.positions) == n
+    depth = 0
+    comp = layout.root
+    while comp.children:
+        comp = comp.children[0]
+        depth += 1
+    assert depth == n - 1
+
+
+def test_greedy_cliques_scale_to_a_large_top_core():
+    """A 1000-node top core (two K500 joined by an edge) is partitioned quickly."""
+    from lanet_vi.visualization.lanet_layout import _greedy_cliques
+
+    G = nx.complete_graph(500)
+    G.add_edges_from(nx.complete_graph(range(500, 1000)).edges())
+    G.add_edge(0, 500)
+    cliques = _greedy_cliques(list(G.nodes()), G)
+    assert sorted(len(c) for c in cliques) == [500, 500]
+    assert sorted(v for c in cliques for v in c) == list(range(1000))

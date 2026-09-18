@@ -126,6 +126,20 @@ def place_in_circular_sector(
     return ratio - (divs - ratio - ratio * alfa), alfa
 
 
+def _post_order(root: LayoutComponent) -> list[LayoutComponent]:
+    """Components with every child before its parent, children in their own order."""
+    out: list[LayoutComponent] = []
+    stack: list[tuple[LayoutComponent, bool]] = [(root, False)]
+    while stack:
+        comp, expanded = stack.pop()
+        if expanded:
+            out.append(comp)
+            continue
+        stack.append((comp, True))
+        stack.extend((child, False) for child in reversed(comp.children))
+    return out
+
+
 def _random_order(items: Sequence[int], rng: np.random.Generator) -> list[int]:
     """Shuffle as the C++ did: every element goes to the front or the back with p = 1/2."""
     out: deque[int] = deque()
@@ -215,37 +229,29 @@ def build_component_tree(
     return root
 
 
-def _greedy_cliques(
-    cluster: list[int], graph: nx.Graph, top_index: int, node_index: dict[int, int]
-) -> list[list[int]]:
+def _greedy_cliques(cluster: list[int], graph: nx.Graph) -> list[list[int]]:
     """Partition a top-core cluster into cliques (``Clique::buildCliques``).
 
-    Nodes are taken in decreasing order of the number of edges among their top-core
-    neighbours; each seeds a clique that greedily absorbs its remaining neighbours.
+    Each node, in cluster order, seeds a clique that greedily absorbs the not-yet-taken
+    neighbours (in the same order) adjacent to every member; cliques are sorted by node id.
+    The C++ meant to rank nodes by the connections among their top-core neighbours, but
+    it looked the core numbers up in the empty map of a fresh ``Network``, so every rank
+    was 0 and the cluster order decided; that is what is reproduced here. Linear in the
+    edges inside the cluster.
     """
     members = set(cluster)
-    connections: dict[int, int] = {}
-    for v in cluster:
-        top_neighbours = [w for w in graph.neighbors(v) if node_index.get(w) == top_index]
-        top_set = set(top_neighbours)
-        connections[v] = sum(1 for w in top_neighbours for x in graph.neighbors(w) if x in top_set)
-    remaining = sorted(cluster, key=lambda v: -connections[v])
-    remaining_set = set(remaining)
+    inside = {v: set(graph[v]) & members for v in cluster}
+    rank = {v: i for i, v in enumerate(cluster)}
+    alive = set(cluster)
     cliques: list[list[int]] = []
-    while remaining:
-        v = remaining[0]
+    for v in cluster:
+        if v not in alive:
+            continue
         clique = [v]
-        clique_set = {v}
-        candidates = sorted(
-            (w for w in graph.neighbors(v) if w in remaining_set and w in members and w != v),
-            key=lambda w: -connections[w],
-        )
-        for w in candidates:
-            if all(graph.has_edge(w, c) for c in clique_set):
+        for w in sorted(inside[v] & alive, key=rank.__getitem__):
+            if all(w in inside[c] for c in clique):
                 clique.append(w)
-                clique_set.add(w)
-        remaining_set -= clique_set
-        remaining = [w for w in remaining if w in remaining_set]
+        alive.difference_update(clique)
         cliques.append(sorted(clique))
     return cliques
 
@@ -272,57 +278,79 @@ class _Placer:
             strength = {
                 v: sum(float(d.get("weight", 1.0)) for d in graph[v].values()) for v in graph
             }
-        self.log_max_strength = max(math.log(max(strength.values(), default=1.0)), 1e-9)
+        top = max(strength.values(), default=1.0)
+        self.log_max_strength = max(math.log(max(top, 1.0)), 1e-9)
         # ``degree_squares`` is a file-scope accumulator in the C++: it keeps growing over
         # every top core visited, so later top cores get larger radii. Kept as is.
         self.degree_squares = 0.0
         self.positions: dict[int, tuple[float, float]] = {}
 
     # -- part 1: radii ---------------------------------------------------------------
-    def radii(self, comp: LayoutComponent) -> None:
-        """Post-order: the radius of every component from its deepest core."""
-        comp.central_core_k = comp.index
-        for child in comp.children:
-            self.radii(child)
-            if child.central_core_k > comp.central_core_k:
-                comp.central_core_k = child.central_core_k
-                comp.central_core_ratio = child.central_core_ratio
-        if not comp.children:
-            for cluster in comp.clusters:
-                for v in cluster:
-                    self.degree_squares += math.log(1 + self.degree[v]) ** 2
+    def radii(self, root: LayoutComponent) -> None:
+        """Post-order over the tree: the radius of every component from its deepest core.
+
+        Iterative (children in order, then the parent) so the depth of the core hierarchy
+        is not bounded by Python's recursion limit.
+        """
+        for comp in _post_order(root):
             comp.central_core_k = comp.index
-            comp.central_core_ratio = (
-                2 * math.sqrt(40 * 40 * 0.01 * 0.01 * self.degree_squares) / self.log_max_strength
-            )
-            comp.ratio = comp.central_core_ratio
-        comp.ratio = comp.central_core_ratio + (comp.central_core_k - comp.index)
+            for child in comp.children:
+                if child.central_core_k > comp.central_core_k:
+                    comp.central_core_k = child.central_core_k
+                    comp.central_core_ratio = child.central_core_ratio
+            if not comp.children:
+                for cluster in comp.clusters:
+                    for v in cluster:
+                        self.degree_squares += math.log(1 + self.degree[v]) ** 2
+                comp.central_core_k = comp.index
+                comp.central_core_ratio = (
+                    2
+                    * math.sqrt(40 * 40 * 0.01 * 0.01 * self.degree_squares)
+                    / self.log_max_strength
+                )
+                comp.ratio = comp.central_core_ratio
+            comp.ratio = comp.central_core_ratio + (comp.central_core_k - comp.index)
 
     # -- part 2: centres and node positions ------------------------------------------
-    def place(self, comp: LayoutComponent) -> None:
-        """Pre-order: centre, scale and then the nodes of every component."""
+    def place(self, root: LayoutComponent) -> None:
+        """Centre and scale every component, then its nodes once its children are placed.
+
+        Same order as the C++ recursion: a component's centre first, then its children
+        (depth first), then its own clusters. Iterative for the same reason as ``radii``.
+        """
+        stack: list[tuple[LayoutComponent, bool]] = [(root, False)]
+        while stack:
+            comp, children_done = stack.pop()
+            if children_done:
+                self.place_own_nodes(comp)
+                continue
+            self.place_centre(comp)
+            stack.append((comp, True))
+            stack.extend((child, False) for child in reversed(comp.children))
+
+    def place_centre(self, comp: LayoutComponent) -> None:
+        """Formulas (4), (3) and (5): a child's rho, phi, centre and scale in its parent."""
         parent = comp.parent
-        if parent is not None:
-            siblings = sum(c.size for c in parent.children)
-            previous = 0
-            for c in parent.children:
-                if c is comp:
-                    break
-                previous += c.size
-            previous += comp.size // 2
-            # Formulas (4), (3) and (5)
-            comp.rho = 1.0 - comp.size / siblings
-            comp.phi = TWO_PI * (previous / siblings) ** 2
-            comp.x = parent.x + parent.ratio * parent.u * comp.rho * math.cos(comp.phi)
-            comp.y = parent.y + parent.ratio * parent.u * comp.rho * math.sin(comp.phi)
-            if len(parent.children) != 1:
-                comp.u = math.sqrt(comp.size / siblings) * parent.u / self.params.delta
-            else:
-                comp.u = parent.u
+        if parent is None:
+            return
+        siblings = sum(c.size for c in parent.children)
+        previous = 0
+        for c in parent.children:
+            if c is comp:
+                break
+            previous += c.size
+        previous += comp.size // 2
+        comp.rho = 1.0 - comp.size / siblings
+        comp.phi = TWO_PI * (previous / siblings) ** 2
+        comp.x = parent.x + parent.ratio * parent.u * comp.rho * math.cos(comp.phi)
+        comp.y = parent.y + parent.ratio * parent.u * comp.rho * math.sin(comp.phi)
+        if len(parent.children) != 1:
+            comp.u = math.sqrt(comp.size / siblings) * parent.u / self.params.delta
+        else:
+            comp.u = parent.u
 
-        for child in comp.children:
-            self.place(child)
-
+    def place_own_nodes(self, comp: LayoutComponent) -> None:
+        """Place the clusters of a component: cliques for a top core, formula (1) otherwise."""
         partial = 0
         for cluster in comp.clusters:
             if cluster:
@@ -351,7 +379,9 @@ class _Placer:
                     sumatory += weight * (self.max_index - self.node_index[w] + 1)
             depth = self.max_index - shell_h
             if higher and depth > 0 and sum_w > 0:
-                average = sumatory / (len(higher) * sum_w * depth)
+                # Unweighted: sum / (L * depth); weighted: the C++ also divides by sum_w
+                divisor = len(higher) * depth * (sum_w if self.params.weighted else 1.0)
+                average = sumatory / divisor
             else:
                 average = rng.random()
 
@@ -364,6 +394,9 @@ class _Placer:
                     ang_init = TWO_PI * rng.random()
                     phi = 0.0
                     amount = 0.0
+                    # The C++ coin-flips every neighbour to the front or back of a list
+                    # and then keeps the higher ones; flipping only the higher ones gives
+                    # the same distribution of their relative order
                     order = _random_order(range(len(higher)), rng)
                     for i in order:
                         w, weight = higher[i]
@@ -398,7 +431,7 @@ class _Placer:
     def place_cliques(self, comp: LayoutComponent, cluster: list[int]) -> None:
         """Place a top core: cliques on U-shaped paths in angular sectors."""
         gamma = self.params.gamma
-        cliques = _greedy_cliques(cluster, self.graph, self.max_index, self.node_index)
+        cliques = _greedy_cliques(cluster, self.graph)
         total = len(cluster)
         hosts_sum = 0
         for clique in cliques:

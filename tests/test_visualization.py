@@ -176,3 +176,24 @@ def test_layout_components_are_the_nested_components_with_circles(karate: nx.Gra
     assert all(a - b == pytest.approx(1.5) for a, b in zip(radii, radii[1:], strict=False))
     assert layout.bounds[1] >= max(x for x, _ in layout.node_positions.values())
     assert layout.bounds[1] == pytest.approx(radii[0])  # the C++ camera frame
+
+
+def test_autodetected_weights_use_weighted_geometry(karate: nx.Graph):
+    """A graph with weight attributes but no --weighted still gets strength-based layout."""
+    from unittest.mock import patch
+
+    from lanet_vi.visualization import lanet_layout
+
+    seen: dict[str, object] = {}
+    original = lanet_layout.compute_lanet_layout
+
+    def spy(graph, node_index, params, *args, **kwargs):  # noqa: ANN001, ANN202
+        seen["weighted"] = params.weighted
+        return original(graph, node_index, params, *args, **kwargs)
+
+    net = Network(karate, _small_config())  # networkx's karate club carries weights
+    net.decompose()
+    assert net.decomposition is not None and net.decomposition.p_function is not None
+    with patch("lanet_vi.core.network.compute_lanet_layout", spy):
+        net.compute_layout()
+    assert seen["weighted"] is True

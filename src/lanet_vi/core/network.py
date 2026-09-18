@@ -7,7 +7,11 @@ import networkx as nx
 
 from lanet_vi.decomposition.dcores import compute_dcores, find_components_by_dcore
 from lanet_vi.decomposition.kcores import compute_kcores, find_components_by_shell
-from lanet_vi.decomposition.kdenses import compute_kdenses, find_components_by_dense
+from lanet_vi.decomposition.kdenses import (
+    MIN_DENSE_INDEX,
+    compute_kdenses,
+    find_components_by_dense,
+)
 from lanet_vi.io.readers import read_edge_list, read_node_colors, read_node_names
 from lanet_vi.logging_config import get_logger
 from lanet_vi.models.config import (
@@ -220,7 +224,9 @@ class Network:
 
         decomposition = self.decomposition
         vis = self.config.visualization
-        weighted = bool(self.config.graph.weighted)
+        # Weighted geometry whenever the decomposition ran on strengths (p-function
+        # present: --weighted, or weights autodetected) or the graph is declared weighted
+        weighted = bool(self.config.graph.weighted) or decomposition.p_function is not None
 
         # Edge index: for k-dense the edge's own index (metadata), else min of the endpoints
         edge_indices = decomposition.metadata.get("edge_indices")
@@ -228,7 +234,7 @@ class Network:
 
         def edge_index(u: int, v: int) -> int:
             if edge_indices is not None:
-                return int(edge_indices.get((u, v) if u < v else (v, u), 2))
+                return int(edge_indices.get((u, v) if u < v else (v, u), MIN_DENSE_INDEX))
             return min(node_index[u], node_index[v])
 
         params = LayoutParameters(
