@@ -1,4 +1,4 @@
-"""Tests for the edge-list, names and colours readers."""
+"""Tests for the edge-list, names and colors readers."""
 
 from pathlib import Path
 
@@ -35,7 +35,7 @@ def test_read_edge_list_ignores_extra_column_when_unweighted(tmp_path: Path):
 
 
 def test_read_edge_list_weighted_without_weight_column_uses_one(tmp_path: Path):
-    """A weighted read of a two-column file gets weight 1.0 (C++ behaviour)."""
+    """A weighted read of a two-column file gets weight 1.0 (C++ behavior)."""
     path = _write(tmp_path, "1 2\n2 3\n")
 
     G = read_edge_list(path, weighted=True)
@@ -110,7 +110,7 @@ def test_read_node_names_keeps_spaces_and_strips_quotes(tmp_path: Path):
 
 
 def test_read_node_colors_accepts_tabs(tmp_path: Path):
-    """Colours files may be tab- or space-separated."""
+    """Colors files may be tab- or space-separated."""
     path = _write(tmp_path, "1\t1.0\t0.0\t0.0\n2 0 1 0\n", "colors.txt")
 
     colors = read_node_colors(path)

@@ -278,7 +278,7 @@ def visualize(
         True, "--show-degree-scale/--no-show-degree-scale", help="Show the degree (size) legend"
     ),
     show_color_legend: bool = typer.Option(
-        True, "--show-color-legend/--no-show-color-legend", help="Show the colour legend"
+        True, "--show-color-legend/--no-show-color-legend", help="Show the color legend"
     ),
     show_node_labels: bool | None = typer.Option(
         None,

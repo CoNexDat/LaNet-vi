@@ -42,6 +42,9 @@ jobs:
       - name: mypy
         run: uv run mypy src/lanet_vi
 
+      - name: Validate CITATION.cff
+        run: uvx --from cffconvert==2.0.0 cffconvert --validate
+
   test:
     name: test (${{ matrix.os }}, ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}

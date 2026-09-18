@@ -1,4 +1,4 @@
-"""The LaNet-vi placement: nested components, neighbour-based rho, clique sectors.
+"""The LaNet-vi placement: nested components, neighbor-based rho, clique sectors.
 
 Port of ``kcores_component.cpp`` / ``graph_kcores_components.cpp`` from the C++ LaNet-vi
 (``-coordDistributionAlgorithm classic``, the default), following the formulas of
@@ -9,21 +9,21 @@ visualization of large scale networks* (NIPS 2005):
    the subgraph with index ``> k`` inside a component of index ``k``. A component of index
    ``k`` owns the **clusters** of its nodes with index exactly ``k`` (connected inside the
    shell) and its children (index ``k + 1``).
-2. Each component gets a centre, a radius (``ratio``) and a scale (``u``): the top core of
+2. Each component gets a center, a radius (``ratio``) and a scale (``u``): the top core of
    a branch has a radius proportional to the root of the sum of its squared log-degrees,
    every enclosing shell adds one unit (part 1); children are placed inside their parent
    at ``rho = 1 - size / siblings``, ``phi = 2 pi (previous / siblings)^2`` and scaled by
    ``sqrt(size / siblings) / delta`` (formulas (3)-(5), part 2).
 3. A node of index ``k`` sits at ``rho = ratio (1 - eps) + eps ratio * average``, where
-   ``average`` measures how deep its higher-index neighbours are (formula (1)), and at the
-   circular average of the angles of those neighbours (already placed). Top cores are
+   ``average`` measures how deep its higher-index neighbors are (formula (1)), and at the
+   circular average of the angles of those neighbors (already placed). Top cores are
    split into cliques laid along U-shaped paths in angular sectors (formula (2)).
 
 K-dense and d-core results go through the same classic placement with their own *edge
 index* for the component tree (an edge belongs to the inner component when its index is
 above the component's: for k-cores the minimum of its endpoints' indices, for k-dense the
 edge's own dense index, as ``kdenses_component.cpp`` walks it). The rest of
-``kdenses_component.cpp`` (``>=`` neighbour selection, the ``tau`` factor, sibling circle
+``kdenses_component.cpp`` (``>=`` neighbor selection, the ``tau`` factor, sibling circle
 packing through ``distribute_components``, ``ratioConstant`` node radii) belongs to the
 C++ "modern" ``pow``/``log`` mode, which is not ported yet.
 """
@@ -251,9 +251,9 @@ def _greedy_cliques(cluster: list[int], graph: nx.Graph) -> list[list[int]]:
     """Partition a top-core cluster into cliques (``Clique::buildCliques``).
 
     Each node, in cluster order, seeds a clique that greedily absorbs its not-yet-taken
-    neighbours, in adjacency order, when they are adjacent to every member; cliques are
+    neighbors, in adjacency order, when they are adjacent to every member; cliques are
     sorted by node id. The C++ meant to rank nodes by the connections among their
-    top-core neighbours, but it looked the core numbers up in the empty map of a fresh
+    top-core neighbors, but it looked the core numbers up in the empty map of a fresh
     ``Network``, so every rank was 0, the sort was a no-op and the cluster / adjacency
     orders decided; that is what is reproduced here. Linear in the edges inside the
     cluster.
@@ -330,11 +330,11 @@ class _Placer:
                 comp.ratio = comp.central_core_ratio
             comp.ratio = comp.central_core_ratio + (comp.central_core_k - comp.index)
 
-    # -- part 2: centres and node positions ------------------------------------------
+    # -- part 2: centers and node positions ------------------------------------------
     def place(self, root: LayoutComponent) -> None:
-        """Centre and scale every component, then its nodes once its children are placed.
+        """Center and scale every component, then its nodes once its children are placed.
 
-        Same order as the C++ recursion: a component's centre first, then its children
+        Same order as the C++ recursion: a component's center first, then its children
         (depth first), then its own clusters. Iterative for the same reason as ``radii``.
         """
         stack: list[tuple[LayoutComponent, bool]] = [(root, False)]
@@ -343,12 +343,12 @@ class _Placer:
             if children_done:
                 self.place_own_nodes(comp)
                 continue
-            self.place_centre(comp)
+            self.place_center(comp)
             stack.append((comp, True))
             stack.extend((child, False) for child in reversed(comp.children))
 
-    def place_centre(self, comp: LayoutComponent) -> None:
-        """Formulas (4), (3) and (5): a child's rho, phi, centre and scale in its parent."""
+    def place_center(self, comp: LayoutComponent) -> None:
+        """Formulas (4), (3) and (5): a child's rho, phi, center and scale in its parent."""
         parent = comp.parent
         if parent is None:
             return
@@ -380,7 +380,7 @@ class _Placer:
             partial += len(cluster)
 
     def place_cluster(self, comp: LayoutComponent, cluster: list[int], partial: int) -> None:
-        """Place a cluster: rho by formula (1), phi from the higher-index neighbours."""
+        """Place a cluster: rho by formula (1), phi from the higher-index neighbors."""
         eps = self.params.epsilon
         gamma = self.params.gamma
         rng = self.rng
@@ -390,8 +390,8 @@ class _Placer:
             higher: list[tuple[int, float]] = []
             sum_w = 0.0
             sumatory = 0.0
-            # Weights are paired with their neighbour here; the C++ advanced its weight
-            # iterator only for qualifying neighbours, so they drifted apart after any
+            # Weights are paired with their neighbor here; the C++ advanced its weight
+            # iterator only for qualifying neighbors, so they drifted apart after any
             # non-qualifying one (an undocumented C++ bug, not reproduced)
             for w, data in self.graph[h].items():
                 if self.node_index[w] > shell_h:
@@ -416,21 +416,21 @@ class _Placer:
                     ang_init = TWO_PI * rng.random()
                     phi = 0.0
                     amount = 0.0
-                    # The C++ coin-flips every neighbour to the front or back of a list
+                    # The C++ coin-flips every neighbor to the front or back of a list
                     # and then keeps the higher ones; flipping only the higher ones gives
                     # the same distribution of their relative order
                     order = _random_order(range(len(higher)), rng)
                     for i in order:
                         w, weight = higher[i]
                         # The C++ truncated the weighted share to an int (always 0 unless
-                        # there is a single neighbour); the float share is used instead
+                        # there is a single neighbor); the float share is used instead
                         new_amount = (
                             weight / sum_w
                             if self.params.weighted
                             else float(self.node_index[w] + 1 - shell_h)
                         )
                         # With an edge index below the node index (k-dense, d-cores) a
-                        # higher neighbour can sit in another branch that is placed later;
+                        # higher neighbor can sit in another branch that is placed later;
                         # the C++ read a zero position for it, here it is skipped
                         if new_amount != 0 and w in self.positions:
                             wx, wy = self.positions[w]
@@ -492,7 +492,7 @@ def compute_lanet_layout(
     Parameters
     ----------
     graph : nx.Graph
-        The network (undirected view is used for neighbourhoods)
+        The network (undirected view is used for neighborhoods)
     node_index : Dict[int, int]
         Shell / dense index of every node
     params : LayoutParameters
@@ -505,9 +505,9 @@ def compute_lanet_layout(
     Returns
     -------
     LanetLayout
-        Node positions, the component tree (centres, radii, scales) and the frame size
+        Node positions, the component tree (centers, radii, scales) and the frame size
     """
-    # Degrees as the C++ getDegree(): neighbours with multiplicity (in + out when directed)
+    # Degrees as the C++ getDegree(): neighbors with multiplicity (in + out when directed)
     degrees = dict(graph.degree())
     if graph.is_directed():
         graph = graph.to_undirected(as_view=True)

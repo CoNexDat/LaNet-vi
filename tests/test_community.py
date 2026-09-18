@@ -1,4 +1,4 @@
-"""Tests for community detection data models and colouring."""
+"""Tests for community detection data models and coloring."""
 
 import networkx as nx
 
@@ -31,7 +31,7 @@ def test_louvain_on_karate(karate: nx.Graph):
 
 
 def test_get_community_colors_are_rgb_triples():
-    """Community colours are RGB triples in [0, 1], including beyond 20 communities."""
+    """Community colors are RGB triples in [0, 1], including beyond 20 communities."""
     for n in (5, 25, 60):
         colors = get_community_colors(n)
         assert len(colors) == n

@@ -19,7 +19,7 @@ reviewed by a **fresh-context reviewer subagent**:
 4. After any change, spawn **another fresh** reviewer for the new state — never continue
    the previous reviewer session.
 5. Repeat until CI is green on the latest push **and** the latest reviewer says
-   `VERDICT: APPROVE`. Post a PR comment summarising the rounds (what was fixed, what was
+   `VERDICT: APPROVE`. Post a PR comment summarizing the rounds (what was fixed, what was
    declined and why), then merge with `gh pr merge <n> --squash --delete-branch`.
 
 Everything else in AGENTS.md (branching, CI, never merge red, no admin bypass) applies.

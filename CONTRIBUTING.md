@@ -32,12 +32,14 @@ uv build
 - Python 3.10+ compatible code (`X | None` unions are fine; ruff's `UP`
   rules are configured for the 3.10 target).
 - Line length 100, ruff formatter, imports sorted by ruff (`I`).
+- American English (US spelling) in all identifiers, docstrings, comments and docs:
+  `color`, `gray`, `center`, `neighbor`, `initialize`, `analyze`. Reviews check this.
 - NumPy-style docstrings on public functions and classes (ruff `D` rules).
 - Configuration objects are Pydantic models in `src/lanet_vi/models/config.py`. Add
   a field there and thread it through the CLI in `src/lanet_vi/cli.py` rather than
   adding ad-hoc parameters.
 - Type hints everywhere; mypy runs with `disallow_untyped_defs`.
-- Every behaviour change gets a test under `tests/` and a line in `CHANGELOG.md`
+- Every behavior change gets a test under `tests/` and a line in `CHANGELOG.md`
   under `[Unreleased]`.
 
 ## Making a change
@@ -77,10 +79,11 @@ escape hatch and say so in the PR when it is used.
 ## Releasing
 
 1. Bump `version` in `pyproject.toml` (the only place the version lives;
-   `lanet_vi.__version__` reads it from package metadata).
+   `lanet_vi.__version__` reads it from package metadata) and update `version` and
+   `date-released` in `CITATION.cff` to match.
 2. Move the `[Unreleased]` section of `CHANGELOG.md` under a new `[X.Y.Z] - YYYY-MM-DD`
    heading and add the compare link at the bottom.
-3. Open a PR with those two changes and merge it.
+3. Open a PR with those changes and merge it.
 4. Tag and publish a GitHub release: `git tag vX.Y.Z && git push origin vX.Y.Z`, then
    `gh release create vX.Y.Z --generate-notes`.
 5. The **Publish to PyPI** workflow runs on the release and uploads with

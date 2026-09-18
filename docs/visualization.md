@@ -17,13 +17,13 @@ Vespignani, NIPS 2005; `-coordDistributionAlgorithm classic`):
 2. **Radii.** The top core of a branch gets a disc whose radius grows with the square
    root of the sum of the squared log-degrees of its nodes; each enclosing shell adds one
    unit of radius. Shells are therefore rings one unit apart, the highest index innermost.
-3. **Centres.** A component with siblings is offset from its parent's centre by
+3. **Centers.** A component with siblings is offset from its parent's center by
    `rho = 1 - size / siblings` (a lone child is concentric), at an angle that grows with
    the cumulative size of the siblings before it, and drawn at a smaller scale
    `u = sqrt(size / siblings) / delta`.
 4. **Nodes.** A node of index *k* sits at `rho = R (1 - epsilon) + epsilon R avg`, where
-   `avg` measures how deep its higher-index neighbours are (closer to the centre when
-   they are deep), and at the circular average of the angles of those neighbours, which
+   `avg` measures how deep its higher-index neighbors are (closer to the center when
+   they are deep), and at the circular average of the angles of those neighbors, which
    are placed first. Top cores are split into cliques, each laid along a U-shaped path in
    its own angular sector. `--no-cliques` spreads top cores uniformly and gives every
    cluster its own sector instead (formula (2) of the paper).
@@ -48,24 +48,24 @@ k-dense specific variant of `kdenses_component.cpp`) are not ported yet (#18).
 
 ### Node Color
 
-Nodes are coloured by their shell (or dense) index with the colour scale of the C++
+Nodes are colored by their shell (or dense) index with the color scale of the C++
 LaNet-vi (`types.cpp`):
 
 - `col` (default): magenta → blue → cyan → green → yellow → **red** from the periphery to
   the maximum index. Consecutive shells alternate a luminosity of 0.7 and 1.2 so that
-  neighbouring rings stay distinguishable (k-dense pictures on a white background use a
+  neighboring rings stay distinguishable (k-dense pictures on a white background use a
   constant 0.9 instead).
-- `bw`: white → grey → **black** from the periphery to the maximum index.
+- `bw`: white → gray → **black** from the periphery to the maximum index.
 - `bwi`: the same scale interlaced: indices with the parity of the maximum take the dark
   half, the others the light half, so adjacent shells contrast strongly.
 
-`color_scale_max_value` (`--color-scale-max`) fixes the index drawn with the last colour;
+`color_scale_max_value` (`--color-scale-max`) fixes the index drawn with the last color;
 higher indices share it, which makes pictures of different networks comparable. For k-dense
 pictures with `measure = mcore` (the default) the value is an m-core number (k-dense
 minus 2), as in the C++. A network with a single shell is red.
 
-A colours file (`--colors-file`) replaces the shell colours; nodes absent from it are white
-on a black background and black on a white one, and the colour legend is not drawn.
+A colors file (`--colors-file`) replaces the shell colors; nodes absent from it are white
+on a black background and black on a white one, and the color legend is not drawn.
 
 ### Node Size
 
@@ -78,10 +78,10 @@ than one pixel. `node_size_scale` multiplies it (1.0 is the C++ size).
 ### Gradient Edge Coloring
 
 Each edge is drawn as two halves meeting at the midpoint, as the two cylinders of the C++:
-the half next to node A takes the colour of node B and vice versa, darkened by 0.75 in
-`col` pictures and lightened by 1.2 in `bw`/`bwi` ones. K-dense edges are one colour, the
-colour of their own dense index, darkened by 0.5. `gradient_edges: false` draws plain
-edges in the text colour instead.
+the half next to node A takes the color of node B and vice versa, darkened by 0.75 in
+`col` pictures and lightened by 1.2 in `bw`/`bwi` ones. K-dense edges are one color, the
+color of their own dense index, darkened by 0.5. `gradient_edges: false` draws plain
+edges in the text color instead.
 
 Edges are drawn under the nodes in increasing index order, so the edges of the core end up
 on top of the peripheral ones.
@@ -110,7 +110,7 @@ layout `seed` so the same seed gives the same picture.
 ## Picture Size
 
 The picture is exactly `width` x `height` pixels. The layout frame (1.6 x 1.2 times the
-network radius, the C++ viewport) is scaled uniformly to fit and centred, so any aspect
+network radius, the C++ viewport) is scaled uniformly to fit and centered, so any aspect
 ratio works without distorting the network; the legends sit in the margins of the frame.
 
 ## Component Circles
@@ -126,24 +126,24 @@ Optional component border circles:
 Both legends are drawn in layout units at the positions of the C++ `generateNetworkFile`,
 so they scale with the picture.
 
-### Colour Legend (Right Side)
+### Color Legend (Right Side)
 
 One circle per index from the lowest (1 for k-cores and d-cores, 2 for k-denses) to the
-maximum, in a column to the right of the network, each labelled in its own colour. When
+maximum, in a column to the right of the network, each labeled in its own color. When
 there are more than 15 indices only every `max // 15 + 1`-th one, counted from the top, is
-labelled. For k-dense pictures the labels follow `measure`: `mcore` (default) prints the
+labeled. For k-dense pictures the labels follow `measure`: `mcore` (default) prints the
 m-core number (k-dense minus 2) under the title `m-core`; `kdense` prints the k-dense index.
 
 ### Degree Legend (Left Side)
 
 Up to five sample nodes with degrees `dmax`, `dmax/4`, `dmax/16`, ... (down to 2), drawn
 with the radius the nodes of that degree have in the picture, white on a black background
-and grey on a white one. Weighted graphs show strengths `smax / 4^i` instead (unless no
+and gray on a white one. Weighted graphs show strengths `smax / 4^i` instead (unless no
 strength exceeds 1, where the radii follow the degree law and so does the legend).
 
 ### Legend Configuration
 
-- `show_color_legend`: Show/hide the shell/dense index colour legend
+- `show_color_legend`: Show/hide the shell/dense index color legend
 - `show_degree_scale`: Show/hide the degree (node size) legend, as the C++ `-showDegreeScale`
   (`show_size_legend` is a deprecated alias)
 - `legend_fontsize`: Manual font size in points (default: the C++ size, which scales with
@@ -153,7 +153,7 @@ strength exceeds 1, where the radii follow the degree law and so does the legend
 ## Background and Colors
 
 - `background`: `black` (default) or `white`
-- `color_scheme`: `col` (colour), `bw` (black & white) or `bwi` (interlaced black & white)
+- `color_scheme`: `col` (color), `bw` (black & white) or `bwi` (interlaced black & white)
 
 **Recommendation**: Black background with color scheme for large networks (better contrast).
 

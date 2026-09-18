@@ -2,8 +2,8 @@
 
 The picture is laid out as the C++ SVG writer did (``svg.cpp``, ``graphics_kcores.cpp``
 ``generateNetworkFile``): the viewport is the layout's frame, scaled uniformly to the
-requested pixel size and centred; edges are drawn under the nodes in increasing index
-order; the colour and degree legends are drawn in layout units in the margins of the
+requested pixel size and centered; edges are drawn under the nodes in increasing index
+order; the color and degree legends are drawn in layout units in the margins of the
 frame so they scale with the picture.
 """
 
@@ -59,7 +59,7 @@ def render_network(
     node_names : Optional[Dict[int, str]]
         Optional node names for labels
     custom_colors : bool
-        Nodes were coloured from a colours file: the colour legend is not drawn (the C++
+        Nodes were colored from a colors file: the color legend is not drawn (the C++
         hid it with ``-colorsFile``)
     measure : MeasureType
         Labels of the k-dense legend: ``mcore`` prints ``k - 2``, ``kdense`` prints ``k``
@@ -79,7 +79,7 @@ def render_network(
     ax.set_aspect("equal")
     ax.axis("off")
 
-    # Viewport: the frame scaled uniformly to fit the picture and centred (the SVG
+    # Viewport: the frame scaled uniformly to fit the picture and centered (the SVG
     # default preserveAspectRatio "meet"), so the pixel size never distorts the layout
     xmin, xmax, ymin, ymax = layout.bounds
     px_per_unit = min(config.width / (xmax - xmin), config.height / (ymax - ymin))
@@ -139,7 +139,7 @@ def _draw_edges(
 ) -> None:
     """Draw the visible edges under the nodes, lowest index first.
 
-    Each edge is two half-segments with their own colour (the C++ two cylinders meeting
+    Each edge is two half-segments with their own color (the C++ two cylinders meeting
     at the midpoint); widths are in layout units and never thinner than a pixel.
     """
     text_color = "black" if config.background == BackgroundColor.WHITE else "white"
@@ -149,7 +149,7 @@ def _draw_edges(
         return
 
     if not (config.gradient_edges and layout.edge_colors):
-        # Plain edges in the text colour
+        # Plain edges in the text color
         segments = [[positions[u], positions[v]] for u, v in edges]
         ax.add_collection(
             LineCollection(
@@ -173,14 +173,14 @@ def _draw_edges(
 
     min_width = 1.0 / px_per_unit  # one pixel, in layout units
     pts_per_unit = px_per_unit * 72.0 / _DPI
-    grey = (0.5, 0.5, 0.5)
+    gray = (0.5, 0.5, 0.5)
     segments = []
     colors = []
     widths = []
     for u, v in edges:
         (x1, y1), (x2, y2) = positions[u], positions[v]
         mid = ((x1 + x2) / 2.0, (y1 + y2) / 2.0)
-        color_u, color_v = layout.edge_colors.get((u, v), (grey, grey))
+        color_u, color_v = layout.edge_colors.get((u, v), (gray, gray))
         width = max(layout.edge_widths.get((u, v), 0.0), min_width) * pts_per_unit
         segments.append([(x1, y1), mid])
         colors.append(color_u)
@@ -311,12 +311,12 @@ def _draw_degree_scale(
     pts_per_unit: float,
     measure: MeasureType,
 ) -> None:
-    """Draw the colour legend: one circle per index, in the right margin of the frame.
+    """Draw the color legend: one circle per index, in the right margin of the frame.
 
     Positions follow ``generateNetworkFile`` (``graphics_kcores.cpp``): a column at
-    ``1.125`` frames to the right of the centre, from ``-0.9`` frames upwards, with at
+    ``1.125`` frames to the right of the center, from ``-0.9`` frames upwards, with at
     most one label every ``max // 15 + 1`` indices counted from the top; the label is
-    written in the index colour. The k-dense legend starts at 2 and, with ``mcore``,
+    written in the index color. The k-dense legend starts at 2 and, with ``mcore``,
     labels each index ``k - 2``; its positions use the k-core formulas too (the
     ``graphics_kdenses.cpp`` variant drops the network radius ``R`` and one ``u`` from
     them, which leaves the legend inside the network on large pictures).
@@ -327,7 +327,7 @@ def _draw_degree_scale(
     if max_idx < first or frame <= 0.0:
         return  # nothing on the scale (edgeless graph)
 
-    # The colour scale maximum is given in m-core units for k-dense with -measure mcore
+    # The color scale maximum is given in m-core units for k-dense with -measure mcore
     color_scale_max = config.color_scale_max_value
     if is_dense and color_scale_max is not None and measure == MeasureType.MCORE:
         color_scale_max += 2
@@ -397,8 +397,8 @@ def _draw_size_legend(
 
     As ``generateNetworkFile``: degrees ``ceil(dmax / 4**i)`` while above 1, drawn with
     the radius the nodes of that degree have in the picture (``node_radius`` times
-    ``node_size_scale``), white on black / grey on white, at ``-1.25`` frames from the
-    centre. Layouts with strength-based radii show strengths ``smax / 4**i`` instead
+    ``node_size_scale``), white on black / gray on white, at ``-1.25`` frames from the
+    center. Layouts with strength-based radii show strengths ``smax / 4**i`` instead
     (the C++ placed those without the ``u * R`` factor, which collapses the legend on
     large pictures; the degree spacing is used for both).
     """

@@ -253,7 +253,8 @@ reporting vulnerabilities.
 
 ## Citation
 
-If you use LaNet-vi in your research, please cite:
+If you use LaNet-vi in your research, please cite the software (GitHub's *Cite this
+repository* button uses [`CITATION.cff`](CITATION.cff)) and the papers behind the method:
 
 - Alvarez-Hamelin, J.I., Dall'Asta, L., Barrat, A., Vespignani, A. (2006). "Large scale networks fingerprinting and visualization using the k-core decomposition". *Advances in Neural Information Processing Systems 18*.
 
