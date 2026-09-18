@@ -130,6 +130,19 @@ def place_in_circular_sector(
     return ratio - (divs - ratio - ratio * alfa), alfa
 
 
+def _merge_parallel_edges(graph: nx.MultiGraph) -> nx.Graph:
+    """Collapse parallel edges into one, summing their weights (the C++ strength)."""
+    simple = nx.Graph()
+    simple.add_nodes_from(graph.nodes())
+    for u, v, data in graph.edges(data=True):
+        w = float(data.get("weight", 1.0))
+        if simple.has_edge(u, v):
+            simple[u][v]["weight"] += w
+        else:
+            simple.add_edge(u, v, weight=w)
+    return simple
+
+
 def _post_order(root: LayoutComponent) -> list[LayoutComponent]:
     """Components with every child before its parent, children in their own order."""
     out: list[LayoutComponent] = []
@@ -269,13 +282,14 @@ class _Placer:
         node_index: dict[int, int],
         params: LayoutParameters,
         rng: np.random.Generator,
+        degrees: dict[int, int] | None = None,
     ) -> None:
         self.graph = graph
         self.node_index = node_index
         self.params = params
         self.rng = rng
         self.max_index = max(node_index.values()) if node_index else 0
-        self.degree = dict(graph.degree())
+        self.degree = dict(graph.degree()) if degrees is None else degrees
         # The C++ divides by log(max strength); guard the degenerate log(1) = 0
         strength = self.degree
         if params.weighted:
@@ -375,6 +389,9 @@ class _Placer:
             higher: list[tuple[int, float]] = []
             sum_w = 0.0
             sumatory = 0.0
+            # Weights are paired with their neighbour here; the C++ advanced its weight
+            # iterator only for qualifying neighbours, so they drifted apart after any
+            # non-qualifying one (an undocumented C++ bug, not reproduced)
             for w, data in self.graph[h].items():
                 if self.node_index[w] > shell_h:
                     weight = float(data.get("weight", 1.0)) if self.params.weighted else 1.0
@@ -489,8 +506,12 @@ def compute_lanet_layout(
     LanetLayout
         Node positions, the component tree (centres, radii, scales) and the frame size
     """
+    # Degrees as the C++ getDegree(): neighbours with multiplicity (in + out when directed)
+    degrees = dict(graph.degree())
     if graph.is_directed():
         graph = graph.to_undirected(as_view=True)
+    if graph.is_multigraph():
+        graph = _merge_parallel_edges(graph)
     if edge_index is None:
 
         def edge_index(u: int, v: int) -> int:
@@ -499,7 +520,7 @@ def compute_lanet_layout(
     rng = np.random.default_rng(seed)
     root = build_component_tree(graph, node_index, edge_index, rng)
     root.u = params.u
-    placer = _Placer(graph, node_index, params, rng)
+    placer = _Placer(graph, node_index, params, rng, degrees)
     if graph.number_of_nodes():
         placer.radii(root)
         placer.place(root)

@@ -197,3 +197,13 @@ def test_autodetected_weights_use_weighted_geometry(karate: nx.Graph):
     with patch("lanet_vi.core.network.compute_lanet_layout", spy):
         net.compute_layout()
     assert seen["weighted"] is True
+
+
+def test_single_node_and_edgeless_graphs_render(tmp_path: Path):
+    """The whole pipeline (layout, legends, PNG) survives graphs without edges."""
+    for G in (nx.Graph([(0, 0)]), nx.empty_graph(5)):
+        net = Network(G, _small_config())
+        net.decompose()
+        out = tmp_path / "edgeless.png"
+        net.visualize(out)
+        assert out.exists() and out.stat().st_size > 0

@@ -323,6 +323,8 @@ def _draw_degree_scale(
     max_idx = (
         config.color_scale_max_value if config.color_scale_max_value else decomposition.max_index
     )
+    if max_idx < 1:
+        return  # every index is 0 (edgeless graph): nothing to put on a scale
 
     # Sample more indices for comprehensive legend (matching reference image)
     # Reference shows ~13 values from 1 to max
@@ -414,6 +416,8 @@ def _draw_size_legend(
         return
 
     max_degree = max(degrees.values())
+    if max_degree < 1:
+        return  # nothing to scale on an edgeless graph
     n_nodes = graph.number_of_nodes()
 
     # Compute sample sizes to show in legend

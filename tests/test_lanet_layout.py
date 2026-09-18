@@ -287,3 +287,25 @@ def test_greedy_cliques_scale_to_a_large_top_core():
     cliques = _greedy_cliques(list(G.nodes()), G)
     assert sorted(len(c) for c in cliques) == [500, 500]
     assert sorted(v for c in cliques for v in c) == list(range(1000))
+
+
+def test_multigraph_weights_are_summed_for_the_weighted_geometry():
+    """Parallel edges of a MultiGraph count with their summed weight, not as weight 1."""
+    from lanet_vi.visualization.lanet_layout import _merge_parallel_edges, _Placer
+
+    multi = nx.MultiGraph()
+    multi.add_weighted_edges_from([(0, 1, 100.0), (0, 1, 1.0), (1, 2, 1.0), (2, 0, 1.0)])
+    index = {0: 2, 1: 2, 2: 2}
+    layout = compute_lanet_layout(multi, index, LayoutParameters(weighted=True), seed=0)
+    assert set(layout.positions) == {0, 1, 2}
+
+    # The placer sees a simple graph whose strengths reflect the 100-weight edge
+    placer = _Placer(
+        _merge_parallel_edges(multi),
+        index,
+        LayoutParameters(weighted=True),
+        np.random.default_rng(0),
+        dict(multi.degree()),
+    )
+    assert placer.log_max_strength == pytest.approx(math.log(102.0))
+    assert placer.degree[0] == 3  # multiplicity kept for the degree-based radii
