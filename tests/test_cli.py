@@ -349,6 +349,26 @@ def test_deprecated_edge_alpha_folds_into_opacity(tmp_path: Path):
     assert _build_config(BothCtx(), None).visualization.opacity == 0.5  # type: ignore[arg-type]
 
 
+def test_config_template_has_no_deprecated_aliases(tmp_path: Path):
+    """lanet-vi config omits edge_alpha/show_size_legend, so editing the template works."""
+    import yaml
+
+    from lanet_vi.io.config_loader import load_config_from_yaml
+
+    cfg = tmp_path / "c.yaml"
+    result = runner.invoke(app, ["config", str(cfg)])
+    assert result.exit_code == 0, result.output
+    visualization = yaml.safe_load(cfg.read_text())["visualization"]
+    assert "edge_alpha" not in visualization and "show_size_legend" not in visualization
+    assert visualization["opacity"] == 0.2
+
+    # A template where the user replaces opacity by the old name still applies it
+    visualization.pop("opacity")
+    visualization["edge_alpha"] = 0.9
+    cfg.write_text(yaml.safe_dump({"visualization": visualization}))
+    assert load_config_from_yaml(cfg).visualization.opacity == 0.9
+
+
 def test_deprecated_show_size_legend_alias():
     """show_size_legend: false folds into show_degree_scale; an explicit flag wins over it."""
     from lanet_vi.cli import _build_config

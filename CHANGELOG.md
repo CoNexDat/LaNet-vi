@@ -33,7 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `edge_alpha` (`--edge-alpha`) is an alias of `opacity` (`--opacity`, the C++
   `-opacity`, default 0.2); `min_edge_width` / `max_edge_width` (`--min-edge-width`,
-  `--max-edge-width`) are accepted and ignored (#24).
+  `--max-edge-width`) are accepted and ignored (#24). `lanet-vi config` no longer writes
+  the deprecated aliases (`edge_alpha`, `show_size_legend`) into the template, where they
+  were ignored next to the current field.
 
 ### Removed
 
