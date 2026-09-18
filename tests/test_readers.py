@@ -153,7 +153,7 @@ def test_read_edge_list_keeps_node_that_only_has_a_self_loop(tmp_path: Path):
     assert 1 in G and G.number_of_edges() == 1
 
 
-def test_read_node_names_honours_explicit_delimiter(tmp_path: Path):
+def test_read_node_names_honors_explicit_delimiter(tmp_path: Path):
     """The delimiter argument still works for callers that pass one."""
     path = _write(tmp_path, "1,New York\n2,Paris\n", "names.csv")
 
