@@ -34,15 +34,50 @@ weighted graphs), never less than one pixel; `--node-size-scale` multiplies it.
 
 **Parameters:**
 - `epsilon` (0.18): thickness of each ring as a fraction of its radius
-- `delta` (1.3): how much smaller sibling components are drawn
+- `delta` (1.3): how much smaller sibling components are drawn (classic)
 - `gamma` (1.5): component diameter / picture scale
 - `unit_length` (1.0): the root scale `u`
-- `seed`: random seed (cluster order, ties, the random angle frame)
+- `coord_distribution` (`classic`): `pow` / `log` circle packing of siblings, see below
+- `alpha` (0.3), `beta` (1.0): constant and exponent of the packing's disc area law
+- `ratio_constant` (auto): node radius factor of the `pow` / `log` modes
+- `seed`: random seed (cluster order, ties, the random angle frame, the packing)
 
 K-dense and d-core pictures use this same placement, with the component tree built from
-the edge dense index (k-dense) or the minimum endpoint index (d-cores). The `pow`/`log`
-coordinate distributions of the C++ (circle packing of siblings, and with them the
-k-dense specific variant of `kdenses_component.cpp`) are not ported yet (#18).
+the edge dense index (k-dense) or the minimum endpoint index (d-cores).
+
+### The `pow` and `log` coordinate distributions
+
+`--coord-distribution pow` (or `log`) replaces steps 2 and 3 with the circle packing of
+the C++ `findCoordinatesModern` / `distribute_components`:
+
+- The whole network is a disc of radius 1 (the frame is `gamma * u`). Inside a component
+  of radius `R` its children share a smaller disc of radius `R'`: for `pow`,
+  `((T - S) / T)^(1/8) R` capped at `0.96 R`, with `T` and `S` the sums of the squared
+  log-degrees of the component and of its own shell; for `log`,
+  `sqrt((n - s) / n) R` with `n` and `s` the node counts. The nodes of the shell sit on
+  the ring between `R'` and `R` (step 4 unchanged).
+- Sibling components are packed as non-overlapping discs inside that disc. Each starts
+  with radius `R' sqrt(alpha w^beta)` (`log(1 + w)` in `log` mode), where `w` is its
+  share of `sum(log(1 + d)^(2 / beta))` over its nodes, at a random spot; discs that
+  leave the container or overlap are moved to random free spots (the smaller of a pair
+  first), and while everything settles `alpha` grows by 1 %; the last round is undone by
+  dividing `alpha` by 1.1. The packing is seeded by `--seed`.
+- Node radius is `0.007 ratio_constant log(1 + d)^1.5` (`ratio_constant log(1 + s) /
+  log(s_max)` on weighted graphs); `--ratio-constant` sets the factor, default 1.
+
+K-dense pictures in these modes use the variant of `kdenses_component.cpp`, the only
+placement the C++ had for k-dense (with its default flags it behaved as `pow`): the
+children's disc is a fixed `0.92 R` (`0.97` at index ≤ 1), neighbors of the same index
+count in the ring position (formula (1)) and in the angle, `epsilon` is scaled by
+`tau = (R - R') / R`, `u` does not enter the positions, and the node radius is
+`ratio_constant sqrt(log(1 + d))` with `ratio_constant` lowered by every top core to
+`0.5 R / sqrt(sum log(1 + d)^2)` unless `--ratio-constant` is given. Note that with many
+levels (the CAIDA k-denses reach 105) the `0.92` shrink leaves the inner cores a tiny
+disc; the mode was designed for shallower decompositions.
+
+Deliberate deviations from the C++: inflated discs are pulled towards their container's
+center (the C++ pulled them towards the picture's origin); neighbors not yet placed are
+skipped in the angle (the C++ read a zero position); `alpha` defaults to the C++ 0.3.
 
 ## Node Visualization
 
@@ -71,7 +106,8 @@ on a black background and black on a white one, and the color legend is not draw
 
 Node radius follows the C++ `computeHostRatio` in layout units: `0.4 (log(1+d) /
 log(dmax))^0.7` for degree `d` (a strength-based law on weighted graphs), never smaller
-than one pixel. `node_size_scale` multiplies it (1.0 is the C++ size).
+than one pixel; the `pow` / `log` modes use `0.007 ratio_constant log(1+d)^1.5` (k-dense:
+`ratio_constant sqrt(log(1+d))`). `node_size_scale` multiplies it (1.0 is the C++ size).
 
 ## Edge Visualization
 
@@ -217,4 +253,4 @@ config.visualization.opacity = 0.6
 ## Spiral Layout
 
 `config.layout.use_spiral_layout` and the `spiral_*` settings are accepted but not
-implemented (#18); the classic placement is always used.
+implemented (#18); the placement selected by `coord_distribution` is always used.

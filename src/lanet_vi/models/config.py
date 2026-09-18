@@ -283,19 +283,22 @@ class LayoutConfig(BaseModel):
     Parameters
     ----------
     coord_distribution : CoordDistributionAlgorithm
-        Algorithm for distributing components
+        Placement of the components: ``classic`` (concentric rings, the C++ default) or
+        the ``pow`` / ``log`` circle packing of sibling components
     alpha : float
-        Constant in component ratio formula
+        Constant of the disc area law of the circle packing (``pow`` / ``log`` only; the
+        C++ default 0.3)
     beta : float
-        Exponent in component ratio formula
+        Exponent of the disc area law (``pow`` / ``log`` only)
     seed : int
         Random seed for reproducibility
     ratio_constant : Optional[float]
-        Manual adjustment for node size ratio
+        Node radius factor of the ``pow`` / ``log`` modes (the C++ ``-ratioConstant``);
+        ``None`` is the C++ auto-adjustment (1 for k-cores, from the top cores for k-dense)
     min_component_size : int
         Minimum component size to visualize (filters small components for performance)
     use_spatial_hashing : bool
-        Use spatial hashing for faster circle packing (O(N) instead of O(N²))
+        Deprecated, ignored: the circle packing follows the C++ algorithm
     use_spiral_layout : bool
         Use spiral layout algorithm for node placement
     spiral_k : float
@@ -307,8 +310,8 @@ class LayoutConfig(BaseModel):
     """
 
     coord_distribution: CoordDistributionAlgorithm = CoordDistributionAlgorithm.CLASSIC
-    alpha: float = Field(default=1.0, gt=0.0)
-    beta: float = Field(default=1.0)
+    alpha: float = Field(default=0.3, gt=0.0)  # C++ default
+    beta: float = Field(default=1.0, gt=0.0)  # the C++ raises to 2 / beta
     # Changed from 42 to 0 for maximum uniformity (CAIDA default)
     seed: int = Field(default=0, ge=0)
     ratio_constant: float | None = Field(default=None, gt=0.0)

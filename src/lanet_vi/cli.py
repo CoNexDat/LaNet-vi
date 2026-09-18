@@ -69,6 +69,7 @@ _CLI_TO_CONFIG: dict[str, tuple[str, str]] = {
     "coord_distribution": ("layout", "coord_distribution"),
     "alpha": ("layout", "alpha"),
     "beta": ("layout", "beta"),
+    "ratio_constant": ("layout", "ratio_constant"),
     "seed": ("layout", "seed"),
     "use_spiral_layout": ("layout", "use_spiral_layout"),
     "spiral_k": ("layout", "spiral_k"),
@@ -258,13 +259,12 @@ def visualize(
     coord_distribution: CoordDistributionAlgorithm = typer.Option(
         CoordDistributionAlgorithm.CLASSIC,
         "--coord-distribution",
-        help="Sibling placement: only classic is implemented (pow/log: #18)",
+        help="Component placement: classic rings, or pow/log circle packing of siblings",
     ),
-    alpha: float = typer.Option(
-        1.0, "--alpha", help="Circle-packing constant (pow/log only, not implemented, #18)"
-    ),
-    beta: float = typer.Option(
-        1.0, "--beta", help="Circle-packing exponent (pow/log only, not implemented, #18)"
+    alpha: float = typer.Option(0.3, "--alpha", help="Circle-packing area constant (pow/log)"),
+    beta: float = typer.Option(1.0, "--beta", help="Circle-packing area exponent (pow/log)"),
+    ratio_constant: float | None = typer.Option(
+        None, "--ratio-constant", help="Node radius factor of pow/log (default: auto-adjusted)"
     ),
     seed: int = typer.Option(0, "--seed", help="Random seed of the layout"),
     draw_circles: bool = typer.Option(False, "--draw-circles", help="Draw component borders"),
