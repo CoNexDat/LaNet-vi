@@ -182,9 +182,11 @@ precedence, `--names`), drops Python 3.9, resolves every open security alert and
   `show_size_legend` is kept as a deprecated alias that folds into `show_degree_scale` (#23).
 - Default-true boolean flags (`--show-degree-scale`, `--gradient-edges`,
   `--color-by-community`, `--draw-community-boundaries`) now have `--no-...` forms (#23).
-- Options that the current implementation does not use (`--from-layer`, `--delta`,
-  `--gamma`, `--alpha`, `--beta`, `--coord-distribution`, `--use-spiral-layout`,
-  `--detect-communities`) say so in their help text, with the tracking issue (#18, #23).
+- Options that the current implementation does not use (`--from-layer`,
+  `--use-spiral-layout` and the `--spiral-*` settings, `--detect-communities` and the
+  other community flags) say so in their help text, with the tracking issue (#18, #23).
+  (`--delta`, `--gamma`, `--alpha`, `--beta` and `--coord-distribution`, inert at the
+  time, act since the layout ports below.)
 - `write_decomposition_json` crashed when components were present (it read non-existent
   `Component.id` / `Component.index` attributes).
 - `lanet_vi.community.base` failed to import on Python 3.9 because of `X | None` return
@@ -218,8 +220,8 @@ precedence, `--names`), drops Python 3.9, resolves every open security alert and
   and d-core results use the same classic placement, building the component tree with
   their own edge index (the edge dense index, as `kdenses_component.cpp` walks it); the
   rest of that file's variant (`>=` neighbors, `tau`, sibling circle packing,
-  `ratioConstant` radii) belongs to the C++ `pow`/`log` mode, which — like the k-core
-  `pow`/`log` distributions — is still not ported (#18). `epsilon`, `delta`, `gamma`,
+  `ratioConstant` radii) belongs to the C++ `pow`/`log` mode, ported afterwards (see
+  "Added" above). `epsilon`, `delta`, `gamma`,
   `unit_length`, `seed`, `--no-cliques` and `--draw-circles` now do what the C++ flags
   did; `epsilon` defaults to the C++ 0.18 again. The picture is framed as the C++
   viewport (1.6 x 1.2 times the network radius), leaving the margin the legends sit in.
