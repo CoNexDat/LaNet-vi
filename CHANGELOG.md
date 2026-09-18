@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - American English is now the mandatory spelling for identifiers, docstrings, comments
   and docs (`AGENTS.md`, `CONTRIBUTING.md`, PR template). Existing British spellings in
   comments, docstrings and docs were corrected; the only renamed identifiers are private
-  (`_Placer.place_centre` → `place_center`) and test names, so no public API changed.
+  (`_Placer.place_centre` → `place_center`) and six test names, so no public API changed.
 - `CITATION.cff` (validated with `cffconvert`): software citation with the package
   authors, version and release date, plus the NIPS 2005 and New Journal of Physics 2008
   papers as references; the release checklist now updates it with each version.

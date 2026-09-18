@@ -109,7 +109,7 @@ def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
         for section, values in file_data.items():
             if isinstance(values, dict) and isinstance(data.get(section), dict):
                 if section == "visualization":
-                    # Deprecated aliases: honour them only when the current field is absent
+                    # Deprecated aliases: honor them only when the current field is absent
                     values = dict(values)
                     for alias, field in DEPRECATED_ALIASES.items():
                         if alias in values:

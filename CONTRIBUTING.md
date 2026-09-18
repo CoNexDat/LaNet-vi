@@ -23,6 +23,7 @@ uv run ruff format --check src/ tests/ examples/
 uv run mypy src/lanet_vi
 uv run pytest                 # coverage threshold is enforced (see pyproject.toml)
 uv build
+uvx --from cffconvert==2.0.0 cffconvert --validate   # CITATION.cff
 ```
 
 `uv run pre-commit run --all-files` runs the lint and hygiene hooks on the whole tree.
