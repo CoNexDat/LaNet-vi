@@ -21,7 +21,7 @@ from lanet_vi.decomposition.kdenses import MIN_DENSE_INDEX
 from lanet_vi.models.config import BackgroundColor, MeasureType, VisualizationConfig
 from lanet_vi.models.graph import DecompositionResult, VisualizationLayout
 from lanet_vi.visualization.colors import compute_shell_color
-from lanet_vi.visualization.lanet_layout import node_radius
+from lanet_vi.visualization.lanet_layout import node_radius, strength_radii
 
 #: Legend title per decomposition type (``m-core`` for k-dense with ``-measure mcore``)
 _LEGEND_TITLES = {"kcores": "k-core", "kdenses": "k-dense", "dcores": "d-core"}
@@ -416,16 +416,17 @@ def _draw_size_legend(
     text_color = "black" if config.background == BackgroundColor.WHITE else "white"
     x = -frame * 15.0 / 12.0
 
-    weighted = layout.weighted
     max_strength = 0.0
-    if weighted:
+    if layout.weighted:
         max_strength = max(
             (sum(float(d.get("weight", 1.0)) for d in graph[v].values()) for v in graph),
             default=0.0,
         )
+    # Same rule as the node radii: strengths only when their law applies
+    weighted = strength_radii(layout.weighted, max_strength)
 
     samples: list[tuple[str, float]] = []
-    if weighted and max_strength > 1.0:
+    if weighted:
         separation = (
             1.5 * ru * (0.0007 + 0.029 * math.log(1 + max_strength) / math.log(max_strength))
         )

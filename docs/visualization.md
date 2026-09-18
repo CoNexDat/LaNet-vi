@@ -138,7 +138,8 @@ m-core number (k-dense minus 2) under the title `m-core`; `kdense` prints the k-
 
 Up to five sample nodes with degrees `dmax`, `dmax/4`, `dmax/16`, ... (down to 2), drawn
 with the radius the nodes of that degree have in the picture, white on a black background
-and grey on a white one. Weighted graphs show strengths `smax / 4^i` instead.
+and grey on a white one. Weighted graphs show strengths `smax / 4^i` instead (unless no
+strength exceeds 1, where the radii follow the degree law and so does the legend).
 
 ### Legend Configuration
 

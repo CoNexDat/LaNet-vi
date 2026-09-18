@@ -70,7 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   k-denses), labelled in the index colour every `max // 15 + 1` indices; the degree legend
   shows `ceil(dmax / 4^i)` (down to 2, at most five) with the radius those nodes have in the
   picture (it used its own size formulas and ignored `node_size_scale`), or strengths for
-  weighted graphs.
+  weighted graphs. Weighted graphs whose strengths never exceed 1 (where the C++ strength
+  law divides by `log(max) <= 0`) now size nodes by the degree law instead of a constant
+  radius, and the legend follows.
 - The PNG is exactly `width x height` pixels (`bbox_inches="tight"` cropped it); the frame
   is scaled uniformly to fit and centred, so any aspect ratio works and the validator that
   rejected sizes such as 3200x800 is gone.

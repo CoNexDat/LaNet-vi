@@ -324,6 +324,51 @@ def test_degree_legend_samples_match_the_drawn_radii(karate: nx.Graph):
     assert [t.get_text() for t in ax.texts] == ["17", "5", "2", "degree"]
 
 
+def test_degree_legend_shows_strengths_for_weighted_layouts(karate: nx.Graph):
+    """Weighted layouts list strengths smax / 4^i; tiny weights fall back to degrees."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from lanet_vi.models.config import GraphConfig
+    from lanet_vi.visualization import matplotlib_renderer as mr
+    from lanet_vi.visualization.lanet_layout import node_radius
+
+    config = LaNetConfig(
+        visualization=VisualizationConfig(width=300, height=300),
+        graph=GraphConfig(weighted=True),
+    )
+    net = Network(karate, config)  # networkx's karate club carries weight attributes
+    net.decompose()
+    layout = net.compute_layout()
+    assert layout.weighted
+    strengths = {v: sum(d["weight"] for d in karate[v].values()) for v in karate}
+    smax = max(strengths.values())
+    dmax = max(d for _, d in karate.degree())
+
+    fig, ax = plt.subplots()
+    mr._draw_size_legend(ax, karate, config.visualization, layout, px_per_unit=1000.0)
+    plt.close(fig)
+    expected = [node_radius(0, dmax, smax / 4**i, smax, weighted=True) for i in range(5)]
+    assert [p.radius for p in ax.patches] == pytest.approx(expected)
+    labels = [t.get_text() for t in ax.texts]
+    assert labels[-1] == "strength" and labels[0] == f"{smax:g}"
+
+    # All strengths <= 1: the radii use the degree law and so does the legend
+    tiny = nx.Graph(karate.edges())
+    nx.set_edge_attributes(tiny, 0.01, "weight")
+    net = Network(tiny, config)
+    net.decompose()
+    layout = net.compute_layout()
+    assert layout.node_sizes[0] == pytest.approx(node_radius(karate.degree(0), dmax))
+    assert len(set(layout.node_sizes.values())) > 1
+    fig, ax = plt.subplots()
+    mr._draw_size_legend(ax, tiny, config.visualization, layout, px_per_unit=1000.0)
+    plt.close(fig)
+    assert [t.get_text() for t in ax.texts] == ["17", "5", "2", "degree"]
+
+
 def test_color_legend_has_one_circle_per_index_and_sparse_labels():
     """One circle per index from 1 to max; labels every max // 15 + 1 counted from the top."""
     import matplotlib
