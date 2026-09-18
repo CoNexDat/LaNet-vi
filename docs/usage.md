@@ -323,7 +323,6 @@ for network_file in networks:
 
 - **Large networks (>100K nodes):** Use `edges_percent < 0.2` to reduce rendering time
 - **Memory:** Process very large networks in chunks or use `min_component_size` to filter small components
-- **Speed:** Use `use_spatial_hashing=True` (default) for fast layout
 
 ### Visualization Quality
 

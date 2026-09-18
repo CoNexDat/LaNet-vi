@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from lanet_vi.visualization.lanet_layout import RadiusLaw
+
 
 class NodeData(BaseModel):
     """Node attributes and metadata.
@@ -159,6 +161,9 @@ class VisualizationLayout(BaseModel):
         component's radius); the legends are placed relative to it
     weighted : bool
         Node radii are strength-based (the degree legend then shows strengths)
+    radius_law : RadiusLaw, optional
+        The node radius law of the picture (mode, ``ratioConstant``), so the degree legend
+        draws its samples with the radii the nodes have
     """
 
     node_positions: dict[int, tuple[float, float]]
@@ -173,6 +178,7 @@ class VisualizationLayout(BaseModel):
     bounds: tuple[float, float, float, float]
     frame: float = Field(default=0.0, ge=0.0)
     weighted: bool = False
+    radius_law: RadiusLaw | None = None
 
     model_config = ConfigDict(frozen=False, arbitrary_types_allowed=True)
 

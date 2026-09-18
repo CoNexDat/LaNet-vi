@@ -21,7 +21,7 @@ from lanet_vi.decomposition.kdenses import MIN_DENSE_INDEX
 from lanet_vi.models.config import BackgroundColor, MeasureType, VisualizationConfig
 from lanet_vi.models.graph import DecompositionResult, VisualizationLayout
 from lanet_vi.visualization.colors import compute_shell_color
-from lanet_vi.visualization.lanet_layout import node_radius, strength_radii
+from lanet_vi.visualization.lanet_layout import RadiusLaw, strength_radii
 
 #: Legend title per decomposition type (``m-core`` for k-dense with ``-measure mcore``)
 _LEGEND_TITLES = {"kcores": "k-core", "kdenses": "k-dense", "dcores": "d-core"}
@@ -426,6 +426,7 @@ def _draw_size_legend(
         )
     # Same rule as the node radii: strengths only when their law applies
     weighted = strength_radii(layout.weighted, max_strength)
+    law = layout.radius_law or RadiusLaw(max_degree, max_strength, weighted)
 
     samples: list[tuple[str, float]] = []
     if weighted:
@@ -434,7 +435,7 @@ def _draw_size_legend(
         )
         for i in range(5):
             strength = max_strength / 4.0**i
-            radius = scale * node_radius(0, max_degree, strength, max_strength, weighted=True)
+            radius = scale * law(0, strength, weighted=True)
             samples.append((f"{strength:g}", radius))
     else:
         log_max = math.log(max_degree) if max_degree > 1 else 1.0
@@ -443,15 +444,18 @@ def _draw_size_legend(
             degree = math.ceil(max_degree / 4.0**i)
             if degree <= 1:
                 break
-            samples.append((str(degree), scale * node_radius(degree, max_degree)))
+            samples.append((str(degree), scale * law(degree)))
 
-    # The C++ spacing is tuned for large networks; on tiny ones (R of a few units) the
-    # biggest samples would overlap, so keep the rows at least a diameter apart
-    if samples:
-        separation = max(separation, 0.8 * max(radius for _, radius in samples))
+    # The C++ rows are 3 separations apart and the text 2 separations tall, tuned for
+    # large classic pictures; on tiny ones, and in the pow / log modes (radii of up to a
+    # fifth of the unit disc), the biggest samples would overlap, so a row is pushed up
+    # until it clears the previous circle. The font keeps the C++ size.
     fontsize = _legend_fontsize(config, 2.0 * separation, pts_per_unit)
-    for i, (label, radius) in enumerate(samples, start=1):
-        y = -0.5 * ru + 3.0 * separation * i
+    y = -0.5 * ru
+    previous_radius = 0.0
+    for label, radius in samples:
+        y = max(y + 3.0 * separation, y + previous_radius + radius + separation)
+        previous_radius = radius
         ax.add_patch(
             mpatches.Circle(
                 (x, y),
@@ -462,7 +466,7 @@ def _draw_size_legend(
             )
         )
         ax.text(
-            x + separation,
+            x + max(separation, radius + 0.5 * separation),
             y,
             label,
             fontsize=fontsize,
@@ -474,7 +478,7 @@ def _draw_size_legend(
     if samples:
         ax.text(
             x,
-            -0.5 * ru + 3.0 * separation * (len(samples) + 1),
+            max(y + 3.0 * separation, y + previous_radius + separation),
             "degree" if not weighted else "strength",
             fontsize=fontsize,
             fontweight="bold",

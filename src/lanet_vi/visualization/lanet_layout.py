@@ -19,13 +19,22 @@ visualization of large scale networks* (NIPS 2005):
    circular average of the angles of those neighbors (already placed). Top cores are
    split into cliques laid along U-shaped paths in angular sectors (formula (2)).
 
-K-dense and d-core results go through the same classic placement with their own *edge
-index* for the component tree (an edge belongs to the inner component when its index is
-above the component's: for k-cores the minimum of its endpoints' indices, for k-dense the
-edge's own dense index, as ``kdenses_component.cpp`` walks it). The rest of
-``kdenses_component.cpp`` (``>=`` neighbor selection, the ``tau`` factor, sibling circle
-packing through ``distribute_components``, ``ratioConstant`` node radii) belongs to the
-C++ "modern" ``pow``/``log`` mode, which is not ported yet.
+K-dense and d-core results go through the same placement with their own *edge index*
+for the component tree (an edge belongs to the inner component when its index is above
+the component's: for k-cores the minimum of its endpoints' indices, for k-dense the
+edge's own dense index, as ``kdenses_component.cpp`` walks it).
+
+The ``pow`` and ``log`` coordinate distributions (``findCoordinatesModern``) replace step
+2: the whole network is a disc of radius 1; inside a component of radius ``ratio`` the
+children share a disc of radius ``R`` (``(sqrt((T - S) / T))^0.25 ratio`` capped at
+``0.96 ratio`` for ``pow``, ``sqrt((size - shell) / size) ratio`` for ``log``, with ``T``
+and ``S`` the sums of squared log-degrees of the component and of its own shell), packed
+as non-overlapping discs whose areas follow their ``sum(log(1 + d)^(2 / beta))`` weight
+(:func:`lanet_vi.visualization.layout.distribute_components`); the nodes of the shell
+sit on the ring between ``R`` and ``ratio`` by formula (1). The k-dense variant of
+``kdenses_component.cpp`` (the only placement the C++ had for k-dense) shrinks by a fixed
+``0.92``, counts the neighbors of the same index in formula (1), scales ``epsilon`` by
+``tau = (ratio - R) / ratio`` and auto-adjusts the ``ratioConstant`` of the node radii.
 """
 
 from __future__ import annotations
@@ -37,6 +46,8 @@ from dataclasses import dataclass, field
 
 import networkx as nx
 import numpy as np
+
+from lanet_vi.visualization.layout import distribute_components
 
 TWO_PI = 2.0 * math.pi
 
@@ -59,6 +70,12 @@ class LayoutComponent:
     ratio: float = 1.0
     central_core_k: int = 0
     central_core_ratio: float = 1.0
+    #: ``pow`` / ``log`` modes: radius of the disc holding the children (``endRatio``,
+    #: 0 for a top core) and the log-degree sums of ``computeComponents``
+    end_ratio: float = 0.0
+    t_log2_degree: float = 0.0
+    shell_t_log2_degree: float = 0.0
+    t_log_beta_degree: float = 0.0
 
     def walk(self) -> list[LayoutComponent]:
         """Return this component and all its descendants, parents first."""
@@ -81,6 +98,22 @@ class LayoutParameters:
     u: float = 1.0
     no_cliques: bool = False
     weighted: bool = False
+    #: ``classic`` (default), ``pow`` or ``log`` (``-coordDistributionAlgorithm``)
+    coord_distribution: str = "classic"
+    #: Constant and exponent of the disc area law of the circle packing (``-alpha``,
+    #: ``-beta``; the C++ defaults)
+    alpha: float = 0.3
+    beta: float = 1.0
+    #: Use the k-dense variant of ``kdenses_component.cpp`` in ``pow`` / ``log`` mode
+    dense: bool = False
+    #: ``-ratioConstant``: node radius factor of the ``pow`` / ``log`` modes; ``None``
+    #: is the C++ "auto-adjusted" (1 for k-cores, the top-core rule for k-dense)
+    ratio_constant: float | None = None
+
+    @property
+    def modern(self) -> bool:
+        """Whether the ``pow`` / ``log`` placement is used instead of ``classic``."""
+        return self.coord_distribution != "classic"
 
 
 @dataclass
@@ -90,9 +123,12 @@ class LanetLayout:
     positions: dict[int, tuple[float, float]]
     root: LayoutComponent
     #: The network radius on the picture, ``gamma * u * R`` with ``R`` the radius of the
-    #: outermost non-empty component. The C++ viewport (``svg.cpp``) spans 1.6 times this
-    #: horizontally and 1.2 times vertically; the legends sit in that margin.
+    #: outermost non-empty component (1 in the ``pow`` / ``log`` modes). The C++ viewport
+    #: (``svg.cpp``) spans 1.6 times this horizontally and 1.2 times vertically; the
+    #: legends sit in that margin.
     frame: float
+    #: The effective ``ratioConstant`` of the node radii (``pow`` / ``log`` modes)
+    ratio_constant: float = 1.0
 
 
 def circular_average(a: float, weight_a: float, b: float, weight_b: float) -> float:
@@ -275,7 +311,7 @@ def _greedy_cliques(cluster: list[int], graph: nx.Graph) -> list[list[int]]:
 
 
 class _Placer:
-    """Runs the two passes of ``findCoordinatesClassic`` over a component tree."""
+    """Runs ``findCoordinatesClassic`` (two passes) or ``findCoordinatesModern`` over a tree."""
 
     def __init__(
         self,
@@ -284,11 +320,17 @@ class _Placer:
         params: LayoutParameters,
         rng: np.random.Generator,
         degrees: dict[int, int] | None = None,
+        seed: int = 0,
     ) -> None:
         self.graph = graph
         self.node_index = node_index
         self.params = params
         self.rng = rng
+        self.seed = seed
+        # The k-dense variant of the pow / log modes (kdenses_component.cpp)
+        self.dense_modern = params.modern and params.dense
+        # -ratioConstant starts at 1 and, for k-dense, the top cores may lower it
+        self.ratio_constant = 1.0 if params.ratio_constant is None else params.ratio_constant
         self.max_index = max(node_index.values()) if node_index else 0
         self.degree = dict(graph.degree()) if degrees is None else degrees
         # The C++ divides by log(max strength); guard the degenerate log(1) = 0
@@ -347,6 +389,84 @@ class _Placer:
             stack.append((comp, True))
             stack.extend((child, False) for child in reversed(comp.children))
 
+    # -- pow / log modes: circle packing ----------------------------------------------
+    def log_degree_sums(self, root: LayoutComponent) -> None:
+        """Accumulate the ``tLog2Degree`` / ``tLogBetaDegree`` sums of every component."""
+        exponent = 2.0 / self.params.beta
+        for comp in _post_order(root):
+            for cluster in comp.clusters:
+                for v in cluster:
+                    log_degree = math.log(1 + self.degree[v])
+                    comp.shell_t_log2_degree += log_degree**2
+                    comp.t_log_beta_degree += log_degree**exponent
+            comp.t_log2_degree = comp.shell_t_log2_degree
+            for child in comp.children:
+                comp.t_log2_degree += child.t_log2_degree
+                comp.t_log_beta_degree += child.t_log_beta_degree
+
+    def place_modern(self, root: LayoutComponent) -> None:
+        """``findCoordinatesModern``: pack the children of every component, then its nodes.
+
+        Same order as the classic pass 2 (a component's children are placed before its own
+        clusters). The root is the unit disc; ``u`` stays the parameter (the modern mode
+        never rescales it), and the k-dense variant does not use it at all.
+        """
+        root.ratio = 1.0
+        stack: list[tuple[LayoutComponent, bool]] = [(root, False)]
+        while stack:
+            comp, children_done = stack.pop()
+            if children_done:
+                self.place_own_nodes(comp)
+                continue
+            comp.u = 1.0 if self.dense_modern else self.params.u
+            self.distribute_children(comp)
+            stack.append((comp, True))
+            stack.extend((child, False) for child in reversed(comp.children))
+
+    def distribute_children(self, comp: LayoutComponent) -> None:
+        """Give the children their centers and radii inside the disc of radius ``R``."""
+        params = self.params
+        log_mode = params.coord_distribution == "log"
+        if not comp.children:
+            # kdenses_component.cpp: a top core lowers -ratioConstant (unless given) to
+            # half its radius over the root of its squared log-degree sum
+            if self.dense_modern and params.ratio_constant is None and comp.t_log2_degree > 0:
+                self.ratio_constant = min(
+                    self.ratio_constant, 0.5 * comp.ratio / math.sqrt(comp.t_log2_degree)
+                )
+            return
+        ratio = comp.ratio
+        if comp.shell_t_log2_degree != 0:
+            if self.dense_modern:
+                # The 0.97 is absolute in the C++ (the root has radius 1 anyway)
+                radius = 0.92 * ratio if comp.index > 1 else 0.97
+            elif log_mode:
+                radius = math.sqrt(comp.size - comp.shell_cardinal) / math.sqrt(comp.size) * ratio
+            else:
+                share = math.sqrt(comp.t_log2_degree - comp.shell_t_log2_degree)
+                share /= math.sqrt(comp.t_log2_degree)
+                radius = min(share**0.25 * ratio, 0.96 * ratio)
+            comp.end_ratio = radius
+        else:
+            radius = ratio
+        if len(comp.children) > 1:
+            # Disc areas follow sum(log(1 + d)^(2 / beta)); the k-dense log mode uses the
+            # size (the k-core "modernLog" branch that used it was unreachable)
+            weights = np.array(
+                [
+                    float(child.size) if self.dense_modern and log_mode else child.t_log_beta_degree
+                    for child in comp.children
+                ]
+            )
+            xs, ys, rs = distribute_components(
+                comp.x, comp.y, radius, weights, params.alpha, params.beta, log_mode, self.seed
+            )
+            for child, x, y, r in zip(comp.children, xs, ys, rs, strict=True):
+                child.x, child.y, child.ratio = float(x), float(y), float(r)
+        else:
+            (child,) = comp.children
+            child.x, child.y, child.ratio = comp.x, comp.y, radius
+
     def place_center(self, comp: LayoutComponent) -> None:
         """Formulas (4), (3) and (5): a child's rho, phi, center and scale in its parent."""
         parent = comp.parent
@@ -375,6 +495,8 @@ class _Placer:
             if cluster:
                 if not comp.children and not self.params.no_cliques:
                     self.place_cliques(comp, cluster)
+                elif self.dense_modern:
+                    self.place_cluster_dense(comp, cluster, partial)
                 else:
                     self.place_cluster(comp, cluster, partial)
             partial += len(cluster)
@@ -450,9 +572,69 @@ class _Placer:
                 comp.y + gamma * comp.u * rho * math.sin(phi),
             )
 
-    def place_cliques(self, comp: LayoutComponent, cluster: list[int]) -> None:
-        """Place a top core: cliques on U-shaped paths in angular sectors."""
+    def place_cluster_dense(self, comp: LayoutComponent, cluster: list[int], partial: int) -> None:
+        """Place a k-dense cluster (``kdenses_component.cpp`` ``findClusterCoordinates``).
+
+        Differences with :meth:`place_cluster`: neighbors of the same index count in
+        formula (1) and in the angle (the C++ let them in once any component had been
+        placed, reading a zero position for the ones still pending; here a neighbor counts
+        once it is placed, as for the higher ones); ``epsilon`` is scaled by ``tau``, the
+        share of the radius left outside the children's disc; no random rotation of the
+        frame; weights are ignored; and the position is ``gamma * rho``, without ``u``.
+        A top core reaches this only with ``no_cliques``, where its nodes are spread at
+        random; the C++ still computed ``average`` for them, dividing by a zero depth
+        (``inf``, unused), which the ``depth > 0`` guard skips.
+        """
+        eps = self.params.epsilon
         gamma = self.params.gamma
+        rng = self.rng
+        mean = math.pi * len(cluster) / comp.shell_cardinal
+        top = comp.end_ratio == 0.0
+        tau = (comp.ratio - comp.end_ratio) / comp.ratio
+        for h in cluster:
+            dense_h = self.node_index[h]
+            same_or_higher = [w for w in self.graph[h] if self.node_index[w] >= dense_h]
+            depth = self.max_index - dense_h
+            if same_or_higher and depth > 0:
+                sumatory = sum(self.max_index - self.node_index[w] + 1 for w in same_or_higher)
+                average = sumatory / (len(same_or_higher) * depth)
+            else:
+                average = rng.random()
+
+            if self.params.no_cliques and top:
+                rho = comp.ratio * rng.random()
+                phi = TWO_PI * rng.random()
+            else:
+                rho = comp.ratio * (1.0 - eps * tau) + eps * tau * comp.ratio * average
+                if not self.params.no_cliques or not top:
+                    phi = 0.0
+                    amount = 0.0
+                    for i in _random_order(range(len(same_or_higher)), rng):
+                        w = same_or_higher[i]
+                        if w in self.positions:
+                            new_amount = float(self.node_index[w] + 1 - dense_h)
+                            wx, wy = self.positions[w]
+                            angle = math.atan2(wy - comp.y, wx - comp.x)
+                            phi = circular_average(phi, amount, angle, new_amount)
+                            amount += new_amount
+                    if amount == 0:
+                        phi = TWO_PI * rng.random()
+                else:
+                    phi = TWO_PI * partial / comp.shell_cardinal + rng.normal(mean, mean)
+
+            self.positions[h] = (
+                comp.x + gamma * rho * math.cos(phi),
+                comp.y + gamma * rho * math.sin(phi),
+            )
+
+    def place_cliques(self, comp: LayoutComponent, cluster: list[int]) -> None:
+        """Place a top core: cliques on U-shaped paths in angular sectors.
+
+        The k-dense variant drops the ``0.1 ratio`` offset towards the sector's middle
+        and the ``u`` factor.
+        """
+        gamma = self.params.gamma
+        offset = 0.0 if self.dense_modern else 0.1
         cliques = _greedy_cliques(cluster, self.graph)
         total = len(cluster)
         hosts_sum = 0
@@ -464,10 +646,10 @@ class _Placer:
                 rho_s, phi_s = place_in_circular_sector(
                     0.90 * comp.ratio, angle, i, len(clique), random, len(clique) == total
                 )
-                x = rho_s * math.cos(phi_s + initial_angle) + 0.1 * comp.ratio * math.cos(
+                x = rho_s * math.cos(phi_s + initial_angle) + offset * comp.ratio * math.cos(
                     initial_angle + angle / 2.0
                 )
-                y = rho_s * math.sin(phi_s + initial_angle) + 0.1 * comp.ratio * math.sin(
+                y = rho_s * math.sin(phi_s + initial_angle) + offset * comp.ratio * math.sin(
                     initial_angle + angle / 2.0
                 )
                 rho = math.hypot(x, y)
@@ -521,18 +703,66 @@ def compute_lanet_layout(
     rng = np.random.default_rng(seed)
     root = build_component_tree(graph, node_index, edge_index, rng)
     root.u = params.u
-    placer = _Placer(graph, node_index, params, rng, degrees)
+    placer = _Placer(graph, node_index, params, rng, degrees, seed=seed)
     if graph.number_of_nodes():
-        placer.radii(root)
-        placer.place(root)
+        if params.modern:
+            placer.log_degree_sums(root)
+            placer.place_modern(root)
+        else:
+            placer.radii(root)
+            placer.place(root)
 
-    # The C++ frames the picture on the outermost component that has nodes of its own
-    outer = root
-    min_index = min(node_index.values()) if node_index else 0
-    while outer.index != min_index and outer.children:
-        outer = outer.children[0]
-    frame = params.gamma * params.u * outer.ratio
-    return LanetLayout(positions=placer.positions, root=root, frame=frame)
+    if params.modern:
+        # generateNetworkFile: the pow / log picture is the unit disc
+        frame = params.gamma * params.u
+    else:
+        # The C++ frames the classic picture on the outermost component with nodes of its own
+        outer = root
+        min_index = min(node_index.values()) if node_index else 0
+        while outer.index != min_index and outer.children:
+            outer = outer.children[0]
+        frame = params.gamma * params.u * outer.ratio
+    return LanetLayout(
+        positions=placer.positions,
+        root=root,
+        frame=frame,
+        ratio_constant=placer.ratio_constant,
+    )
+
+
+@dataclass(frozen=True)
+class RadiusLaw:
+    """Node radius in layout units for the active placement (``computeHostRatio``).
+
+    ``classic`` uses :func:`node_radius`. The ``pow`` / ``log`` modes use
+    ``0.007 ratioConstant log(1 + d)^1.5`` (``graphics_kcores.cpp``), or
+    ``ratioConstant sqrt(log(1 + d))`` for k-dense (``graphics_kdenses.cpp``, whose
+    radii only ever went with that placement); on weighted graphs both use
+    ``ratioConstant log(1 + s) / log(s_max)`` (times 0.007 for k-cores), with the same
+    fallback to the degree law as :func:`strength_radii`.
+    """
+
+    max_degree: int
+    max_strength: float = 0.0
+    weighted: bool = False
+    modern: bool = False
+    dense: bool = False
+    ratio_constant: float = 1.0
+
+    def __call__(self, degree: int, strength: float = 0.0, weighted: bool | None = None) -> float:
+        """Radius of a node of the given degree (and strength on weighted graphs).
+
+        ``weighted=False`` forces the degree law, as the C++ edge widths do.
+        """
+        weighted = self.weighted if weighted is None else weighted
+        if not self.modern:
+            return node_radius(degree, self.max_degree, strength, self.max_strength, weighted)
+        factor = self.ratio_constant if self.dense else 0.007 * self.ratio_constant
+        if strength_radii(weighted, self.max_strength):
+            return factor * math.log(1.0 + strength) / math.log(self.max_strength)
+        if self.dense:
+            return factor * math.sqrt(math.log(1 + degree))
+        return float(factor * math.log(1 + degree) ** 1.5)
 
 
 def strength_radii(weighted: bool, max_strength: float) -> bool:

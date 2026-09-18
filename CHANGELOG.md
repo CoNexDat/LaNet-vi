@@ -36,8 +36,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SECURITY.md` now states supported versions, the private reporting channel, response
   targets and the coordinated-disclosure process.
 
+### Added
+
+- The `pow` and `log` coordinate distributions of the C++ (`--coord-distribution`, #18):
+  the network is a unit disc, the children of a component share a disc of radius
+  `((T - S) / T)^(1/8) R` capped at `0.96 R` (`log`: `sqrt((n - s) / n) R`) and sibling
+  components are packed as non-overlapping discs whose areas follow
+  `alpha w^beta` of their `sum(log(1 + d)^(2 / beta))` share, inflated 1 % per round
+  until they no longer fit (`distribute_components.cpp`, seeded by `--seed`). Node radii
+  in these modes are `0.007 ratio_constant log(1 + d)^1.5` (`computeHostRatio`), with the
+  new `--ratio-constant` (C++ `-ratioConstant`, default 1). K-dense pictures use the
+  variant of `kdenses_component.cpp` (fixed `0.92` shrink, same-index neighbors in
+  formula (1) and the angle, `epsilon` scaled by `tau`, no `u`, node radius
+  `ratio_constant sqrt(log(1 + d))` with `ratio_constant` auto-adjusted by the top cores).
+  `--alpha` and `--beta` now act; `alpha` defaults to the C++ 0.3 (was an inert 1.0).
+  Deliberate deviations: inflated discs keep their angle and are pulled towards their
+  container's center (the C++ pulled them towards the picture's origin, and overwrote
+  ``x`` before computing ``y`` from it, skewing the angle), unplaced neighbors are skipped
+  in the angle. `classic` stays the default for every decomposition, although the C++ k-dense
+  only ever had this placement (its default flags behaved as `pow`).
+
 ### Deprecated
 
+- `use_spatial_hashing` is accepted and ignored: the circle packing follows the C++
+  algorithm (#18).
 - `edge_alpha` (`--edge-alpha`) is an alias of `opacity` (`--opacity`, the C++
   `-opacity`, default 0.2); `min_edge_width` / `max_edge_width` (`--min-edge-width`,
   `--max-edge-width`) are accepted and ignored (#24). `lanet-vi config` no longer writes
@@ -47,7 +69,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `visualization.circular_average` and `layout.compute_hierarchical_layout` (replaced by
-  `lanet_layout`); `layout.distribute_components` stays for the future `pow`/`log` modes.
+  `lanet_layout`); `layout.distribute_components` is now the faithful port used by the
+  `pow`/`log` modes (the earlier version lacked the growth loop) and `layout.SpatialHashGrid`
+  is gone with it.
 - **Python 3.9 support.** 3.9 reached end of life in October 2025 and the patched
   releases of Pillow, jupyter-server and others require 3.10+. `requires-python` is now
   `>=3.10`; the code base uses `X | None` unions and `zip(..., strict=True)`.
@@ -163,6 +187,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The degree legend stacks its rows so that a sample never overlaps the previous one
+  (needed in the `pow` / `log` modes, whose radii reach a fifth of the unit disc) and
+  keeps the C++ text size instead of growing with the row pitch; unchanged on large
+  classic pictures, where the C++ pitch is the larger.
 - **Layout (#18): the actual LaNet-vi placement is back.** `visualization/lanet_layout.py`
   ports `kcores_component.cpp` / `graph_kcores_components.cpp` (classic mode): nested
   components (connected pieces of the inner core, recursively) with their own center,

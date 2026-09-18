@@ -24,8 +24,8 @@ from lanet_vi.models.graph import Component, DecompositionResult, VisualizationL
 from lanet_vi.visualization.colors import compute_shell_color, default_node_color, scale_color
 from lanet_vi.visualization.lanet_layout import (
     LayoutParameters,
+    RadiusLaw,
     compute_lanet_layout,
-    node_radius,
 )
 from lanet_vi.visualization.matplotlib_renderer import render_network, select_visible_edges
 
@@ -249,6 +249,8 @@ class Network:
                 return int(edge_indices.get((u, v) if u < v else (v, u), MIN_DENSE_INDEX))
             return min(node_index[u], node_index[v])
 
+        is_dense = decomposition.decomp_type == "kdenses"
+        lay = self.config.layout
         params = LayoutParameters(
             epsilon=vis.epsilon,
             delta=vis.delta,
@@ -256,6 +258,11 @@ class Network:
             u=vis.unit_length,
             no_cliques=self.config.decomposition.no_cliques,
             weighted=weighted,
+            coord_distribution=lay.coord_distribution.value,
+            alpha=lay.alpha,
+            beta=lay.beta,
+            dense=is_dense,
+            ratio_constant=lay.ratio_constant,
         )
         lanet = compute_lanet_layout(
             self.graph, node_index, params, seed=self.config.layout.seed, edge_index=edge_index
@@ -265,7 +272,6 @@ class Network:
         # Nested components (centers and radii) for the border circles, largest first.
         # As the C++ addComponents, only components with clusters of their own get one.
         min_size = self.config.layout.min_component_size
-        is_dense = decomposition.decomp_type == "kdenses"
         filtered_components = []
         for i, comp in enumerate(lanet.root.walk()):
             if comp.size < min_size or not comp.clusters:
@@ -314,15 +320,16 @@ class Network:
                 strengths[v] = sum(float(d.get("weight", 1.0)) for d in self.graph[v].values())
         max_strength = max(strengths.values(), default=0.0)
         scale = vis.node_size_scale
+        radius_law = RadiusLaw(
+            max_degree=max_degree,
+            max_strength=max_strength,
+            weighted=weighted and not self.graph.is_multigraph(),
+            modern=params.modern,
+            dense=is_dense,
+            ratio_constant=lanet.ratio_constant,
+        )
         node_sizes = {
-            node: scale
-            * node_radius(
-                degrees[node],
-                max_degree,
-                strengths.get(node, 0.0),
-                max_strength,
-                weighted=weighted and not self.graph.is_multigraph(),
-            )
+            node: scale * radius_law(degrees[node], strengths.get(node, 0.0))
             for node in self.graph.nodes()
         }
 
@@ -339,7 +346,7 @@ class Network:
                 # constant width (the C++ cylinder radius is 0.2 host radii of degree 1).
                 # The 3.0.1 release painted edges between different clusters a flat 0.9
                 # gray; the 3.0.2 and 4.0.0 drivers dropped that override, as does this.
-                dense_width = 2 * 0.2 * scale * node_radius(1, max_degree)
+                dense_width = 2 * 0.2 * scale * radius_law(1, weighted=False)
                 for u, v in visible_edges:
                     color = compute_shell_color(
                         edge_index(u, v),
@@ -361,7 +368,7 @@ class Network:
                         scale_color(node_colors[u], shade),
                     )
                     edge_widths[(u, v)] = (
-                        2 * 0.10 * scale * node_radius(min(degrees[u], degrees[v]), max_degree)
+                        2 * 0.10 * scale * radius_law(min(degrees[u], degrees[v]), weighted=False)
                     )
 
         # Bounds: the C++ viewport (svg.cpp addHeaders) is 1.6 x 1.2 times 2 * gamma * u * R
@@ -388,6 +395,7 @@ class Network:
             bounds=bounds,
             frame=frame,
             weighted=weighted and not self.graph.is_multigraph(),
+            radius_law=radius_law,
         )
 
     def visualize(

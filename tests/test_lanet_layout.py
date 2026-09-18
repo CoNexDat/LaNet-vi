@@ -312,3 +312,184 @@ def test_multigraph_weights_are_summed_for_the_weighted_geometry():
     )
     assert placer.log_max_strength == pytest.approx(math.log(102.0))
     assert placer.degree[0] == 3  # multiplicity kept for the degree-based radii
+
+
+# -- pow / log coordinate distributions ------------------------------------------------
+
+
+def _chain(layout) -> list:  # noqa: ANN001, ANN202
+    chain = [layout.root]
+    while len(chain[-1].children) == 1:
+        chain.append(chain[-1].children[0])
+    return chain
+
+
+def test_pow_mode_nests_shrinking_discs_in_the_unit_disc():
+    """Karate club (one core chain): root radius 1, each shell's disc 0.96 of the last."""
+    G = nx.Graph(nx.karate_club_graph().edges())
+    core = nx.core_number(G)
+    params = LayoutParameters(coord_distribution="pow", gamma=1.0, epsilon=0.18)
+    layout = compute_lanet_layout(G, core, params, seed=0)
+
+    chain = _chain(layout)
+    assert [c.index for c in chain] == [0, 1, 2, 3, 4]
+    assert layout.root.ratio == 1.0 and layout.frame == 1.0  # gamma * u * R with R = 1
+    assert chain[1].ratio == 1.0  # the root has no nodes of its own: R = ratio
+    for parent, child in zip(chain[1:-1], chain[2:], strict=True):
+        assert child.ratio == pytest.approx(min(parent.end_ratio, 0.96 * parent.ratio))
+        assert child.ratio == pytest.approx(parent.end_ratio)
+        assert (child.x, child.y) == (parent.x, parent.y)
+    assert chain[-1].end_ratio == 0.0  # a top core keeps no disc for children
+    # Shell nodes sit on the ring between (1 - eps) ratio and ratio of their component
+    for comp in chain[1:-1]:
+        for cluster in comp.clusters:
+            for v in cluster:
+                rho = math.hypot(*layout.positions[v])
+                assert (1 - 0.18) * comp.ratio - 1e-9 <= rho <= comp.ratio + 1e-9
+    assert set(layout.positions) == set(G.nodes())
+
+
+def test_pow_disc_radius_follows_the_log_degree_share():
+    """R = min((sqrt((T - S) / T))^0.25 ratio, 0.96 ratio) for pow, sqrt((n - s) / n) for log."""
+    G = _two_k4_bridged()
+    core = nx.core_number(G)
+    degree = dict(G.degree())
+    for mode in ("pow", "log"):
+        layout = compute_lanet_layout(G, core, LayoutParameters(coord_distribution=mode), seed=0)
+        (one,) = layout.root.children
+        (two,) = one.children
+        t = sum(math.log(1 + degree[v]) ** 2 for v in G if core[v] >= 1)
+        s = sum(math.log(1 + degree[v]) ** 2 for v in G if core[v] == 1)
+        assert one.t_log2_degree == pytest.approx(t)
+        assert one.shell_t_log2_degree == pytest.approx(s)
+        if mode == "pow":
+            expected = min(math.sqrt((t - s) / t) ** 0.25, 0.96) * one.ratio
+        else:
+            expected = math.sqrt((one.size - one.shell_cardinal) / one.size) * one.ratio
+        assert one.end_ratio == pytest.approx(expected)
+        assert two.ratio == pytest.approx(expected)
+
+
+def test_pow_mode_packs_sibling_cores_as_disjoint_discs():
+    """Two 3-cores inside the 2-core get distinct discs inside its disc, weighted by degrees."""
+    G = _two_k4_bridged()
+    core = nx.core_number(G)
+    params = LayoutParameters(coord_distribution="pow", gamma=1.0)
+    layout = compute_lanet_layout(G, core, params, seed=0)
+    (one,) = layout.root.children
+    (two,) = one.children
+    a, b = two.children
+    assert two.end_ratio > 0
+    for child in (a, b):
+        assert 0 < child.ratio < two.end_ratio
+        assert math.hypot(child.x - two.x, child.y - two.y) <= two.end_ratio - child.ratio + 1e-9
+        assert child.u == params.u  # the modern mode never rescales u
+    assert (a.x, a.y) != (b.x, b.y)
+    # Every node of a 3-core lies inside its own disc (cliques at 0.9 ratio + 0.1 offset)
+    for child in (a, b):
+        for v in child.clusters[0]:
+            x, y = layout.positions[v]
+            assert math.hypot(x - child.x, y - child.y) <= child.ratio + 1e-9
+
+
+def test_log_mode_and_alpha_change_the_packing_and_always_terminate():
+    """Log mode packs differently than pow; alpha changes the start; huge alpha still ends."""
+    G = _two_k4_bridged()
+    core = nx.core_number(G)
+    pow_layout = compute_lanet_layout(G, core, LayoutParameters(coord_distribution="pow"), 0)
+    log_layout = compute_lanet_layout(G, core, LayoutParameters(coord_distribution="log"), 0)
+    assert pow_layout.positions != log_layout.positions
+    for alpha in (0.01, 10.0):  # 10: the discs start larger than their container
+        layout = compute_lanet_layout(
+            G, core, LayoutParameters(coord_distribution="pow", alpha=alpha), seed=0
+        )
+        (two,) = layout.root.children[0].children
+        assert layout.positions != pow_layout.positions
+        assert all(0 < c.ratio for c in two.children)
+
+
+def test_dense_variant_shrinks_by_a_fixed_factor_and_adjusts_the_ratio_constant():
+    """kdenses_component.cpp: R = 0.92 ratio, ratioConstant = min over top cores."""
+    G = _two_k4_bridged()
+    core = nx.core_number(G)
+    degree = dict(G.degree())
+    params = LayoutParameters(coord_distribution="pow", dense=True, gamma=1.0, u=2.0)
+    layout = compute_lanet_layout(G, core, params, seed=0)
+    (one,) = layout.root.children
+    (two,) = one.children
+    assert one.end_ratio == pytest.approx(0.97)  # index <= 1: the absolute C++ constant
+    assert two.end_ratio == pytest.approx(0.92 * two.ratio)
+    expected = min(
+        0.5 * leaf.ratio / math.sqrt(sum(math.log(1 + degree[v]) ** 2 for v in leaf.clusters[0]))
+        for leaf in two.children
+    )
+    assert layout.ratio_constant == pytest.approx(min(1.0, expected))
+    assert all(c.u == 1.0 for c in layout.root.walk())  # no u in the k-dense positions
+    given = compute_lanet_layout(
+        G, core, LayoutParameters(coord_distribution="pow", dense=True, ratio_constant=0.3), 0
+    )
+    assert given.ratio_constant == 0.3
+
+
+def test_dense_variant_counts_same_index_neighbors_and_scales_epsilon_by_tau():
+    """A 1-shell node whose neighbors are all in its shell: average from them, rho by tau."""
+    # Triangle 0-1-2 (index 2) with a path 3-4-5 hanging from 0 (index 1)
+    G = nx.Graph([(0, 1), (1, 2), (2, 0), (0, 3), (3, 4), (4, 5)])
+    index = {0: 2, 1: 2, 2: 2, 3: 1, 4: 1, 5: 1}
+    params = LayoutParameters(coord_distribution="pow", dense=True, gamma=1.0, epsilon=0.5)
+    layout = compute_lanet_layout(G, index, params, seed=0)
+    (one,) = layout.root.children
+    tau = (one.ratio - one.end_ratio) / one.ratio
+    rho5 = math.hypot(*layout.positions[5])
+    # Node 5: one neighbor (4) of the same index: sumatory = 2 - 1 + 1 = 2 over depth 1
+    average = 2.0 / (1 * (2 - 1))
+    assert rho5 == pytest.approx(one.ratio * (1 - 0.5 * tau) + 0.5 * tau * one.ratio * average)
+    # Node 3: neighbors 0 (index 2) and 4 (index 1): (1 + 2) / (2 * 1)
+    rho3 = math.hypot(*layout.positions[3])
+    assert rho3 == pytest.approx(one.ratio * (1 - 0.5 * tau) + 0.5 * tau * one.ratio * 1.5)
+
+
+def test_dense_variant_no_cliques_spreads_a_top_core_at_random():
+    """A k-dense top core with --no-cliques: rho in [0, ratio], no crash on zero depth."""
+    # Two triangles sharing node 0: one top core (index 2) whose nodes have same-index
+    # neighbors, so the C++ average would divide by max - dense_h = 0
+    G = nx.Graph([(0, 1), (1, 2), (2, 0), (0, 3), (3, 4), (4, 0)])
+    index = dict.fromkeys(G, 2)
+    params = LayoutParameters(coord_distribution="pow", dense=True, no_cliques=True, gamma=1.0)
+    layout = compute_lanet_layout(G, index, params, seed=0)
+    leaf = layout.root
+    while leaf.children:
+        leaf = leaf.children[0]
+    assert leaf.end_ratio == 0.0 and set(layout.positions) == set(G)
+    radii = [math.hypot(x - leaf.x, y - leaf.y) for x, y in layout.positions.values()]
+    assert all(0.0 <= r <= leaf.ratio + 1e-9 for r in radii)
+    assert len(set(radii)) > 1  # random rho, not a ring
+
+
+def test_classic_mode_is_untouched_by_the_modern_parameters():
+    """Alpha / beta / dense / ratio_constant do not enter the classic placement."""
+    G = _two_k4_bridged()
+    core = nx.core_number(G)
+    plain = compute_lanet_layout(G, core, LayoutParameters(), seed=0)
+    tuned = compute_lanet_layout(
+        G, core, LayoutParameters(alpha=5.0, beta=0.5, dense=True, ratio_constant=0.1), seed=0
+    )
+    assert plain.positions == tuned.positions
+    assert tuned.ratio_constant == 0.1  # reported as given, unused by the classic radii
+
+
+def test_radius_law_per_mode():
+    """computeHostRatio: classic, pow / log k-cores, and the k-dense law."""
+    from lanet_vi.visualization.lanet_layout import RadiusLaw
+
+    classic = RadiusLaw(max_degree=100)
+    assert classic(10) == node_radius(10, 100)
+    modern = RadiusLaw(max_degree=100, modern=True, ratio_constant=2.0)
+    assert modern(10) == pytest.approx(0.007 * 2.0 * math.log(11) ** 1.5)
+    dense = RadiusLaw(max_degree=100, modern=True, dense=True, ratio_constant=0.5)
+    assert dense(10) == pytest.approx(0.5 * math.sqrt(math.log(11)))
+    weighted = RadiusLaw(max_degree=100, max_strength=50.0, weighted=True, modern=True)
+    assert weighted(10, 5.0) == pytest.approx(0.007 * math.log(6.0) / math.log(50.0))
+    assert weighted(10, 5.0, weighted=False) == pytest.approx(0.007 * math.log(11) ** 1.5)
+    tiny = RadiusLaw(max_degree=100, max_strength=0.5, weighted=True, modern=True)
+    assert tiny(10, 0.1) == modern(10) / 2.0  # strength law unusable: degree law

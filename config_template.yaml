@@ -141,25 +141,26 @@ visualization:
 # LAYOUT CONFIGURATION
 # ==============================================================================
 layout:
-  # Algorithm for distributing components: "classic", "pow", or "log"
+  # Placement of the components: "classic" (concentric rings, the C++ default) or the
+  # "pow" / "log" circle packing of sibling components inside their parent
   coord_distribution: "classic"
 
-  # Constant in component ratio formula
-  alpha: 1.0
+  # Constant of the disc area law of the circle packing (pow / log only)
+  alpha: 0.3
 
-  # Exponent in component ratio formula
+  # Exponent of the disc area law (pow / log only)
   beta: 1.0
 
   # Random seed for reproducible layouts
   seed: 42
 
-  # Manual adjustment for node size ratio (null = auto)
+  # Node radius factor of the pow / log modes (null = auto-adjusted as the C++)
   ratio_constant: null
 
   # Minimum component size to visualize (filters small components for performance)
   min_component_size: 50
 
-  # Use spatial hashing for faster circle packing (O(N) instead of O(N²))
+  # Deprecated and ignored (the circle packing follows the C++ algorithm)
   use_spatial_hashing: true
 
 # ==============================================================================

@@ -1,393 +1,176 @@
-"""Circle packing of sibling components (the C++ ``distribute_components``).
+"""Circle packing of sibling components (the C++ ``distribute_components.cpp``).
 
-Currently unused: the classic placement lives in ``lanet_layout``; this module is kept as
-the basis for the ``pow``/``log`` coordinate distributions (#18).
+Used by the ``pow`` / ``log`` coordinate distributions of :mod:`lanet_layout`: the child
+components of a component are packed as non-overlapping discs inside its disc, each with
+an area that grows with its weight, and the discs are inflated step by step until they no
+longer fit.
 """
 
-import logging
+from __future__ import annotations
+
+import math
 
 import numpy as np
 
-from lanet_vi.models.config import CoordDistributionAlgorithm, LayoutConfig
-from lanet_vi.models.graph import Component
-
-# Set up debug logger for layout analysis
-logger = logging.getLogger(__name__)
-DEBUG_LAYOUT = False  # Set to True to enable detailed layout logging
+TWO_PI = 2.0 * math.pi
+INCREMENT = 1.01  # growth of alpha per successful round
+FACTOR_CORRECTOR = 1.10  # the final radii use the "last alpha that worked"
 
 
-def _component_level(comp: Component) -> int:
-    """Return the decomposition level (shell or dense index) of a component, 0 if unset."""
-    if comp.shell_index is not None:
-        return comp.shell_index
-    if comp.dense_index is not None:
-        return comp.dense_index
-    return 0
+def packing_radii(
+    radius: float, weights: np.ndarray, alpha: float, beta: float, log_mode: bool
+) -> np.ndarray:
+    """Radii of the discs for normalized weights: ``R sqrt(alpha w^beta)``.
 
-
-class SpatialHashGrid:
+    In ``log`` mode the weight enters as ``log(1 + w)``.
     """
-    Spatial hash grid for efficient circle overlap detection.
-
-    Divides 2D space into grid cells for O(1) neighbor queries.
-    """
-
-    def __init__(self, bounds: tuple[float, float, float, float], cell_size: float):
-        """
-        Initialize spatial hash grid.
-
-        Parameters
-        ----------
-        bounds : Tuple[float, float, float, float]
-            (min_x, max_x, min_y, max_y) bounds of the space
-        cell_size : float
-            Size of each grid cell
-        """
-        self.min_x, self.max_x, self.min_y, self.max_y = bounds
-        self.cell_size = cell_size
-        self.grid: dict[tuple[int, int], set[int]] = {}
-
-    def _get_cell(self, x: float, y: float) -> tuple[int, int]:
-        """Get grid cell coordinates for a point."""
-        cell_x = int((x - self.min_x) / self.cell_size)
-        cell_y = int((y - self.min_y) / self.cell_size)
-        return (cell_x, cell_y)
-
-    def insert(self, idx: int, x: float, y: float, radius: float) -> None:
-        """Insert a circle into the grid."""
-        # Find all cells this circle overlaps
-        cells = self._get_overlapping_cells(x, y, radius)
-        for cell in cells:
-            if cell not in self.grid:
-                self.grid[cell] = set()
-            self.grid[cell].add(idx)
-
-    def remove(self, idx: int, x: float, y: float, radius: float) -> None:
-        """Remove a circle from the grid."""
-        cells = self._get_overlapping_cells(x, y, radius)
-        for cell in cells:
-            if cell in self.grid:
-                self.grid[cell].discard(idx)
-
-    def _get_overlapping_cells(self, x: float, y: float, radius: float) -> list[tuple[int, int]]:
-        """Get all grid cells overlapped by a circle."""
-        min_cell_x = int((x - radius - self.min_x) / self.cell_size)
-        max_cell_x = int((x + radius - self.min_x) / self.cell_size)
-        min_cell_y = int((y - radius - self.min_y) / self.cell_size)
-        max_cell_y = int((y + radius - self.min_y) / self.cell_size)
-
-        cells = []
-        for cx in range(min_cell_x, max_cell_x + 1):
-            for cy in range(min_cell_y, max_cell_y + 1):
-                cells.append((cx, cy))
-        return cells
-
-    def get_nearby_indices(self, x: float, y: float, radius: float) -> set[int]:
-        """Get indices of circles near this position."""
-        cells = self._get_overlapping_cells(x, y, radius)
-        nearby = set()
-        for cell in cells:
-            if cell in self.grid:
-                nearby.update(self.grid[cell])
-        return nearby
+    base = np.log1p(weights) if log_mode else weights
+    return np.asarray(radius * np.sqrt(alpha * np.power(base, beta)), dtype=float)
 
 
-def distribute_components(
-    components: list[Component],
-    center: tuple[float, float],
-    radius: float,
-    config: LayoutConfig,
-) -> list[Component]:
-    """
-    Distribute components within a circular container using circle packing.
+def _random_point(
+    rng: np.random.Generator, x0: float, y0: float, radius: float, r: float
+) -> tuple[float, float]:
+    """Draw a random point at distance ``[0, R - r)`` from the center, as the C++ did."""
+    theta = rng.random() * TWO_PI
+    rad = rng.random() * (radius - r)
+    return x0 + rad * math.cos(theta), y0 + rad * math.sin(theta)
 
-    This is a Python port of the C++ distribute_components algorithm.
-    Uses iterative force-based relaxation to pack circles without overlap.
 
-    Parameters
-    ----------
-    components : List[Component]
-        Components to distribute
-    center : Tuple[float, float]
-        Center coordinates of container circle
-    radius : float
-        Radius of container circle
-    config : LayoutConfig
-        Layout configuration
-
-    Returns
-    -------
-    List[Component]
-        Components with updated center and radius attributes
-
-    Notes
-    -----
-    The algorithm:
-    1. Assigns each component a radius proportional to its weight
-    2. Places components randomly within the container
-    3. Iteratively resolves overlaps and boundary violations
-    4. Optional: Uses spatial hashing for O(N) overlap detection
-
-    For large networks (>1000 components), spatial hashing provides
-    significant speedup by avoiding O(N²) pairwise checks.
-    """
-    if not components:
-        return components
-
-    n = len(components)
-
-    # Use spatial hashing for large component counts
-    use_spatial_hashing = config.use_spatial_hashing and n > 100
-    x0, y0 = center
-
-    # Normalize component weights
-    weights = np.array([comp.size for comp in components])
-    weights = weights / weights.sum()
-
-    # Initialize random number generator
-    rng = np.random.default_rng(config.seed)
-
-    # Calculate component radii based on weights
-    radii = np.zeros(n)
-    for i in range(n):
-        if config.coord_distribution == CoordDistributionAlgorithm.LOG:
-            radii[i] = radius * np.sqrt(config.alpha * np.log(1 + weights[i]) ** config.beta)
-        else:
-            radii[i] = radius * np.sqrt(config.alpha * weights[i] ** config.beta)
-
-    # Find largest component (will be placed at center)
-    _i_max_rad = np.argmax(radii)  # Reserved for future optimization
-
-    # Initialize random positions
-    x = np.zeros(n)
-    y = np.zeros(n)
-
-    for i in range(n):
-        theta = rng.uniform(0, 2 * np.pi)
-        rad = rng.uniform(0, radius - radii[i])
-        x[i] = x0 + rad * np.cos(theta)
-        y[i] = y0 + rad * np.sin(theta)
-
-    # Initialize spatial hash grid if enabled
-    spatial_grid = None
-    if use_spatial_hashing:
-        # Use cell size = 2 * max(radii) for efficient neighbor queries
-        max_radius = float(np.max(radii))
-        cell_size = max(2.0 * max_radius, radius / 20.0)
-        bounds = (x0 - radius, x0 + radius, y0 - radius, y0 + radius)
-        spatial_grid = SpatialHashGrid(bounds, cell_size)
-
-        # Insert all circles into grid
-        for i in range(n):
-            spatial_grid.insert(i, x[i], y[i], radii[i])
-
-    # Iterative packing procedure
-    _increment = 1.01  # Reserved for future algorithm refinement
-    factor_corrector = 1.10
-    max_tries = 10 * n
-    max_iterations = 1000
-    iteration = 0
-
-    finished = False
-    while not finished and iteration < max_iterations:
-        iteration += 1
-
-        # Check and fix components outside container
-        for i in range(n):
-            distance = np.sqrt((x[i] - x0) ** 2 + (y[i] - y0) ** 2)
-
-            if distance > radius - radii[i]:
-                # Try to find new valid position
-                if spatial_grid:
-                    spatial_grid.remove(i, x[i], y[i], radii[i])
-
-                success = _give_new_random_position(
-                    i, n, x, y, radii, x0, y0, radius, max_tries, rng, spatial_grid=spatial_grid
-                )
-
-                if spatial_grid and success:
-                    spatial_grid.insert(i, x[i], y[i], radii[i])
-
-                if not success:
-                    # Can't fit - shrink all radii
-                    radii *= factor_corrector
-                    finished = True
-                    break
-
-        if finished:
-            break
-
-        # Check and fix overlapping components
-        overlap_found = False
-        if use_spatial_hashing and spatial_grid:
-            # Use spatial hashing for O(N) overlap detection
-            for i in range(n):
-                nearby = spatial_grid.get_nearby_indices(x[i], y[i], radii[i])
-                for j in nearby:
-                    if j <= i:  # Avoid duplicate checks
-                        continue
-
-                    distance = np.sqrt((x[i] - x[j]) ** 2 + (y[i] - y[j]) ** 2)
-                    min_distance = radii[i] + radii[j]
-
-                    if distance < min_distance:
-                        overlap_found = True
-                        # Try to move smaller one
-                        move_idx = i if radii[i] < radii[j] else j
-
-                        spatial_grid.remove(move_idx, x[move_idx], y[move_idx], radii[move_idx])
-
-                        success = _give_new_random_position(
-                            move_idx,
-                            n,
-                            x,
-                            y,
-                            radii,
-                            x0,
-                            y0,
-                            radius,
-                            max_tries,
-                            rng,
-                            exclude_idx=-1,
-                            spatial_grid=spatial_grid,
-                        )
-
-                        if success:
-                            spatial_grid.insert(move_idx, x[move_idx], y[move_idx], radii[move_idx])
-                        else:
-                            # Can't resolve - shrink radii
-                            radii *= factor_corrector
-                            finished = True
-                            break
-
-                if finished:
-                    break
-        else:
-            # Original O(N²) overlap checking
-            for i in range(n):
-                for j in range(i + 1, n):
-                    distance = np.sqrt((x[i] - x[j]) ** 2 + (y[i] - y[j]) ** 2)
-                    min_distance = radii[i] + radii[j]
-
-                    if distance < min_distance:
-                        overlap_found = True
-                        # Try to move one of them
-                        if radii[i] < radii[j]:
-                            move_idx = i
-                        else:
-                            move_idx = j
-
-                        success = _give_new_random_position(
-                            move_idx, n, x, y, radii, x0, y0, radius, max_tries, rng, exclude_idx=-1
-                        )
-
-                        if not success:
-                            # Can't resolve - shrink radii
-                            radii *= factor_corrector
-                            finished = True
-                            break
-                if finished:
-                    break
-
-        # If no overlaps or boundary violations, we're done
-        if not overlap_found and iteration > 10:
-            break
-
-    # Update components with positions and radii
-    for i, comp in enumerate(components):
-        comp.center = (x[i], y[i])
-        comp.radius = radii[i]
-
-    return components
+def _overlaps(i: int, xi: float, yi: float, x: np.ndarray, y: np.ndarray, r: np.ndarray) -> bool:
+    """Whether a disc ``i`` at ``(xi, yi)`` overlaps any other disc."""
+    distance = np.hypot(x - xi, y - yi)
+    touching = distance < r[i] + r
+    touching[i] = False
+    return bool(touching.any())
 
 
 def _give_new_random_position(
-    idx: int,
-    n: int,
+    c: int,
     x: np.ndarray,
     y: np.ndarray,
-    radii: np.ndarray,
+    r: np.ndarray,
     x0: float,
     y0: float,
     radius: float,
     max_tries: int,
     rng: np.random.Generator,
-    exclude_idx: int = -1,
-    spatial_grid: SpatialHashGrid | None = None,
 ) -> bool:
+    """Move disc ``c`` to a random spot that overlaps no other disc (``give_new_random_position``).
+
+    A try only counts when it overlaps; the C++ loop is the same, so a legal spot is
+    found at the first free draw or given up after ``max_tries`` overlapping ones.
     """
-    Try to find a valid random position for a component.
+    tries = 0
+    while tries < max_tries:
+        xn, yn = _random_point(rng, x0, y0, radius, float(r[c]))
+        if not _overlaps(c, xn, yn, x, y, r):
+            x[c], y[c] = xn, yn
+            return True
+        tries += 1
+    return False
+
+
+def distribute_components(
+    x0: float,
+    y0: float,
+    radius: float,
+    weights: np.ndarray,
+    alpha: float,
+    beta: float,
+    log_mode: bool,
+    seed: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Pack ``len(weights)`` discs inside the disc of radius ``radius`` at ``(x0, y0)``.
+
+    Port of ``distribute_components``: every disc starts with radius
+    ``R sqrt(alpha w^beta)`` (``w`` the normalized weight) at a random spot; discs
+    outside the container or overlapping another are moved to a random free spot (up to
+    ``10 N`` tries each, the smaller of an overlapping pair first); while every disc could
+    be settled, ``alpha`` grows by 1 % and the discs are inflated in place (pulled
+    towards the center by the radius increase); when a disc cannot be settled the last
+    round is undone by dividing ``alpha`` by 1.1.
+
+    The C++ re-seeded its generator with ``-seed`` on every call, so every packing of the
+    same weights is the same; that is reproduced with a fresh generator per call.
+
+    Deliberate deviations in the inflation step: the C++ pulled the discs towards the
+    origin of the picture, not the container center (harmless for the root, wrong for
+    nested components, which the next round pushed back at random), and it overwrote
+    ``x`` before computing ``y`` from it, so the pull skewed the angle; here the discs
+    keep their angle and are pulled towards ``(x0, y0)``.
 
     Parameters
     ----------
-    idx : int
-        Index of component to reposition
-    n : int
-        Total number of components
-    x, y : np.ndarray
-        Current positions
-    radii : np.ndarray
-        Component radii
     x0, y0 : float
-        Container center
+        Center of the container
     radius : float
-        Container radius
-    max_tries : int
-        Maximum repositioning attempts
-    rng : np.random.Generator
-        Random number generator
-    exclude_idx : int
-        Index to exclude from overlap checking
-    spatial_grid : SpatialHashGrid
-        Optional spatial hash grid for faster overlap detection
+        Radius of the container
+    weights : np.ndarray
+        One positive weight per disc (normalized here)
+    alpha, beta : float
+        Constant and exponent of the disc area law
+    log_mode : bool
+        ``log`` coordinate distribution (``log(1 + w)`` instead of ``w``)
+    seed : int
+        Seed of the random generator
 
     Returns
     -------
-    bool
-        True if valid position found, False otherwise
+    (x, y, r) : tuple of np.ndarray
+        Centers and radii of the discs
     """
-    for _ in range(max_tries):
-        # Generate random position
-        theta = rng.uniform(0, 2 * np.pi)
-        rad = rng.uniform(0, radius - radii[idx])
-        new_x = x0 + rad * np.cos(theta)
-        new_y = y0 + rad * np.sin(theta)
+    n = len(weights)
+    rng = np.random.default_rng(seed)
+    w = np.asarray(weights, dtype=float)
+    w = w / w.sum()
+    max_tries = 10 * n
 
-        # Check if position is valid (no overlaps, within boundary)
-        valid = True
+    r = packing_radii(radius, w, alpha, beta, log_mode)
+    if n < 2:
+        # A lone disc never fails to settle, so the C++ loop would inflate it forever;
+        # the caller gives a single child the whole container (findCoordinatesModern)
+        return np.full(n, x0), np.full(n, y0), r
+    x = np.empty(n)
+    y = np.empty(n)
+    for i in range(n):
+        x[i], y[i] = _random_point(rng, x0, y0, radius, float(r[i]))
 
-        # Check boundary
-        distance_to_center = np.sqrt((new_x - x0) ** 2 + (new_y - y0) ** 2)
-        if distance_to_center > radius - radii[idx]:
-            valid = False
-            continue
+    while True:
+        finish = False
+        # Discs out of the container go to a random new position
+        for i in range(n):
+            if math.hypot(x[i] - x0, y[i] - y0) > radius - r[i] and not _give_new_random_position(
+                i, x, y, r, x0, y0, radius, max_tries, rng
+            ):
+                finish = True
+                break
+        # Overlapping pairs: the smaller disc moves, then the larger if it could not
+        for i in range(n - 1):
+            for j in range(i + 1, n):
+                if math.hypot(x[i] - x[j], y[i] - y[j]) < r[i] + r[j]:
+                    c1, c2 = (i, j) if r[i] < r[j] else (j, i)
+                    if not _give_new_random_position(
+                        c1, x, y, r, x0, y0, radius, max_tries, rng
+                    ) and not _give_new_random_position(
+                        c2, x, y, r, x0, y0, radius, max_tries, rng
+                    ):
+                        finish = True
+                        break
+            if finish:
+                break
+        if finish:
+            break
+        # Everything fits: inflate the discs and pull them in by the increase
+        alpha *= INCREMENT
+        grown = packing_radii(radius, w, alpha, beta, log_mode)
+        delta_r = grown - r
+        r = grown
+        dist = np.hypot(x - x0, y - y0)
+        angle = np.arctan2(y - y0, x - x0)
+        x = x0 + (dist - delta_r) * np.cos(angle)
+        y = y0 + (dist - delta_r) * np.sin(angle)
 
-        # Check overlaps with other components
-        if spatial_grid:
-            # Use spatial hashing for faster overlap checks
-            nearby = spatial_grid.get_nearby_indices(new_x, new_y, float(radii[idx]))
-            for j in nearby:
-                if j == idx or j == exclude_idx:
-                    continue
-
-                distance = np.sqrt((new_x - x[j]) ** 2 + (new_y - y[j]) ** 2)
-                if distance < radii[idx] + radii[j]:
-                    valid = False
-                    break
-        else:
-            # Original O(N) overlap checking
-            for j in range(n):
-                if j == idx or j == exclude_idx:
-                    continue
-
-                distance = np.sqrt((new_x - x[j]) ** 2 + (new_y - y[j]) ** 2)
-                if distance < radii[idx] + radii[j]:
-                    valid = False
-                    break
-
-        if valid:
-            x[idx] = new_x
-            y[idx] = new_y
-            return True
-
-    return False
+    alpha /= FACTOR_CORRECTOR
+    r = packing_radii(radius, w, alpha, beta, log_mode)
+    return x, y, r

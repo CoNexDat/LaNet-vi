@@ -458,3 +458,119 @@ def test_single_node_and_edgeless_graphs_render(tmp_path: Path):
         out = tmp_path / "edgeless.png"
         net.visualize(out)
         assert out.exists() and out.stat().st_size > 0
+
+
+def test_pow_mode_reaches_the_layout_and_the_node_radii(karate: nx.Graph, tmp_path: Path):
+    """--coord-distribution pow: unit-disc frame, packing parameters passed, pow radii."""
+    import math
+    from unittest.mock import patch
+
+    from lanet_vi.models.config import CoordDistributionAlgorithm, LayoutConfig
+    from lanet_vi.visualization import lanet_layout
+
+    seen: dict[str, object] = {}
+    original = lanet_layout.compute_lanet_layout
+
+    def spy(graph, node_index, params, *args, **kwargs):  # noqa: ANN001, ANN202
+        seen["params"] = params
+        return original(graph, node_index, params, *args, **kwargs)
+
+    G = nx.Graph(karate.edges())
+    config = _small_config()
+    config.layout = LayoutConfig(
+        coord_distribution=CoordDistributionAlgorithm.POWER, alpha=0.2, beta=2.0, seed=3
+    )
+    net = Network(G, config)
+    net.decompose()
+    with patch("lanet_vi.core.network.compute_lanet_layout", spy):
+        layout = net.compute_layout()
+    params = seen["params"]
+    assert (params.coord_distribution, params.alpha, params.beta, params.dense) == (
+        "pow",
+        0.2,
+        2.0,
+        False,
+    )
+    assert params.ratio_constant is None
+    vis = config.visualization
+    assert layout.frame == pytest.approx(vis.gamma * vis.unit_length)
+    assert layout.radius_law is not None and layout.radius_law.modern
+    degree = dict(G.degree())
+    for v in G:
+        expected = vis.node_size_scale * 0.007 * math.log(1 + degree[v]) ** 1.5
+        assert layout.node_sizes[v] == pytest.approx(expected)
+    # Edge widths follow the same law (0.1 host radii of the smaller endpoint degree)
+    u, v = layout.visible_edges[0]
+    assert layout.edge_widths[(u, v)] == pytest.approx(
+        2 * 0.1 * vis.node_size_scale * 0.007 * math.log(1 + min(degree[u], degree[v])) ** 1.5
+    )
+    out = tmp_path / "pow.png"
+    net.visualize(out, layout)
+    assert out.exists() and out.stat().st_size > 0
+
+
+def test_kdense_pow_mode_uses_the_dense_variant_and_its_ratio_constant(karate: nx.Graph):
+    """K-dense + pow: the kdenses_component.cpp variant, radii ratioConstant sqrt(log(1+d))."""
+    import math
+
+    from lanet_vi.models.config import (
+        CoordDistributionAlgorithm,
+        DecompositionConfig,
+        DecompositionType,
+        LayoutConfig,
+    )
+
+    G = nx.Graph(karate.edges())
+    config = _small_config()
+    config.decomposition = DecompositionConfig(decomp_type=DecompositionType.KDENSES)
+    config.layout = LayoutConfig(coord_distribution=CoordDistributionAlgorithm.LOG)
+    net = Network(G, config)
+    net.decompose()
+    layout = net.compute_layout()
+    law = layout.radius_law
+    assert law is not None and law.modern and law.dense
+    assert 0 < law.ratio_constant < 1.0  # lowered by the top core
+    degree = dict(G.degree())
+    scale = config.visualization.node_size_scale
+    for v in G:
+        expected = scale * law.ratio_constant * math.sqrt(math.log(1 + degree[v]))
+        assert layout.node_sizes[v] == pytest.approx(expected)
+    # An explicit ratio constant is used as is
+    config.layout = LayoutConfig(
+        coord_distribution=CoordDistributionAlgorithm.LOG, ratio_constant=0.25
+    )
+    net = Network(G, config)
+    net.decompose()
+    assert net.compute_layout().radius_law.ratio_constant == 0.25
+
+
+def test_degree_legend_rows_never_overlap_in_pow_mode(karate: nx.Graph):
+    """Large pow-mode samples push the rows apart; the label clears the circle."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from lanet_vi.models.config import CoordDistributionAlgorithm, LayoutConfig
+    from lanet_vi.visualization import matplotlib_renderer as mr
+
+    G = nx.Graph(karate.edges())
+    config = _small_config()
+    config.visualization.node_size_scale = 20  # samples far bigger than the C++ pitch
+    config.layout = LayoutConfig(coord_distribution=CoordDistributionAlgorithm.POWER)
+    net = Network(G, config)
+    net.decompose()
+    layout = net.compute_layout()
+
+    fig, ax = plt.subplots()
+    mr._draw_size_legend(ax, G, config.visualization, layout, px_per_unit=1000.0)
+    plt.close(fig)
+    circles = [(p.center[1], p.radius) for p in ax.patches]
+    for (y_low, r_low), (y_high, r_high) in zip(circles, circles[1:], strict=False):
+        assert y_high - y_low > r_low + r_high
+    labels = [t for t in ax.texts if t.get_text() != "degree"]
+    for (y, r), text in zip(circles, labels, strict=True):
+        assert text.get_position()[0] > -layout.frame * 15.0 / 12.0 + r
+        assert text.get_position()[1] == pytest.approx(y)
+    title = next(t for t in ax.texts if t.get_text() == "degree")
+    assert title.get_position()[1] > circles[-1][0] + circles[-1][1]
