@@ -134,7 +134,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ratioConstant` radii) belongs to the C++ `pow`/`log` mode, which — like the k-core
   `pow`/`log` distributions — is still not ported (#18). `epsilon`, `delta`, `gamma`,
   `unit_length`, `seed`, `--no-cliques` and `--draw-circles` now do what the C++ flags
-  did; `epsilon` defaults to the C++ 0.18 again.
+  did; `epsilon` defaults to the C++ 0.18 again. The picture is framed as the C++
+  viewport (1.6 x 1.2 times the network radius), leaving the margin the legends sit in.
 - Node radii follow the C++ `computeHostRatio` (`0.4 (log(1+d)/log(dmax))^0.7` layout
   units, strength-based for weighted graphs) and are drawn in layout units for graphs of
   any size (an `EllipseCollection` replaces the point-sized scatter), floored at one

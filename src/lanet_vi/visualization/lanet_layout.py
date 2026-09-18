@@ -89,8 +89,9 @@ class LanetLayout:
 
     positions: dict[int, tuple[float, float]]
     root: LayoutComponent
-    #: Half-size of the square the C++ camera framed: ``gamma * u * R`` with ``R`` the
-    #: radius of the outermost non-empty component.
+    #: The network radius on the picture, ``gamma * u * R`` with ``R`` the radius of the
+    #: outermost non-empty component. The C++ viewport (``svg.cpp``) spans 1.6 times this
+    #: horizontally and 1.2 times vertically; the legends sit in that margin.
     frame: float
 
 

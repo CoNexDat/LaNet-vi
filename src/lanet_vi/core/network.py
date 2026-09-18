@@ -347,15 +347,17 @@ class Network:
                 )
                 edge_widths[(u, v)] = width
 
-        # Bounds: the square the C++ camera framed, widened if a node falls outside it
+        # Bounds: the C++ viewport (svg.cpp addHeaders) is 1.6 x 1.2 times 2 * gamma * u * R
+        # around the origin, i.e. half-extents of 1.6 and 1.2 times the network radius, so
+        # the network sits in a margin where the legends go; widened if a node falls outside
         frame = lanet.frame if lanet.frame > 0 else 1.0
         xs = [pos[0] for pos in node_positions.values()] or [0.0]
         ys = [pos[1] for pos in node_positions.values()] or [0.0]
         bounds = (
-            min(-frame, min(xs)),
-            max(frame, max(xs)),
-            min(-frame, min(ys)),
-            max(frame, max(ys)),
+            min(-1.6 * frame, min(xs)),
+            max(1.6 * frame, max(xs)),
+            min(-1.2 * frame, min(ys)),
+            max(1.2 * frame, max(ys)),
         )
 
         return VisualizationLayout(

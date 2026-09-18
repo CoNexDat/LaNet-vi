@@ -59,8 +59,9 @@ def render_network(
     # Get bounds
     xmin, xmax, ymin, ymax = layout.bounds
 
-    # Add some padding
-    padding = max(xmax - xmin, ymax - ymin) * 0.1
+    # The bounds already are the C++ viewport (legend margin included); pad a hair so
+    # nothing sits on the border
+    padding = max(xmax - xmin, ymax - ymin) * 0.02
     ax.set_xlim(xmin - padding, xmax + padding)
     ax.set_ylim(ymin - padding, ymax + padding)
     ax.set_aspect("equal")

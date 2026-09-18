@@ -175,7 +175,9 @@ def test_layout_components_are_the_nested_components_with_circles(karate: nx.Gra
     radii = [c.radius for c in layout.components]
     assert all(a - b == pytest.approx(1.5) for a, b in zip(radii, radii[1:], strict=False))
     assert layout.bounds[1] >= max(x for x, _ in layout.node_positions.values())
-    assert layout.bounds[1] == pytest.approx(radii[0])  # the C++ camera frame
+    # The C++ viewport: 1.6 x 1.2 times the network radius (gamma * u * R)
+    assert layout.bounds[1] == pytest.approx(1.6 * radii[0])
+    assert layout.bounds[3] == pytest.approx(1.2 * radii[0])
 
 
 def test_autodetected_weights_use_weighted_geometry(karate: nx.Graph):
