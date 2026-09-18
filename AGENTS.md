@@ -47,6 +47,12 @@ uv run lanet-vi visualize --input edges.txt --output out.png
 
 ## Conventions
 
+- **American English everywhere** (mandatory): this file, every agent instruction,
+  and every function, method, class, variable and option name use US spelling
+  (`color`, `gray`, `center`, `neighbor`, `initialize`, `analyze`, `normalize`,
+  `behavior`, `labeled`). Comments, docstrings, docs and the changelog follow the same
+  rule. Renaming a public identifier for spelling needs a deprecation alias for one
+  minor release and a `CHANGELOG.md` entry that spells out the migration.
 - Python 3.10 compatible: `X | None` unions are fine, `match` is fine, nothing newer
   (no `Self`, no `except*`). Ruff target is `py310`; it will flag anything newer.
 - Line length 100. NumPy-style docstrings on public API (ruff `D`, convention `numpy`).
@@ -78,7 +84,7 @@ gh pr edit <n> --add-reviewer Copilot     # or the "Reviewers" gear in the PR si
 Re-request after every push (`gh pr edit <n> --add-reviewer Copilot` again, or the
 re-request icon next to Copilot in the sidebar). Note: the ruleset only auto-requests on
 PRs whose base is `main`; stacked PRs (base = another branch) always need a manual request.
-If the request is refused or silently dropped (the sidebar shows Copilot greyed out with
+If the request is refused or silently dropped (the sidebar shows Copilot grayed out with
 "Monthly limit reached", or the API returns "could not resolve user"), stop and tell the
 maintainer; do not merge without the review. The free Copilot tier has a small monthly
 quota of code reviews, so keep PRs few and batch pushes where you can.

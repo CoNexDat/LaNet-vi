@@ -115,7 +115,7 @@ def test_visualize_rejects_unknown_community_algorithm(small_edge_list: Path, tm
         ],
     )
     assert result.exit_code == 2
-    # Rich may wrap and colour the option name, so check the message text instead
+    # Rich may wrap and color the option name, so check the message text instead
     assert "Unknown community algorithm" in result.output
 
 
@@ -155,7 +155,7 @@ def test_cli_flags_override_config_file(small_edge_list: Path, tmp_path: Path):
         ],
     )
     assert result.exit_code == 0, result.output
-    # --decomp from the command line was honoured despite --config
+    # --decomp from the command line was honored despite --config
     assert cores.read_text().splitlines()[0] == "node_id,kdenses_index"
 
 

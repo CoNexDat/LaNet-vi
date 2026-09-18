@@ -135,7 +135,7 @@ class VisualizationConfig(BaseModel):
     show_degree_scale : bool
         Whether to show the degree (node size) legend, as the C++ ``-showDegreeScale``
     show_color_legend : bool
-        Whether to show the shell/dense index colour legend
+        Whether to show the shell/dense index color legend
     color_scale_max_value : Optional[int]
         Maximum value for color scale normalization
     gradient_edges : bool
@@ -149,7 +149,7 @@ class VisualizationConfig(BaseModel):
     label_kcore_max : Optional[int]
         Maximum k-core for labeling (only if label_all_nodes=False)
     node_edge_color : Optional[str]
-        Border colour of the nodes (the C++ drew none: border = node colour)
+        Border color of the nodes (the C++ drew none: border = node color)
     node_size_scale : float
         Multiplier on the node radius (1.0 = the C++ size)
     edge_alpha : float

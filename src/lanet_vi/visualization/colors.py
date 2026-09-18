@@ -1,7 +1,7 @@
-"""Colour scales of the C++ LaNet-vi (``types.cpp``, ``graphics_kcores.cpp``).
+"""Color scales of the C++ LaNet-vi (``types.cpp``, ``graphics_kcores.cpp``).
 
 The rainbow runs magenta -> blue -> cyan -> green -> yellow -> red, so the maximum index
-is red; the black-and-white scale runs white -> grey -> black, so the maximum index is
+is red; the black-and-white scale runs white -> gray -> black, so the maximum index is
 black. The stop lists are the C++ ones verbatim: some stops lie outside [0, 1]
 (``white`` is ``2.0``, the ``blackwhite`` positions are ``-0.75`` and ``1.23``) so that
 the extreme indices saturate; the results are clamped as the SVG writer did.
@@ -13,7 +13,7 @@ from lanet_vi.models.config import BackgroundColor, ColorScheme
 
 RGB = tuple[float, float, float]
 
-# Rainbow colours (types.cpp)
+# Rainbow colors (types.cpp)
 MAGENTA: RGB = (1.0, 0.2, 1.0)
 BLUE: RGB = (0.2, 0.2, 1.0)
 CYAN: RGB = (0.2, 1.0, 1.0)
@@ -26,7 +26,7 @@ WHITE: RGB = (2.0, 2.0, 2.0)
 GRAY: RGB = (0.7, 0.7, 0.7)
 BLACK: RGB = (0.0, 0.0, 0.0)
 
-#: Colour stops for ``col`` images (``rainbow`` in types.cpp)
+#: Color stops for ``col`` images (``rainbow`` in types.cpp)
 RAINBOW: list[tuple[RGB, float]] = [
     (MAGENTA, 0.01),
     (BLUE, 0.20),
@@ -36,7 +36,7 @@ RAINBOW: list[tuple[RGB, float]] = [
     (RED, 0.97),
 ]
 
-#: Colour stops for ``bw`` and ``bwi`` images (``blackwhite`` in types.cpp)
+#: Color stops for ``bw`` and ``bwi`` images (``blackwhite`` in types.cpp)
 BLACKWHITE: list[tuple[RGB, float]] = [
     (WHITE, -0.75),
     (GRAY, 0.41),
@@ -46,17 +46,17 @@ BLACKWHITE: list[tuple[RGB, float]] = [
 
 def get_color_scale(scheme: ColorScheme) -> list[tuple[RGB, float]]:
     """
-    Get the colour stops of a colour scheme.
+    Get the color stops of a color scheme.
 
     Parameters
     ----------
     scheme : ColorScheme
-        Colour scheme to use
+        Color scheme to use
 
     Returns
     -------
     list[tuple[RGB, float]]
-        ``(colour, position)`` stops; ``bw`` and ``bwi`` share the same list (the
+        ``(color, position)`` stops; ``bw`` and ``bwi`` share the same list (the
         interlacing happens in the position, not in the stops)
     """
     if scheme == ColorScheme.COLOR:
@@ -66,21 +66,21 @@ def get_color_scale(scheme: ColorScheme) -> list[tuple[RGB, float]]:
 
 def interpolate_color(color1: RGB, color2: RGB, alpha: float) -> RGB:
     """
-    Linearly interpolate between two colours.
+    Linearly interpolate between two colors.
 
     Parameters
     ----------
     color1 : RGB
-        First colour (R, G, B)
+        First color (R, G, B)
     color2 : RGB
-        Second colour (R, G, B)
+        Second color (R, G, B)
     alpha : float
         Interpolation factor (0.0 = color1, 1.0 = color2)
 
     Returns
     -------
     RGB
-        Interpolated colour
+        Interpolated color
     """
     r = color1[0] * (1.0 - alpha) + color2[0] * alpha
     g = color1[1] * (1.0 - alpha) + color2[1] * alpha
@@ -103,7 +103,7 @@ def scale_color(color: RGB, factor: float) -> RGB:
 
 
 def default_node_color(background: BackgroundColor) -> RGB:
-    """Colour of a node absent from the colours file: white on black, black on white."""
+    """Color of a node absent from the colors file: white on black, black on white."""
     return (1.0, 1.0, 1.0) if background == BackgroundColor.BLACK else (0.0, 0.0, 0.0)
 
 
@@ -117,7 +117,7 @@ def compute_shell_color(
     dense: bool = False,
 ) -> RGB:
     """
-    Compute the colour of a shell or dense index (``computeHostColorByShellIndex``).
+    Compute the color of a shell or dense index (``computeHostColorByShellIndex``).
 
     Parameters
     ----------
@@ -126,12 +126,12 @@ def compute_shell_color(
     max_shell_index : int
         Maximum shell/dense index in the network
     color_scheme : ColorScheme
-        Colour scheme to use
+        Color scheme to use
     color_scale_max : int | None
-        Index shown with the last colour of the scale (``-colorScaleMaxValue``); higher
-        indices get the same colour. Defaults to ``max_shell_index``.
+        Index shown with the last color of the scale (``-colorScaleMaxValue``); higher
+        indices get the same color. Defaults to ``max_shell_index``.
     background : BackgroundColor
-        Background of the picture; only k-dense colours depend on it
+        Background of the picture; only k-dense colors depend on it
     dense : bool
         Apply the k-dense rules of ``graphics_kdenses.cpp``: on a black background the
         luminosity alternates as for k-cores, on a white background it is a constant 0.9
@@ -139,14 +139,14 @@ def compute_shell_color(
     Returns
     -------
     RGB
-        RGB colour, every channel in ``[0, 1]``
+        RGB color, every channel in ``[0, 1]``
 
     Notes
     -----
     Position on the scale is ``(min(i, max) - 1) / (max - 1)`` for ``col`` and ``bw``;
     ``bwi`` interlaces even and odd indices over the two halves of the scale. A single
     shell (``max == 1``) is red. With ``col``, consecutive shells alternate a luminosity
-    of 0.7 and 1.2 so neighbouring rings stay distinguishable.
+    of 0.7 and 1.2 so neighboring rings stay distinguishable.
 
     Examples
     --------
@@ -169,7 +169,7 @@ def compute_shell_color(
         else:
             position = (clamped_shell - 1) / (max_value - 1)
 
-        # Colour calculation: constant outside the stops, linear between them
+        # Color calculation: constant outside the stops, linear between them
         first_color, first_pos = color_list[0]
         last_color, last_pos = color_list[-1]
         if position < first_pos:
@@ -184,8 +184,8 @@ def compute_shell_color(
                     break
 
     # Luminosity alternation between consecutive shells (col only). The k-dense C++
-    # function has no return at all for bw/bwi (undefined behaviour); the plain scale
-    # colour is used, as for k-cores.
+    # function has no return at all for bw/bwi (undefined behavior); the plain scale
+    # color is used, as for k-cores.
     if color_scheme == ColorScheme.COLOR:
         if dense and background == BackgroundColor.WHITE:
             luminosity = 0.9  # graphics_kdenses.cpp: no alternation on white
@@ -200,20 +200,20 @@ def create_matplotlib_colormap(
     n_colors: int = 256,
 ) -> mcolors.LinearSegmentedColormap:
     """
-    Create a matplotlib colormap from a colour scheme.
+    Create a matplotlib colormap from a color scheme.
 
     Parameters
     ----------
     color_scheme : ColorScheme
-        Colour scheme to use
+        Color scheme to use
     n_colors : int
-        Number of discrete colours in the colormap
+        Number of discrete colors in the colormap
 
     Returns
     -------
     mcolors.LinearSegmentedColormap
         Matplotlib colormap over ``[0, 1]``; stops outside that range are clipped to
-        it, so the map starts and ends on the saturated colours
+        it, so the map starts and ends on the saturated colors
     """
     stops = get_color_scale(color_scheme)
     first, last = stops[0][1], stops[-1][1]

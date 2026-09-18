@@ -1,4 +1,4 @@
-"""Colour scale of the C++ LaNet-vi (types.cpp, computeHostColorByShellIndex)."""
+"""Color scale of the C++ LaNet-vi (types.cpp, computeHostColorByShellIndex)."""
 
 import pytest
 
@@ -29,7 +29,7 @@ def test_rainbow_runs_from_magenta_to_red():
 
 
 def test_luminosity_alternates_between_consecutive_shells():
-    """Odd shells get 1.2 (clamped), even shells 0.7 of the scale colour."""
+    """Odd shells get 1.2 (clamped), even shells 0.7 of the scale color."""
     colors = [compute_shell_color(i, 20, ColorScheme.COLOR) for i in range(1, 21)]
     for i, color in enumerate(colors, start=1):
         base = compute_shell_color(i, 20, ColorScheme.GRAYSCALE)  # any: check the ratio instead
@@ -40,7 +40,7 @@ def test_luminosity_alternates_between_consecutive_shells():
             assert max(color) == pytest.approx(1.0)
 
 
-def test_greyscale_runs_light_to_dark():
+def test_grayscale_runs_light_to_dark():
     """bw: white at the periphery, near black at the maximum (the Python used to invert it)."""
     colors = [compute_shell_color(i, 8, ColorScheme.GRAYSCALE) for i in range(1, 9)]
     assert colors[0] == (1.0, 1.0, 1.0)
@@ -49,7 +49,7 @@ def test_greyscale_runs_light_to_dark():
     assert all(color[0] == color[1] == color[2] for color in colors)
 
 
-def test_interlaced_greyscale_alternates_halves_of_the_scale():
+def test_interlaced_grayscale_alternates_halves_of_the_scale():
     """bwi: indices of the parity of max use the dark half, the others the light half."""
     colors = [compute_shell_color(i, 8, ColorScheme.GRAYSCALE_INTERLACED) for i in range(1, 9)]
     same_parity = [_luminance(c) for i, c in enumerate(colors, start=1) if (i + 8) % 2 == 0]
@@ -59,7 +59,7 @@ def test_interlaced_greyscale_alternates_halves_of_the_scale():
 
 
 def test_single_shell_is_red_and_scale_max_clamps():
-    """A single shell is red; indices above color_scale_max share its colour."""
+    """A single shell is red; indices above color_scale_max share its color."""
     assert compute_shell_color(1, 1, ColorScheme.COLOR) == pytest.approx((1.0, 0.24, 0.24))
     capped = compute_shell_color(9, 20, ColorScheme.COLOR, color_scale_max=5)
     assert capped == compute_shell_color(5, 20, ColorScheme.COLOR, color_scale_max=5)
@@ -88,7 +88,7 @@ def test_every_channel_is_clamped():
 
 
 def test_scales_and_defaults():
-    """The bw and bwi schemes share the blackwhite stops; colours-file defaults are white/black."""
+    """The bw and bwi schemes share the blackwhite stops; colors-file defaults are white/black."""
     assert get_color_scale(ColorScheme.COLOR) == RAINBOW
     assert get_color_scale(ColorScheme.GRAYSCALE) == BLACKWHITE
     assert get_color_scale(ColorScheme.GRAYSCALE_INTERLACED) == BLACKWHITE

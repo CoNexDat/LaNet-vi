@@ -109,7 +109,7 @@ visualization:
   # Whether to draw component border circles
   draw_circles: true
 
-  # Whether to show the shell / dense index colour legend
+  # Whether to show the shell / dense index color legend
   show_color_legend: true
 
   # Whether to show the degree (node size) legend, as the C++ -showDegreeScale

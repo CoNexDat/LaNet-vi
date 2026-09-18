@@ -1,0 +1,60 @@
+# Citation metadata for LaNet-vi (https://citation-file-format.github.io/).
+# GitHub renders this as the "Cite this repository" entry. Keep `version` and
+# `date-released` in step with the release (see CONTRIBUTING.md, "Releasing").
+cff-version: 1.2.0
+message: "If you use LaNet-vi in your research, please cite the software and the papers below."
+type: software
+title: "LaNet-vi: large scale network visualization by k-core, k-dense and d-core decomposition"
+abstract: >-
+  LaNet-vi visualizes large networks by k-core, k-dense (m-core) and d-core decomposition,
+  laying nodes out in concentric rings by shell index and rendering the result with matplotlib.
+  Version 5 is a Python rewrite of the original C++ tool developed at Universidad de Buenos
+  Aires / CONICET.
+authors:
+  - family-names: Carisimo
+    given-names: Esteban
+  - family-names: Beiró
+    given-names: Mariano G.
+  - family-names: Alvarez-Hamelin
+    given-names: J. Ignacio
+version: 5.0.0
+date-released: 2025-10-31
+license: MIT
+repository-code: "https://github.com/CoNexDat/LaNet-vi"
+url: "https://github.com/CoNexDat/LaNet-vi"
+keywords:
+  - network visualization
+  - k-core decomposition
+  - k-dense
+  - d-core
+  - complex networks
+references:
+  - type: conference-paper
+    title: "Large scale networks fingerprinting and visualization using the k-core decomposition"
+    authors:
+      - family-names: Alvarez-Hamelin
+        given-names: J. Ignacio
+      - family-names: Dall'Asta
+        given-names: Luca
+      - family-names: Barrat
+        given-names: Alain
+      - family-names: Vespignani
+        given-names: Alessandro
+    collection-title: "Advances in Neural Information Processing Systems 18 (NIPS 2005)"
+    year: 2006
+    url: "https://papers.nips.cc/paper_files/paper/2005/hash/b19aa25ff58940d974234b48391b9549-Abstract.html"
+  - type: article
+    title: "A low complexity visualization tool that helps to perform complex systems analysis"
+    authors:
+      - family-names: Beiró
+        given-names: Mariano G.
+      - family-names: Alvarez-Hamelin
+        given-names: J. Ignacio
+      - family-names: Busch
+        given-names: J. R.
+    journal: "New Journal of Physics"
+    volume: 10
+    issue: 12
+    start: 125003
+    year: 2008
+    doi: 10.1088/1367-2630/10/12/125003

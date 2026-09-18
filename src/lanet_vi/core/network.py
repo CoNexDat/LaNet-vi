@@ -36,9 +36,9 @@ RGB = tuple[float, float, float]
 
 
 def _edge_shade(color_scheme: ColorScheme, *, dense: bool) -> float:
-    """Factor applied to a node colour to get its edge colour (graphics_k*.cpp).
+    """Factor applied to a node color to get its edge color (graphics_k*.cpp).
 
-    Colour images darken the edges (0.75; 0.5 for k-dense), black-and-white images
+    Color images darken the edges (0.75; 0.5 for k-dense), black-and-white images
     lighten them (1.2, clamped).
     """
     if color_scheme != ColorScheme.COLOR:
@@ -91,8 +91,8 @@ class Network:
         self.decomposition: DecompositionResult | None = None
         self.node_names: dict[int, str] = {}
         self.node_colors: dict[int, tuple[float, float, float]] = {}
-        # A colours file was loaded (even an empty one): nodes take its colours or the
-        # default, never the shell colour, and the colour legend is hidden (C++ -colorsFile)
+        # A colors file was loaded (even an empty one): nodes take its colors or the
+        # default, never the shell color, and the color legend is hidden (C++ -colorsFile)
         self.custom_colors = False
 
     @classmethod
@@ -262,7 +262,7 @@ class Network:
         )
         node_positions = lanet.positions
 
-        # Nested components (centres and radii) for the border circles, largest first.
+        # Nested components (centers and radii) for the border circles, largest first.
         # As the C++ addComponents, only components with clusters of their own get one.
         min_size = self.config.layout.min_component_size
         is_dense = decomposition.decomp_type == "kdenses"
@@ -282,9 +282,9 @@ class Network:
                 )
             )
 
-        # Node colours (computeHostColor): the colours file when given (nodes absent from
-        # it are white on black / black on white), else the shell colour. With
-        # -measure mcore the k-dense colour-scale maximum is given in m-core units
+        # Node colors (computeHostColor): the colors file when given (nodes absent from
+        # it are white on black / black on white), else the shell color. With
+        # -measure mcore the k-dense color-scale maximum is given in m-core units
         # (graphics_kdenses.cpp:40), two below the dense index.
         mcore = self.config.decomposition.measure == MeasureType.MCORE
         color_scale_max = vis.color_scale_max_value
@@ -329,16 +329,16 @@ class Network:
         # Visible edges: a seeded per-edge Bernoulli, as the C++ uniform draw
         visible_edges = select_visible_edges(self.graph, vis, seed=self.config.layout.seed)
 
-        # Edge colours and widths (graphics_kcores.cpp / graphics_kdenses.cpp addCluster)
+        # Edge colors and widths (graphics_kcores.cpp / graphics_kdenses.cpp addCluster)
         edge_colors: dict[tuple[int, int], tuple[RGB, RGB]] = {}
         edge_widths: dict[tuple[int, int], float] = {}
         if vis.gradient_edges:
             shade = _edge_shade(vis.color_scheme, dense=is_dense)
             if is_dense:
-                # K-dense: one colour for the whole edge, its own dense index, and a
+                # K-dense: one color for the whole edge, its own dense index, and a
                 # constant width (the C++ cylinder radius is 0.2 host radii of degree 1).
                 # The 3.0.1 release painted edges between different clusters a flat 0.9
-                # grey; the 3.0.2 and 4.0.0 drivers dropped that override, as does this.
+                # gray; the 3.0.2 and 4.0.0 drivers dropped that override, as does this.
                 dense_width = 2 * 0.2 * scale * node_radius(1, max_degree)
                 for u, v in visible_edges:
                     color = compute_shell_color(
@@ -352,7 +352,7 @@ class Network:
                     edge_colors[(u, v)] = (scale_color(color, shade), scale_color(color, shade))
                     edge_widths[(u, v)] = dense_width
             else:
-                # K-cores / d-cores: the half next to u takes v's colour and vice versa;
+                # K-cores / d-cores: the half next to u takes v's color and vice versa;
                 # the C++ cylinder radius is 0.1 host radii of the smaller endpoint degree
                 # (unweighted formula, whatever the graph), so the width is twice that
                 for u, v in visible_edges:

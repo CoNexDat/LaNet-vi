@@ -67,7 +67,7 @@ def test_kcores_weighted_graph():
     assert len(result.p_function) > 0
 
 
-# --- multigraph, self-loop and weighted-detection behaviour (#22)
+# --- multigraph, self-loop and weighted-detection behavior (#22)
 
 
 def _write(tmp_path: Path, text: str) -> Path:
@@ -209,7 +209,7 @@ def _p_index(p_function: list[float], strength: float) -> int:
 
 
 def _brute_force_weighted_cores(G: nx.Graph, p_function: list[float]) -> dict[int, int]:
-    """Generalised core by fixed point, independent of the peeling order.
+    """Generalized core by fixed point, independent of the peeling order.
 
     A node has index >= k iff it belongs to the maximal subgraph in which every node
     receives, from the other nodes of the subgraph, a strength whose interval is >= k.
@@ -299,7 +299,7 @@ def test_weighted_default_granularity_is_the_maximum_degree():
 
 
 def test_weighted_maximum_strength_fixes_the_top_boundary():
-    """maximum_strength normalises the intervals so different networks are comparable."""
+    """maximum_strength normalizes the intervals so different networks are comparable."""
     G = nx.Graph()
     G.add_weighted_edges_from([(0, 1, 2.0), (1, 2, 2.0)])
 

@@ -160,7 +160,7 @@ def _core_number(graph: nx.Graph) -> dict[int, int]:
     directed = graph.is_directed()
 
     def incident(node: int) -> dict[int, int]:
-        """Neighbours of ``node`` with the number of edges shared in either direction."""
+        """Neighbors of ``node`` with the number of edges shared in either direction."""
         counts: dict[int, int] = {}
         for nb in graph.successors(node) if directed else graph.neighbors(node):
             counts[nb] = counts.get(nb, 0) + graph.number_of_edges(node, nb)
@@ -183,11 +183,11 @@ def _core_number(graph: nx.Graph) -> dict[int, int]:
                 continue
             removed.add(node)
             core[node] = k
-            for neighbour, multiplicity in incident(node).items():
-                if neighbour in removed or core[neighbour] <= k:
+            for neighbor, multiplicity in incident(node).items():
+                if neighbor in removed or core[neighbor] <= k:
                     continue
-                core[neighbour] = max(k, core[neighbour] - multiplicity)
-                bins[core[neighbour]].append(neighbour)
+                core[neighbor] = max(k, core[neighbor] - multiplicity)
+                bins[core[neighbor]].append(neighbor)
     return core
 
 
@@ -195,7 +195,7 @@ def _check_weights_non_negative(graph: nx.Graph) -> None:
     """Refuse negative or non-finite weights on the raw edges, before any merge.
 
     The strength scale starts at 0 and the peeling relies on strengths only decreasing
-    as neighbours are removed.
+    as neighbors are removed.
     """
     for u, v, data in graph.edges(data=True):
         w = data.get("weight", 1.0)
@@ -349,13 +349,13 @@ def _compute_weighted_cores(
 
     Every node starts at the interval index of its total strength. Shells are then
     peeled in increasing order: when a node of the current shell ``k`` is removed,
-    each neighbour still above ``k`` is re-binned using only the strength it receives
-    from neighbours not yet removed, and moved down to ``max(new index, k)``. The
-    result is the generalised k-core: a node has index ``>= k`` iff it belongs to a
+    each neighbor still above ``k`` is re-binned using only the strength it receives
+    from neighbors not yet removed, and moved down to ``max(new index, k)``. The
+    result is the generalized k-core: a node has index ``>= k`` iff it belongs to a
     subgraph where every node receives strength in an interval ``>= k`` from the
     others.
 
-    The C++ re-summed a neighbour's remaining strength on every re-binning (quadratic
+    The C++ re-summed a neighbor's remaining strength on every re-binning (quadratic
     in the degree of a hub); here the remaining strength is kept incrementally, so each
     edge is subtracted once. Both peel to the same fixed point.
 
@@ -381,23 +381,23 @@ def _compute_weighted_cores(
     for node, k in core.items():
         buckets[k].add(node)
 
-    remaining = dict(strengths)  # strength from neighbours not yet removed
+    remaining = dict(strengths)  # strength from neighbors not yet removed
     done: set[int] = set()
     for k, bucket in enumerate(buckets):
         while bucket:
             node = bucket.pop()
             done.add(node)
-            for neighbour, data in graph[node].items():
-                if neighbour in done:
+            for neighbor, data in graph[node].items():
+                if neighbor in done:
                     continue
-                remaining[neighbour] -= data.get("weight", 1.0)
-                if core[neighbour] <= k:
+                remaining[neighbor] -= data.get("weight", 1.0)
+                if core[neighbor] <= k:
                     continue
-                new_k = max(_p_index(p_function, remaining[neighbour]), k)
-                if new_k != core[neighbour]:
-                    buckets[core[neighbour]].discard(neighbour)
-                    core[neighbour] = new_k
-                    buckets[new_k].add(neighbour)
+                new_k = max(_p_index(p_function, remaining[neighbor]), k)
+                if new_k != core[neighbor]:
+                    buckets[core[neighbor]].discard(neighbor)
+                    core[neighbor] = new_k
+                    buckets[new_k].add(neighbor)
     return core
 
 

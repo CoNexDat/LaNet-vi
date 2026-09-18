@@ -34,7 +34,7 @@ def compute_kdenses(graph: nx.Graph) -> DecompositionResult:
     DecompositionResult
         ``node_indices`` maps every node to its k-dense index (``>= 2``);
         ``metadata["edge_indices"]`` maps every simple edge ``(u, v)``, ``u < v``, to its
-        k-dense index, which the C++ uses to colour edges.
+        k-dense index, which the C++ uses to color edges.
 
     Notes
     -----
@@ -96,7 +96,7 @@ def _simple_adjacency(graph: nx.Graph, index_of: dict[int, int]) -> list[set[int
     Returns
     -------
     List[Set[int]]
-        ``adjacency[i]`` is the set of neighbour positions of node ``i``
+        ``adjacency[i]`` is the set of neighbor positions of node ``i``
     """
     adjacency: list[set[int]] = [set() for _ in index_of]
     for u, v in graph.edges():
@@ -128,10 +128,10 @@ def _edge_truss_support(adjacency: list[set[int]]) -> dict[tuple[int, int], int]
         Truss support number of every edge ``(u, v)`` with ``u < v``
     """
     support: dict[tuple[int, int], int] = {}
-    for u, neighbours in enumerate(adjacency):
-        for v in neighbours:
+    for u, neighbors in enumerate(adjacency):
+        for v in neighbors:
             if u < v:
-                support[(u, v)] = len(neighbours & adjacency[v])
+                support[(u, v)] = len(neighbors & adjacency[v])
     if not support:
         return {}
 
@@ -140,7 +140,7 @@ def _edge_truss_support(adjacency: list[set[int]]) -> dict[tuple[int, int], int]
     for edge, s in support.items():
         buckets[s].add(edge)
 
-    live = [set(neighbours) for neighbours in adjacency]
+    live = [set(neighbors) for neighbors in adjacency]
     result: dict[tuple[int, int], int] = {}
     for k, bucket in enumerate(buckets):
         while bucket:
@@ -148,7 +148,7 @@ def _edge_truss_support(adjacency: list[set[int]]) -> dict[tuple[int, int], int]
             result[(u, v)] = k
             live[u].discard(v)
             live[v].discard(u)
-            # Every remaining common neighbour closed a triangle with (u, v) that is now gone.
+            # Every remaining common neighbor closed a triangle with (u, v) that is now gone.
             for w in live[u] & live[v]:
                 for side in ((u, w) if u < w else (w, u), (v, w) if v < w else (w, v)):
                     s = support[side]

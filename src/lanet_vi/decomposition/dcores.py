@@ -55,7 +55,7 @@ def compute_dcores(
     >>> G = nx.DiGraph()
     >>> G.add_edges_from([(0, 1), (1, 2), (2, 0)])
     >>> result = compute_dcores(G)
-    >>> result.node_indices[0]  # max(k_in, k_out), used for layout/colouring
+    >>> result.node_indices[0]  # max(k_in, k_out), used for layout/coloring
     1
     >>> result.metadata["d_cores"][0]  # full (k_in, k_out) pair for node 0
     (1, 1)

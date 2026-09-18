@@ -92,8 +92,8 @@ def test_every_node_is_placed_and_shells_are_concentric_rings():
     assert layout.frame == pytest.approx(params.gamma * params.u * chain[1].ratio)
 
 
-def test_sibling_components_get_distinct_centres_and_scales():
-    """Two 3-cores inside one 2-core are offset from the parent centre (formulas 3-5)."""
+def test_sibling_components_get_distinct_centers_and_scales():
+    """Two 3-cores inside one 2-core are offset from the parent center (formulas 3-5)."""
     G = _two_k4_bridged()
     core = nx.core_number(G)
     layout = compute_lanet_layout(G, core, LayoutParameters(delta=1.3), seed=0)
@@ -218,8 +218,8 @@ def test_node_radius_follows_the_cpp_formula():
     )
 
 
-def test_higher_neighbour_in_another_branch_is_tolerated():
-    """k-dense-like indices: a node's high neighbour may be reachable only through a weak edge."""
+def test_higher_neighbor_in_another_branch_is_tolerated():
+    """k-dense-like indices: a node's high neighbor may be reachable only through a weak edge."""
     # Triangle 0-1-2 (index 3 nodes, index-3 edges) and node 3 with index 3 attached to 0 by
     # an index-2 edge; node 4 (index 2) attached to 3 by an index-2 edge.
     G = nx.Graph([(0, 1), (1, 2), (2, 0), (0, 3), (3, 4)])

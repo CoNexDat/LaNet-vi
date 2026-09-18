@@ -54,7 +54,7 @@ def test_community_module_imports_on_python39():
 
 
 def test_layout_positions_cover_all_nodes(karate: nx.Graph):
-    """Every node gets a position, colour and size."""
+    """Every node gets a position, color and size."""
     net = Network(karate, _small_config())
     net.decompose()
     layout = net.compute_layout()
@@ -72,7 +72,7 @@ def test_layout_positions_cover_all_nodes(karate: nx.Graph):
 def test_legend_switches_gate_their_helpers(
     karate: nx.Graph, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, color_legend, degree_legend
 ):
-    """show_color_legend gates the colour legend and show_degree_scale the degree legend."""
+    """show_color_legend gates the color legend and show_degree_scale the degree legend."""
     from lanet_vi.models.config import LaNetConfig, VisualizationConfig
     from lanet_vi.visualization import matplotlib_renderer as mr
 
@@ -99,7 +99,7 @@ def test_legend_switches_gate_their_helpers(
 def test_labels_are_drawn_for_every_named_node_including_zero(
     karate: nx.Graph, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """A node named "0" is labelled like any other (the old skip is gone)."""
+    """A node named "0" is labeled like any other (the old skip is gone)."""
     from matplotlib.axes import Axes
 
     from lanet_vi.models.config import LaNetConfig, VisualizationConfig
@@ -136,7 +136,7 @@ def test_labels_are_drawn_for_every_named_node_including_zero(
 def test_color_legend_title_follows_decomposition(
     karate: nx.Graph, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, decomp_type, measure, title
 ):
-    """The colour legend is titled after the decomposition (#10) and the k-dense measure."""
+    """The color legend is titled after the decomposition (#10) and the k-dense measure."""
     from lanet_vi.models.config import DecompositionConfig
 
     texts = _spy_texts(monkeypatch)
@@ -193,7 +193,7 @@ def test_kdense_legend_labels_mcore_as_k_minus_2(
 def test_color_legend_hidden_with_custom_colors(
     karate: nx.Graph, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """A colours file replaces the shell colours and hides the colour legend (C++ -colorsFile)."""
+    """A colors file replaces the shell colors and hides the color legend (C++ -colorsFile)."""
     from lanet_vi.visualization import matplotlib_renderer as mr
 
     calls: list[str] = []
@@ -209,7 +209,7 @@ def test_color_legend_hidden_with_custom_colors(
     # Nodes absent from the file are white on the (default) black background
     assert layout.node_colors[1] == (1.0, 1.0, 1.0)
 
-    # An empty colours file still means "custom colours": all default, legend hidden
+    # An empty colors file still means "custom colors": all default, legend hidden
     empty = tmp_path / "colors.txt"
     empty.write_text("")
     net = Network(karate, _small_config())
@@ -235,7 +235,7 @@ def test_png_is_exactly_width_by_height(karate: nx.Graph, tmp_path: Path):
 
 
 def test_edge_colors_are_flipped_and_shaded(karate: nx.Graph):
-    """The half next to u takes v's colour darkened by 0.75 (col) or lightened by 1.2 (bw)."""
+    """The half next to u takes v's color darkened by 0.75 (col) or lightened by 1.2 (bw)."""
     from lanet_vi.models.config import ColorScheme
     from lanet_vi.visualization.colors import scale_color
 
@@ -271,8 +271,8 @@ def test_edge_width_follows_the_smaller_endpoint_degree(karate: nx.Graph):
         assert layout.edge_widths[(u, v)] == pytest.approx(expected)
 
 
-def test_kdense_edges_take_their_own_index_colour(karate: nx.Graph):
-    """K-dense edges are one colour: the shell colour of the edge index, darkened by 0.5."""
+def test_kdense_edges_take_their_own_index_color(karate: nx.Graph):
+    """K-dense edges are one color: the shell color of the edge index, darkened by 0.5."""
     from lanet_vi.visualization.colors import compute_shell_color, scale_color
 
     config = LaNetConfig(visualization=VisualizationConfig(width=300, height=300, edges_percent=1))
@@ -289,7 +289,7 @@ def test_kdense_edges_take_their_own_index_colour(karate: nx.Graph):
 
 
 def test_mcore_color_scale_max_is_two_below_the_dense_index(karate: nx.Graph):
-    """--color-scale-max 3 with mcore colours like --color-scale-max 5 with kdense."""
+    """--color-scale-max 3 with mcore colors like --color-scale-max 5 with kdense."""
     from lanet_vi.models.config import DecompositionConfig
 
     colors = {}
@@ -399,7 +399,7 @@ def test_color_legend_has_one_circle_per_index_and_sparse_labels():
     plt.close(fig)
     assert len(ax.patches) == 40
     labels = [t.get_text() for t in ax.texts]
-    # 40 // 15 + 1 = 3: 40, 37, ..., 1 labelled, then the title
+    # 40 // 15 + 1 = 3: 40, 37, ..., 1 labeled, then the title
     assert labels == [str(i) for i in range(1, 41) if (40 - i) % 3 == 0] + ["k-core"]
     ys = sorted(p.center[1] for p in ax.patches)
     assert ys[0] == pytest.approx(-0.9 * 10.0 + 5.0 * 1.5 * 0.8 * (10.0 / 1.5) * 2.0 / (40 * 5))

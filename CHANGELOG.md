@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- American English is now the mandatory spelling for identifiers, docstrings, comments
+  and docs (`AGENTS.md`, `CONTRIBUTING.md`, PR template). Existing British spellings in
+  comments, docstrings and docs were corrected; the only renamed identifiers are private
+  (`_Placer.place_centre` → `place_center`) and six test names, so no public API changed.
+- `CITATION.cff` (validated with `cffconvert`): software citation with the package
+  authors, version and release date, plus the NIPS 2005 and New Journal of Physics 2008
+  papers as references; the release checklist now updates it with each version.
 - README now has a Heritage section crediting the original C++ LaNet-vi (Beiró,
   Alvarez-Hamelin et al., 2005–2016), its SourceForge distribution under the Academic Free
   License 3.0 and the original homepage; the License section states the relation between
@@ -47,38 +54,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Rendering follows the C++ LaNet-vi again (#24). Colour scale from `types.cpp`: the
+- Rendering follows the C++ LaNet-vi again (#24). Color scale from `types.cpp`: the
   rainbow runs magenta → blue → cyan → green → yellow → **red** (the maximum index was
-  magenta), the black-and-white scale runs white → grey → **black** (it was inverted) and
+  magenta), the black-and-white scale runs white → gray → **black** (it was inverted) and
   `bwi` interlaces that same scale; consecutive shells alternate a luminosity of 0.7 and
   1.2 (was 0.7/1.0), with the k-dense rules of `graphics_kdenses.cpp` (constant 0.9 on a
   white background; with `measure = mcore`, the default, `--color-scale-max` is read in
   m-core units and the legend labels each k-dense as `k - 2` under the title `m-core`;
   `--measure kdense` keeps the k-dense numbers). Nodes absent from a `--colors-file` are
-  white on black / black on white, and the colour legend is hidden in that case.
+  white on black / black on white, and the color legend is hidden in that case.
 - Edges: every edge is kept with probability `max(edges_percent, min_edges / E)` (the C++
   per-edge Bernoulli) using the layout `seed`, so `--seed` makes pictures reproducible
-  (the stratified sampler used the unseeded `random` module). Edge colours darken by 0.75
-  in `col` pictures and lighten by 1.2 in `bw`/`bwi` ones; k-dense edges are one colour,
-  their own dense index darkened by 0.5 (the flat grey the 3.0.1 release used for edges
+  (the stratified sampler used the unseeded `random` module). Edge colors darken by 0.75
+  in `col` pictures and lighten by 1.2 in `bw`/`bwi` ones; k-dense edges are one color,
+  their own dense index darkened by 0.5 (the flat gray the 3.0.1 release used for edges
   between clusters was removed in the 3.0.2 and 4.0.0 drivers and is not reproduced). Edge width is 0.2 host radii of the smaller
   endpoint degree (the C++ `ratioEdge`), in layout units with a one-pixel floor; edges are
   drawn under the nodes in increasing index order. Nodes are opaque (the >1000-node path
   drew them at alpha 0.9).
 - Legends are drawn in layout units where `generateNetworkFile` put them, so they scale
-  with the picture: the colour legend has one circle per index (from 1, or 2 for
-  k-denses), labelled in the index colour every `max // 15 + 1` indices; the degree legend
+  with the picture: the color legend has one circle per index (from 1, or 2 for
+  k-denses), labeled in the index color every `max // 15 + 1` indices; the degree legend
   shows `ceil(dmax / 4^i)` (down to 2, at most five) with the radius those nodes have in the
   picture (it used its own size formulas and ignored `node_size_scale`), or strengths for
   weighted graphs. Weighted graphs whose strengths never exceed 1 (where the C++ strength
   law divides by `log(max) <= 0`) now size nodes by the degree law instead of a constant
   radius, and the legend follows.
 - The PNG is exactly `width x height` pixels (`bbox_inches="tight"` cropped it); the frame
-  is scaled uniformly to fit and centred, so any aspect ratio works and the validator that
+  is scaled uniformly to fit and centered, so any aspect ratio works and the validator that
   rejected sizes such as 3200x800 is gone.
 - Weighted k-cores (#20) now peel, as the C++ `findCores` weighted branch does: every
   node starts in the strength interval of its total strength and, when a shell is
-  removed, its neighbours are re-binned using only the strength they still receive from
+  removed, its neighbors are re-binned using only the strength they still receive from
   nodes above that shell. The previous code only binned total strengths (a histogram,
   not a core decomposition; it disagreed with the C++ on 1,570 of the 2,070 random
   configurations checked, see PR #31). Default granularity is the maximum degree again (the cap at 100 is
@@ -105,7 +112,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   writes them as `[u, v, index]` triples). Verified against a brute-force k-truss on random
   graphs. The CAIDA 20251001 example now spans k-dense 2–105 (was 2–55); its image is
   regenerated.
-- The colour legend is titled after the decomposition (`k-dense`, `d-core`) instead of
+- The color legend is titled after the decomposition (`k-dense`, `d-core`) instead of
   always `k-core` (#10).
 - `--directed --decomp dcores` crashed with a Pydantic `ValidationError` while building
   components (`Component` was constructed with `id`/`index` instead of `component_id`/
@@ -118,11 +125,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decomposition; non-integer node ids and single-column files give a clear error. All of
   this matches the C++ reader.
 - `--multigraph` no longer crashes k-cores: parallel edges count towards the degree (the
-  C++ behaviour) and, for weighted multigraphs, their weights are summed into the strength.
+  C++ behavior) and, for weighted multigraphs, their weights are summed into the strength.
 - `write_edge_list` (and therefore `lanet-vi generate`) now defaults to space-separated
   output; its files were tab-separated and could not be read back by `lanet-vi visualize`.
 - Node names may contain spaces (the name is the rest of the line, quotes stripped) and
-  the colours file accepts tabs.
+  the colors file accepts tabs.
 - `lanet-vi config` wrote YAML with `!!python/object/apply` tags that `--config` could
   not load; enums are now written as plain strings (#23).
 - `--config` no longer discards the other command-line flags. Precedence is now the C++
@@ -130,8 +137,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--names` now draws the labels (it loaded them and drew nothing); use
   `--no-node-labels` to load names without drawing them. A node named `0` is no longer
   skipped (#23).
-- `--show-degree-scale` toggled the colour legend instead of the degree legend. It now
-  controls the degree (node size) legend, as the C++ `-showDegreeScale`; the colour legend
+- `--show-degree-scale` toggled the color legend instead of the degree legend. It now
+  controls the degree (node size) legend, as the C++ `-showDegreeScale`; the color legend
   has its own `--show-color-legend/--no-show-color-legend` (config `show_color_legend`).
   `show_size_legend` is kept as a deprecated alias that folds into `show_degree_scale` (#23).
 - Default-true boolean flags (`--show-degree-scale`, `--gradient-edges`,
@@ -158,16 +165,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Layout (#18): the actual LaNet-vi placement is back.** `visualization/lanet_layout.py`
   ports `kcores_component.cpp` / `graph_kcores_components.cpp` (classic mode): nested
-  components (connected pieces of the inner core, recursively) with their own centre,
+  components (connected pieces of the inner core, recursively) with their own center,
   radius and scale (formulas (3)-(5) of NIPS 2005), rings one unit apart with the top core
   as a disc whose radius follows its log-degrees, node radius from the depth of its
-  higher-index neighbours (formula (1)), angle from the circular average of their angles,
+  higher-index neighbors (formula (1)), angle from the circular average of their angles,
   top cores split into cliques laid along U-shaped paths in angular sectors, and the
   `--no-cliques` sector formula (2). The previous code placed every shell on a fixed
-  80-unit ring at a random radius and measured neighbour angles from the origin. K-dense
+  80-unit ring at a random radius and measured neighbor angles from the origin. K-dense
   and d-core results use the same classic placement, building the component tree with
   their own edge index (the edge dense index, as `kdenses_component.cpp` walks it); the
-  rest of that file's variant (`>=` neighbours, `tau`, sibling circle packing,
+  rest of that file's variant (`>=` neighbors, `tau`, sibling circle packing,
   `ratioConstant` radii) belongs to the C++ `pow`/`log` mode, which — like the k-core
   `pow`/`log` distributions — is still not ported (#18). `epsilon`, `delta`, `gamma`,
   `unit_length`, `seed`, `--no-cliques` and `--draw-circles` now do what the C++ flags

@@ -90,10 +90,10 @@ weights) and the integer shells by strength intervals, as in the C++ LaNet-vi:
   (geometric progression) or `custom` (boundaries read one per line from
   `--strength-intervals-file`)
 - Every node starts in the interval of its total strength, then shells are peeled in
-  increasing order: when a node of shell k is removed, each neighbour is re-binned
+  increasing order: when a node of shell k is removed, each neighbor is re-binned
   using only the strength it still receives from nodes above shell k, and never moves
   below k. A node has index ≥ k iff it belongs to a subgraph where every member
-  receives strength in interval ≥ k from the other members — the generalised k-core
+  receives strength in interval ≥ k from the other members — the generalized k-core
 - Indices run 1..granularity (0 for an isolated node); with `custom` there is one
   index per boundary in the file instead. The C++ 3.0.1 numbered two of the interval
   methods 2..granularity+1 because of a duplicated 0.0 boundary

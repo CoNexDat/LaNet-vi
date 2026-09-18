@@ -46,7 +46,7 @@ def read_edge_list(
     Read an edge list file and create a NetworkX graph.
 
     Lines hold ``source target [weight]`` separated by whitespace (or by
-    ``delimiter`` if given). Behaviour follows the C++ LaNet-vi reader: an
+    ``delimiter`` if given). Behavior follows the C++ LaNet-vi reader: an
     unused third column is ignored, a missing weight on a weighted graph counts
     as 1.0, and self-loops are dropped (with a warning) because the
     decompositions do not accept them.
