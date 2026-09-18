@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [5.1.0] - 2026-09-18
+
+The first release after a source-level comparison with the original C++ LaNet-vi 3.x. The
+5.0.0 rewrite had replaced most of the algorithms with approximations; 5.1.0 ports them
+faithfully, so the pictures are the LaNet-vi pictures again: the placement of
+Alvarez-Hamelin, Dall'Asta, Barrat & Vespignani (NIPS 2005), the triangle peeling of
+k-dense, the weighted k-core peeling, the color scale of `types.cpp` with red for the top
+core, the per-edge sampling seeded by `--seed`, and the `pow`/`log` circle packing of
+sibling components. It also fixes the crashes and CLI problems found on the way (d-cores through
+the CLI, tab-separated input, self-loops, `--multigraph`, YAML round trip, `--config`
+precedence, `--names`), drops Python 3.9, resolves every open security alert and adds
+`CITATION.cff`. The details, by category:
+
 ### Documentation
 
 - American English is now the mandatory spelling for identifiers, docstrings, comments
@@ -167,9 +182,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `show_size_legend` is kept as a deprecated alias that folds into `show_degree_scale` (#23).
 - Default-true boolean flags (`--show-degree-scale`, `--gradient-edges`,
   `--color-by-community`, `--draw-community-boundaries`) now have `--no-...` forms (#23).
-- Options that the current implementation does not use (`--from-layer`, `--delta`,
-  `--gamma`, `--alpha`, `--beta`, `--coord-distribution`, `--use-spiral-layout`,
-  `--detect-communities`) say so in their help text, with the tracking issue (#18, #23).
+- Options that the current implementation does not use (`--from-layer`,
+  `--use-spiral-layout` and the `--spiral-*` settings, `--detect-communities` and the
+  other community flags) say so in their help text, with the tracking issue (#18, #23).
+  (`--delta`, `--gamma`, `--alpha`, `--beta` and `--coord-distribution`, inert at the
+  time, act since the layout ports below.)
 - `write_decomposition_json` crashed when components were present (it read non-existent
   `Component.id` / `Component.index` attributes).
 - `lanet_vi.community.base` failed to import on Python 3.9 because of `X | None` return
@@ -203,8 +220,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and d-core results use the same classic placement, building the component tree with
   their own edge index (the edge dense index, as `kdenses_component.cpp` walks it); the
   rest of that file's variant (`>=` neighbors, `tau`, sibling circle packing,
-  `ratioConstant` radii) belongs to the C++ `pow`/`log` mode, which — like the k-core
-  `pow`/`log` distributions — is still not ported (#18). `epsilon`, `delta`, `gamma`,
+  `ratioConstant` radii) belongs to the C++ `pow`/`log` mode, ported afterwards (see
+  "Added" above). `epsilon`, `delta`, `gamma`,
   `unit_length`, `seed`, `--no-cliques` and `--draw-circles` now do what the C++ flags
   did; `epsilon` defaults to the C++ 0.18 again. The picture is framed as the C++
   viewport (1.6 x 1.2 times the network radius), leaving the margin the legends sit in.
@@ -255,15 +272,20 @@ Complete Python refactor of LaNet-vi 3.x (C++) with all legacy features included
   - Ported from `legacy/Source/graph_dcores.cpp`
   - CLI: `--directed --decomp dcores`
 - **Spiral/semicircular layout**: Mathematical spiral placement using Newton-Raphson solver
-  - Ported from `legacy/Source/espiral.cpp`
+  - Inspired by `legacy/Source/espiral.cpp`, which was never linked into a C++ release;
+    the option is accepted but inert (#18)
   - CLI: `--use-spiral-layout`
 - **Community detection**: Louvain and greedy modularity algorithms
-  - Ported from `legacy/Source/community.cpp`
+  - A NetworkX-based replacement, not a port: the C++ community code
+    (`solution_lanci*.cpp`, `solution_submodular.cpp`) was research code never linked
+    into a LaNet-vi binary, and its local-growth and submodular methods are not in Python
+    (#26)
   - CLI: `--detect-communities`
 - **Community visualization**: Color-coded nodes with boundary overlays
 - **Random graph generation**: Testing and benchmarking utilities
   - Erdős-Rényi, Barabási-Albert, Watts-Strogatz, Powerlaw cluster
-  - Ported from `legacy/Source/erdos_renyi.cpp`
+  - NetworkX wrappers; the C++ `erdos_renyi.cpp` was a 12-line unlinked G(n, p) loop
+    (#26)
   - CLI: `lanet-vi generate`
 
 ### New Python-Specific Features
@@ -322,22 +344,28 @@ lanet-vi visualize --input network.txt --verbose --log-file debug.log
 
 ## Migration from C++ LaNet-vi 3.x
 
-LaNet-vi 5.0 is a complete Python rewrite that includes all features from the C++ version:
+LaNet-vi 5.x is a complete Python rewrite of the C++ version. Parity was overstated in
+5.0.0 and restored piece by piece in 5.1.0 (see the 5.1.0 entry and issues #18–#26):
 
 **Key Differences:**
-- **Language**: C++ → Python 3.9+
-- **Rendering**: POV-Ray → Matplotlib
+- **Language**: C++ → Python 3.10+
+- **Rendering**: POV-Ray / SVG → Matplotlib
 - **Configuration**: Custom format → YAML
 - **CLI**: Single-hyphen → Double-hyphen flags (Unix/GNU standard)
 - **Dependencies**: No external renderers, pure Python stack
 
-**Feature Parity:**
-- ✅ K-core decomposition
-- ✅ K-dense (m-core) decomposition
+**Feature Parity (as of 5.1.0):**
+- ✅ K-core decomposition, including the weighted peeling
+- ✅ K-dense (m-core) decomposition (triangle-pair peeling)
 - ✅ D-core decomposition (directed graphs)
-- ✅ Spiral/semicircular layouts
-- ✅ Community detection
-- ✅ Random graph generation
+- ✅ The LaNet-vi placement: `classic`, `pow` and `log` coordinate distributions
+- ✅ Color scale, grayscale, legends, edge sampling
+- ⚠️ Spiral/semicircular layout: option accepted but inert; never in a C++ release (#18)
+- ⚠️ Community detection: NetworkX Louvain / greedy modularity, a replacement, not a
+  port; the CLI flags are not wired into rendering yet (#23, #26)
+- ⚠️ Random graph generation: NetworkX wrappers (#26)
+- ❌ Not ported: k-connectivity, Gomory-Hu connectivity, SVG/PDF/POV-Ray output,
+  `-window` cropping (#25)
 - ➕ Enhanced JSON exports
 - ➕ Information theory metrics
 - ➕ Spatial indexing
@@ -345,5 +373,6 @@ LaNet-vi 5.0 is a complete Python rewrite that includes all features from the C+
 
 ---
 
-[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.0.0...HEAD
+[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.1.0...HEAD
+[5.1.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.0.0...v5.1.0
 [5.0.0]: https://github.com/CoNexDat/LaNet-vi/releases/tag/v5.0.0
