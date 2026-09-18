@@ -109,11 +109,11 @@ class VisualizationConfig(BaseModel):
     height : int
         Image height in pixels
     epsilon : float
-        Controls ring overlapping possibility
+        Ring thickness as a fraction of its radius (formula (1) of NIPS 2005)
     delta : float
-        Controls distance between components
+        Shrink factor of sibling components (formula (5))
     gamma : float
-        Controls component diameter
+        Component diameter; scales the whole picture (formulas (6)-(7))
     font_zoom : float
         Font size multiplier for node labels
     legend_fontsize : Optional[float]
@@ -157,7 +157,7 @@ class VisualizationConfig(BaseModel):
     color_scheme: ColorScheme = ColorScheme.COLOR
     width: int = Field(default=2400, gt=0)  # Changed from 800 to match CAIDA defaults
     height: int = Field(default=2400, gt=0)  # Changed from 600 to match CAIDA defaults
-    epsilon: float = Field(default=0.40, ge=0.0)  # Changed from 0.18 to match CAIDA tuned defaults
+    epsilon: float = Field(default=0.18, ge=0.0, le=1.0)  # C++ default: ring thickness
     delta: float = Field(default=1.3, gt=0.0)
     gamma: float = Field(default=1.5, gt=0.0)
     font_zoom: float = Field(default=1.0, gt=0.0)
@@ -183,7 +183,7 @@ class VisualizationConfig(BaseModel):
     # Deprecated alias of show_degree_scale (kept so old YAML files still load)
     show_size_legend: bool = Field(default=True)
     # Changed from 1.0 to 0.5 for moderate node sizes
-    node_size_scale: float = Field(default=0.5, gt=0.0)
+    node_size_scale: float = Field(default=1.0, gt=0.0)
 
     @model_validator(mode="before")
     @classmethod

@@ -186,7 +186,9 @@ def visualize(
     edge_alpha: float = typer.Option(0.6, "--edge-alpha", help="Edge transparency (0.0-1.0)"),
     min_edge_width: float = typer.Option(0.08, "--min-edge-width", help="Minimum edge width"),
     max_edge_width: float = typer.Option(0.3, "--max-edge-width", help="Maximum edge width"),
-    node_size_scale: float = typer.Option(0.5, "--node-size-scale", help="Node size multiplier"),
+    node_size_scale: float = typer.Option(
+        1.0, "--node-size-scale", help="Multiplier on the node radius (C++ size at 1.0)"
+    ),
     node_edge_color: str | None = typer.Option(None, "--node-edge-color", help="Node edge color"),
     show_size_legend: bool = typer.Option(
         True, "--show-size-legend/--no-show-size-legend", hidden=True
@@ -194,12 +196,14 @@ def visualize(
     gradient_edges: bool = typer.Option(
         True, "--gradient-edges/--no-gradient-edges", help="Use gradient edge coloring"
     ),
-    epsilon: float = typer.Option(0.40, "--epsilon", help="Controls ring overlapping"),
+    epsilon: float = typer.Option(
+        0.18, "--epsilon", help="Ring thickness as a fraction of its radius (C++: 0.18)"
+    ),
     delta: float = typer.Option(
-        1.3, "--delta", help="Distance between components (not used by the current layout, #18)"
+        1.3, "--delta", help="Shrink factor of sibling components (formula 5)"
     ),
     gamma: float = typer.Option(
-        1.5, "--gamma", help="Component diameter (not used by the current layout, #18)"
+        1.5, "--gamma", help="Component diameter (scales the whole picture)"
     ),
     font_zoom: float = typer.Option(1.0, "--font-zoom", help="Font zoom factor"),
     legend_fontsize: float | None = typer.Option(
@@ -229,17 +233,19 @@ def visualize(
     coord_distribution: CoordDistributionAlgorithm = typer.Option(
         CoordDistributionAlgorithm.CLASSIC,
         "--coord-distribution",
-        help="Component distribution algorithm (not used by the current layout, #18)",
+        help="Sibling placement: only classic is implemented (pow/log: #18)",
     ),
     alpha: float = typer.Option(
-        1.0, "--alpha", help="Component ratio formula constant (not used yet, #18)"
+        1.0, "--alpha", help="Circle-packing constant (pow/log only, not implemented, #18)"
     ),
     beta: float = typer.Option(
-        1.0, "--beta", help="Component ratio formula exponent (not used yet, #18)"
+        1.0, "--beta", help="Circle-packing exponent (pow/log only, not implemented, #18)"
     ),
-    seed: int = typer.Option(0, "--seed", help="Random seed"),
+    seed: int = typer.Option(0, "--seed", help="Random seed of the layout"),
     draw_circles: bool = typer.Option(False, "--draw-circles", help="Draw component borders"),
-    no_cliques: bool = typer.Option(False, "--no-cliques", help="Omit cliques in central core"),
+    no_cliques: bool = typer.Option(
+        False, "--no-cliques", help="Spread the top core uniformly instead of by cliques"
+    ),
     color_scale_max: int | None = typer.Option(
         None, "--color-scale-max", help="Max value for color scale"
     ),

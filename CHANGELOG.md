@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- `visualization.circular_average` and `layout.compute_hierarchical_layout` (replaced by
+  `lanet_layout`); `layout.distribute_components` stays for the future `pow`/`log` modes.
 - **Python 3.9 support.** 3.9 reached end of life in October 2025 and the patched
   releases of Pillow, jupyter-server and others require 3.10+. `requires-python` is now
   `>=3.10`; the code base uses `X | None` unions and `zip(..., strict=True)`.
@@ -117,6 +119,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Layout (#18): the actual LaNet-vi placement is back.** `visualization/lanet_layout.py`
+  ports `kcores_component.cpp` / `graph_kcores_components.cpp` (classic mode): nested
+  components (connected pieces of the inner core, recursively) with their own centre,
+  radius and scale (formulas (3)-(5) of NIPS 2005), rings one unit apart with the top core
+  as a disc whose radius follows its log-degrees, node radius from the depth of its
+  higher-index neighbours (formula (1)), angle from the circular average of their angles,
+  top cores split into cliques laid along U-shaped paths in angular sectors, and the
+  `--no-cliques` sector formula (2). The previous code placed every shell on a fixed
+  80-unit ring at a random radius and measured neighbour angles from the origin. K-dense
+  and d-core results use the same classic placement, building the component tree with
+  their own edge index (the edge dense index, as `kdenses_component.cpp` walks it); the
+  rest of that file's variant (`>=` neighbours, `tau`, sibling circle packing,
+  `ratioConstant` radii) belongs to the C++ `pow`/`log` mode, which — like the k-core
+  `pow`/`log` distributions — is still not ported (#18). `epsilon`, `delta`, `gamma`,
+  `unit_length`, `seed`, `--no-cliques` and `--draw-circles` now do what the C++ flags
+  did; `epsilon` defaults to the C++ 0.18 again. The picture is framed as the C++
+  viewport (1.6 x 1.2 times the network radius), leaving the margin the legends sit in.
+- Node radii follow the C++ `computeHostRatio` (`0.4 (log(1+d)/log(dmax))^0.7` layout
+  units, strength-based for weighted graphs) and are drawn in layout units for graphs of
+  any size (an `EllipseCollection` replaces the point-sized scatter), floored at one
+  pixel so peripheral nodes stay visible. `node_size_scale` is a plain multiplier and
+  defaults to 1.0.
 - CAIDA examples, README and docs now use the 20251001 AS-relationships snapshot
   (78,370 ASes, 489,407 relationships, k-cores 1-149); example images regenerated.
 

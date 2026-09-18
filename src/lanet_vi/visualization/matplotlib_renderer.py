@@ -7,7 +7,7 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-from matplotlib.collections import LineCollection
+from matplotlib.collections import EllipseCollection, LineCollection
 
 from lanet_vi.models.config import BackgroundColor, VisualizationConfig
 from lanet_vi.models.graph import DecompositionResult, VisualizationLayout
@@ -59,8 +59,9 @@ def render_network(
     # Get bounds
     xmin, xmax, ymin, ymax = layout.bounds
 
-    # Add some padding
-    padding = max(xmax - xmin, ymax - ymin) * 0.1
+    # The bounds already are the C++ viewport (legend margin included); pad a hair so
+    # nothing sits on the border
+    padding = max(xmax - xmin, ymax - ymin) * 0.02
     ax.set_xlim(xmin - padding, xmax + padding)
     ax.set_ylim(ymin - padding, ymax + padding)
     ax.set_aspect("equal")
@@ -216,45 +217,50 @@ def _draw_nodes(
     layout: VisualizationLayout,
     config: VisualizationConfig,
 ) -> None:
-    """Draw network nodes using scatter plot for performance."""
+    """Draw network nodes as circles in layout units, never smaller than a pixel."""
     edge_color = config.node_edge_color if config.node_edge_color else "none"
 
-    # For large graphs, use scatter plot instead of individual patches (much faster)
+    # Radii come from the layout (the C++ computeHostRatio: 0.4 units for the largest
+    # degree, one unit between shells). With many shells that is a fraction of a pixel,
+    # so every node keeps at least a one-pixel radius, as the ray-traced spheres did.
+    ymin, ymax = ax.get_ylim()
+    min_radius = (ymax - ymin) / config.height
+
+    def radius_of(node: int) -> float:
+        return max(layout.node_sizes.get(node, 0.0), min_radius)
+
+    # For large graphs, one collection instead of individual patches (much faster).
+    # EllipseCollection with units="xy" keeps the radii in data units, like the patches.
     if len(layout.node_positions) > 1000:
-        # Prepare arrays for scatter plot
-        x_coords = []
-        y_coords = []
+        offsets = []
         colors = []
-        sizes = []
-
+        diameters = []
         for node, (x, y) in layout.node_positions.items():
-            x_coords.append(x)
-            y_coords.append(y)
+            offsets.append((x, y))
             colors.append(layout.node_colors.get(node, (0.7, 0.7, 0.7)))
-            # scatter uses area (s = πr²), so multiply by π and square
-            size = layout.node_sizes.get(node, 5.0)
-            sizes.append(np.pi * size**2)
-
-        # Draw all nodes at once with scatter
-        ax.scatter(
-            x_coords,
-            y_coords,
-            s=sizes,
-            c=colors,
+            diameters.append(2.0 * radius_of(node))
+        collection = EllipseCollection(
+            diameters,
+            diameters,
+            np.zeros(len(diameters)),
+            units="xy",
+            offsets=offsets,
+            offset_transform=ax.transData,
+            facecolors=colors,
             edgecolors=edge_color,
             linewidths=0.3,
             zorder=2,
             alpha=0.9,
         )
+        ax.add_collection(collection)
     else:
         # For small graphs, use individual patches for better quality
         for node, (x, y) in layout.node_positions.items():
             color = layout.node_colors.get(node, (0.7, 0.7, 0.7))
-            size = layout.node_sizes.get(node, 5.0)
 
             circle = mpatches.Circle(
                 (x, y),
-                radius=size,
+                radius=radius_of(node),
                 facecolor=color,
                 edgecolor=edge_color,
                 linewidth=0.5,
@@ -318,6 +324,8 @@ def _draw_degree_scale(
     max_idx = (
         config.color_scale_max_value if config.color_scale_max_value else decomposition.max_index
     )
+    if max_idx < 1:
+        return  # every index is 0 (edgeless graph): nothing to put on a scale
 
     # Sample more indices for comprehensive legend (matching reference image)
     # Reference shows ~13 values from 1 to max
@@ -409,6 +417,8 @@ def _draw_size_legend(
         return
 
     max_degree = max(degrees.values())
+    if max_degree < 1:
+        return  # nothing to scale on an edgeless graph
     n_nodes = graph.number_of_nodes()
 
     # Compute sample sizes to show in legend

@@ -154,3 +154,58 @@ def test_color_legend_title_follows_decomposition(
     net.visualize(tmp_path / "out.png")
 
     assert title in titles
+
+
+def test_layout_components_are_the_nested_components_with_circles(karate: nx.Graph):
+    """Border circles come from the nested component tree, only for components with clusters."""
+    from lanet_vi.models.config import LayoutConfig
+
+    G = nx.Graph(karate.edges())  # drop networkx's weight attribute: plain k-cores
+    config = LaNetConfig(
+        visualization=VisualizationConfig(width=300, height=300, gamma=1.5),
+        layout=LayoutConfig(min_component_size=1),
+    )
+    net = Network(G, config)
+    net.decompose()
+    layout = net.compute_layout()
+
+    # One component per shell 1..4, concentric, radius = ratio * u * gamma, one unit apart
+    assert [c.shell_index for c in layout.components] == [1, 2, 3, 4]
+    assert all(c.center == (0.0, 0.0) for c in layout.components)
+    radii = [c.radius for c in layout.components]
+    assert all(a - b == pytest.approx(1.5) for a, b in zip(radii, radii[1:], strict=False))
+    assert layout.bounds[1] >= max(x for x, _ in layout.node_positions.values())
+    # The C++ viewport: 1.6 x 1.2 times the network radius (gamma * u * R)
+    assert layout.bounds[1] == pytest.approx(1.6 * radii[0])
+    assert layout.bounds[3] == pytest.approx(1.2 * radii[0])
+
+
+def test_autodetected_weights_use_weighted_geometry(karate: nx.Graph):
+    """A graph with weight attributes but no --weighted still gets strength-based layout."""
+    from unittest.mock import patch
+
+    from lanet_vi.visualization import lanet_layout
+
+    seen: dict[str, object] = {}
+    original = lanet_layout.compute_lanet_layout
+
+    def spy(graph, node_index, params, *args, **kwargs):  # noqa: ANN001, ANN202
+        seen["weighted"] = params.weighted
+        return original(graph, node_index, params, *args, **kwargs)
+
+    net = Network(karate, _small_config())  # networkx's karate club carries weights
+    net.decompose()
+    assert net.decomposition is not None and net.decomposition.p_function is not None
+    with patch("lanet_vi.core.network.compute_lanet_layout", spy):
+        net.compute_layout()
+    assert seen["weighted"] is True
+
+
+def test_single_node_and_edgeless_graphs_render(tmp_path: Path):
+    """The whole pipeline (layout, legends, PNG) survives graphs without edges."""
+    for G in (nx.Graph([(0, 0)]), nx.empty_graph(5)):
+        net = Network(G, _small_config())
+        net.decompose()
+        out = tmp_path / "edgeless.png"
+        net.visualize(out)
+        assert out.exists() and out.stat().st_size > 0
