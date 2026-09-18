@@ -39,8 +39,10 @@ weighted graphs), never less than one pixel; `--node-size-scale` multiplies it.
 - `unit_length` (1.0): the root scale `u`
 - `seed`: random seed (cluster order, ties, the random angle frame)
 
-The `pow`/`log` coordinate distributions of the C++ (circle packing of siblings) are not
-ported yet (#18).
+K-dense and d-core pictures use this same placement, with the component tree built from
+the edge dense index (k-dense) or the minimum endpoint index (d-cores). The `pow`/`log`
+coordinate distributions of the C++ (circle packing of siblings, and with them the
+k-dense specific variant of `kdenses_component.cpp`) are not ported yet (#18).
 
 ## Node Visualization
 

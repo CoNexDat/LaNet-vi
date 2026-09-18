@@ -127,12 +127,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   higher-index neighbours (formula (1)), angle from the circular average of their angles,
   top cores split into cliques laid along U-shaped paths in angular sectors, and the
   `--no-cliques` sector formula (2). The previous code placed every shell on a fixed
-  80-unit ring at a random radius and measured neighbour angles from the origin. The
-  same code lays out k-dense results (walking edges by their dense index, as
-  `kdenses_component.cpp`) and d-cores. `epsilon`, `delta`, `gamma`, `unit_length`,
-  `seed`, `--no-cliques` and `--draw-circles` now do what the C++ flags did; `epsilon`
-  defaults to the C++ 0.18 again. `pow`/`log` coordinate distributions (circle packing of
-  siblings) are still not wired (#18).
+  80-unit ring at a random radius and measured neighbour angles from the origin. K-dense
+  and d-core results use the same classic placement, building the component tree with
+  their own edge index (the edge dense index, as `kdenses_component.cpp` walks it); the
+  rest of that file's variant (`>=` neighbours, `tau`, sibling circle packing,
+  `ratioConstant` radii) belongs to the C++ `pow`/`log` mode, which — like the k-core
+  `pow`/`log` distributions — is still not ported (#18). `epsilon`, `delta`, `gamma`,
+  `unit_length`, `seed`, `--no-cliques` and `--draw-circles` now do what the C++ flags
+  did; `epsilon` defaults to the C++ 0.18 again.
 - Node radii follow the C++ `computeHostRatio` (`0.4 (log(1+d)/log(dmax))^0.7` layout
   units, strength-based for weighted graphs) and are drawn in layout units for graphs of
   any size (an `EllipseCollection` replaces the point-sized scatter), floored at one

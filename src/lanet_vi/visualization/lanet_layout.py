@@ -19,9 +19,13 @@ visualization of large scale networks* (NIPS 2005):
    circular average of the angles of those neighbours (already placed). Top cores are
    split into cliques laid along U-shaped paths in angular sectors (formula (2)).
 
-The same code serves k-dense and d-core results: an edge belongs to the inner component
-when its *edge index* is above the component's index (for k-cores the minimum of its
-endpoints' indices, for k-dense the edge's own dense index).
+K-dense and d-core results go through the same classic placement with their own *edge
+index* for the component tree (an edge belongs to the inner component when its index is
+above the component's: for k-cores the minimum of its endpoints' indices, for k-dense the
+edge's own dense index, as ``kdenses_component.cpp`` walks it). The rest of
+``kdenses_component.cpp`` (``>=`` neighbour selection, the ``tau`` factor, sibling circle
+packing through ``distribute_components``, ``ratioConstant`` node radii) belongs to the
+C++ "modern" ``pow``/``log`` mode, which is not ported yet.
 """
 
 from __future__ import annotations
@@ -232,24 +236,24 @@ def build_component_tree(
 def _greedy_cliques(cluster: list[int], graph: nx.Graph) -> list[list[int]]:
     """Partition a top-core cluster into cliques (``Clique::buildCliques``).
 
-    Each node, in cluster order, seeds a clique that greedily absorbs the not-yet-taken
-    neighbours (in the same order) adjacent to every member; cliques are sorted by node id.
-    The C++ meant to rank nodes by the connections among their top-core neighbours, but
-    it looked the core numbers up in the empty map of a fresh ``Network``, so every rank
-    was 0 and the cluster order decided; that is what is reproduced here. Linear in the
-    edges inside the cluster.
+    Each node, in cluster order, seeds a clique that greedily absorbs its not-yet-taken
+    neighbours, in adjacency order, when they are adjacent to every member; cliques are
+    sorted by node id. The C++ meant to rank nodes by the connections among their
+    top-core neighbours, but it looked the core numbers up in the empty map of a fresh
+    ``Network``, so every rank was 0, the sort was a no-op and the cluster / adjacency
+    orders decided; that is what is reproduced here. Linear in the edges inside the
+    cluster.
     """
     members = set(cluster)
     inside = {v: set(graph[v]) & members for v in cluster}
-    rank = {v: i for i, v in enumerate(cluster)}
     alive = set(cluster)
     cliques: list[list[int]] = []
     for v in cluster:
         if v not in alive:
             continue
         clique = [v]
-        for w in sorted(inside[v] & alive, key=rank.__getitem__):
-            if all(w in inside[c] for c in clique):
+        for w in graph[v]:
+            if w in alive and w != v and all(w in inside[c] for c in clique):
                 clique.append(w)
         alive.difference_update(clique)
         cliques.append(sorted(clique))
@@ -522,5 +526,5 @@ def node_radius(
             return 0.4
         return 0.4 * math.log(1.0 + strength) / math.log(max_strength)
     if max_degree <= 1:
-        return 0.4
+        return 0.4  # the C++ would divide by log(1) = 0
     return float(0.4 * (math.log(1 + degree) / math.log(max_degree)) ** 0.7)
