@@ -50,11 +50,11 @@ config = LaNetConfig()
 config.visualization.width = 2400
 config.visualization.height = 2400
 config.visualization.background = "black"
-config.visualization.epsilon = 0.40
+config.visualization.epsilon = 0.18
 
 # Edge settings
 config.visualization.edges_percent = 0.5
-config.visualization.edge_alpha = 0.6
+config.visualization.opacity = 0.2
 
 # Layout settings
 config.layout.seed = 0
@@ -164,7 +164,7 @@ lanet-vi visualize --input large_network.txt \\
   --width 2400 --height 2400 \\
   --background black \\
   --edges-percent 0.1 \\
-  --edge-alpha 0.5 \\
+  --opacity 0.2 \\
   --node-size-scale 0.4 \\
   --output large_viz.png
 ```
@@ -206,9 +206,9 @@ visualization:
   background: black
   width: 2400
   height: 2400
-  epsilon: 0.40
+  epsilon: 0.18
   edges_percent: 0.5
-  edge_alpha: 0.6
+  opacity: 0.2
   min_edges: 50000
   node_size_scale: 0.5
 

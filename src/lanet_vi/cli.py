@@ -17,6 +17,7 @@ from lanet_vi.io.config_loader import read_config_yaml, save_config_to_yaml
 from lanet_vi.io.writers import write_decomposition_csv, write_decomposition_json
 from lanet_vi.logging_config import setup_logging
 from lanet_vi.models.config import (
+    DEPRECATED_ALIASES,
     BackgroundColor,
     ColorScheme,
     CoordDistributionAlgorithm,
@@ -24,6 +25,7 @@ from lanet_vi.models.config import (
     DecompositionType,
     GraphConfig,
     LaNetConfig,
+    MeasureType,
     StrengthIntervalMethod,
 )
 
@@ -35,6 +37,7 @@ _CLI_TO_CONFIG: dict[str, tuple[str, str]] = {
     "multigraph": ("graph", "multigraph"),
     "directed": ("graph", "directed"),
     "decomp": ("decomposition", "decomp_type"),
+    "measure": ("decomposition", "measure"),
     "from_layer": ("decomposition", "from_layer"),
     "granularity": ("decomposition", "granularity"),
     "strength_intervals": ("decomposition", "strength_intervals"),
@@ -52,9 +55,8 @@ _CLI_TO_CONFIG: dict[str, tuple[str, str]] = {
     "legend_fontsize": ("visualization", "legend_fontsize"),
     "edges_percent": ("visualization", "edges_percent"),
     "min_edges": ("visualization", "min_edges"),
+    "opacity": ("visualization", "opacity"),
     "edge_alpha": ("visualization", "edge_alpha"),
-    "min_edge_width": ("visualization", "min_edge_width"),
-    "max_edge_width": ("visualization", "max_edge_width"),
     "node_size_scale": ("visualization", "node_size_scale"),
     "node_edge_color": ("visualization", "node_edge_color"),
     "show_size_legend": ("visualization", "show_size_legend"),
@@ -106,11 +108,12 @@ def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
             raise typer.BadParameter(str(exc), param_hint="--config") from exc
         for section, values in file_data.items():
             if isinstance(values, dict) and isinstance(data.get(section), dict):
-                if section == "visualization" and "show_size_legend" in values:
-                    # Deprecated alias: honour it only when the current field is absent
+                if section == "visualization":
+                    # Deprecated aliases: honour them only when the current field is absent
                     values = dict(values)
-                    alias = values.pop("show_size_legend")
-                    values.setdefault("show_degree_scale", alias)
+                    for alias, field in DEPRECATED_ALIASES.items():
+                        if alias in values:
+                            values.setdefault(field, values.pop(alias))
                 data[section].update(values)
             else:
                 data[section] = values
@@ -124,9 +127,9 @@ def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
             continue
         value = ctx.params[param]
         data[section][field] = value.value if isinstance(value, Enum) else value
-        if field == "show_size_legend":
-            # Deprecated CLI alias of --show-degree-scale
-            data[section]["show_degree_scale"] = value
+        if field in DEPRECATED_ALIASES:
+            # Deprecated CLI aliases (--show-size-legend, --edge-alpha)
+            data[section][DEPRECATED_ALIASES[field]] = value
 
     try:
         config = LaNetConfig.model_validate(data)
@@ -161,6 +164,11 @@ def visualize(
     decomp: DecompositionType = typer.Option(
         DecompositionType.KCORES, "--decomp", "-d", help="Decomposition type"
     ),
+    measure: MeasureType = typer.Option(
+        MeasureType.MCORE,
+        "--measure",
+        help="Centrality measure named in the k-dense legend: m-core (k-dense minus 2) or k-dense",
+    ),
     names: Path | None = typer.Option(None, "--names", help="Node names file"),
     colors_file: Path | None = typer.Option(None, "--colors-file", help="Node colors file"),
     cores_file: Path | None = typer.Option(
@@ -183,9 +191,20 @@ def visualize(
         0.5, "--edges-percent", help="Percent of visible edges (0.0-1.0)"
     ),
     min_edges: int = typer.Option(50000, "--min-edges", help="Minimum number of visible edges"),
-    edge_alpha: float = typer.Option(0.6, "--edge-alpha", help="Edge transparency (0.0-1.0)"),
-    min_edge_width: float = typer.Option(0.08, "--min-edge-width", help="Minimum edge width"),
-    max_edge_width: float = typer.Option(0.3, "--max-edge-width", help="Maximum edge width"),
+    opacity: float = typer.Option(0.2, "--opacity", help="Edge opacity (0.0-1.0)"),
+    edge_alpha: float = typer.Option(0.2, "--edge-alpha", hidden=True),
+    min_edge_width: float | None = typer.Option(
+        None,
+        "--min-edge-width",
+        help="Deprecated, no effect: edge width follows the C++ degree radius (#24)",
+        hidden=True,
+    ),
+    max_edge_width: float | None = typer.Option(
+        None,
+        "--max-edge-width",
+        help="Deprecated, no effect: edge width follows the C++ degree radius (#24)",
+        hidden=True,
+    ),
     node_size_scale: float = typer.Option(
         1.0, "--node-size-scale", help="Multiplier on the node radius (C++ size at 1.0)"
     ),

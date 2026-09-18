@@ -15,11 +15,13 @@ from lanet_vi.decomposition.kdenses import (
 from lanet_vi.io.readers import read_edge_list, read_node_colors, read_node_names
 from lanet_vi.logging_config import get_logger
 from lanet_vi.models.config import (
+    ColorScheme,
     DecompositionType,
     LaNetConfig,
+    MeasureType,
 )
 from lanet_vi.models.graph import Component, DecompositionResult, VisualizationLayout
-from lanet_vi.visualization.colors import compute_shell_color
+from lanet_vi.visualization.colors import compute_shell_color, default_node_color, scale_color
 from lanet_vi.visualization.lanet_layout import (
     LayoutParameters,
     compute_lanet_layout,
@@ -33,9 +35,15 @@ logger = get_logger(__name__)
 RGB = tuple[float, float, float]
 
 
-def _darken(color: RGB, factor: float = 0.75) -> RGB:
-    """Scale an RGB colour towards black."""
-    return (color[0] * factor, color[1] * factor, color[2] * factor)
+def _edge_shade(color_scheme: ColorScheme, *, dense: bool) -> float:
+    """Factor applied to a node colour to get its edge colour (graphics_k*.cpp).
+
+    Colour images darken the edges (0.75; 0.5 for k-dense), black-and-white images
+    lighten them (1.2, clamped).
+    """
+    if color_scheme != ColorScheme.COLOR:
+        return 1.2
+    return 0.5 if dense else 0.75
 
 
 class Network:
@@ -270,20 +278,26 @@ class Network:
                 )
             )
 
-        # Compute node colors
-        node_colors = {}
+        # Node colours (computeHostColor): the colours file when given (nodes absent from
+        # it are white on black / black on white), else the shell colour. With
+        # -measure mcore the k-dense colour-scale maximum is given in m-core units
+        # (graphics_kdenses.cpp:40), two below the dense index.
+        mcore = self.config.decomposition.measure == MeasureType.MCORE
+        color_scale_max = vis.color_scale_max_value
+        if is_dense and mcore and color_scale_max is not None:
+            color_scale_max += 2
+        node_colors: dict[int, RGB] = {}
         for node in self.graph.nodes():
-            if node in self.node_colors:
-                # Use custom color
-                node_colors[node] = self.node_colors[node]
+            if self.node_colors:
+                node_colors[node] = self.node_colors.get(node, default_node_color(vis.background))
             else:
-                # Compute color from shell/dense index
-                index = self.decomposition.node_indices.get(node, 1)
                 node_colors[node] = compute_shell_color(
-                    index,
-                    self.decomposition.max_index,
-                    self.config.visualization.color_scheme,
-                    self.config.visualization.color_scale_max_value,
+                    node_index.get(node, 1),
+                    decomposition.max_index,
+                    vis.color_scheme,
+                    color_scale_max,
+                    background=vis.background,
+                    dense=is_dense,
                 )
 
         # Node radii in layout units, as the C++ computeHostRatio (scaled by node_size_scale)
@@ -307,45 +321,41 @@ class Network:
             for node in self.graph.nodes()
         }
 
-        # Select visible edges
-        visible_edges = select_visible_edges(
-            self.graph, self.config.visualization, self.decomposition
-        )
+        # Visible edges: a seeded per-edge Bernoulli, as the C++ uniform draw
+        visible_edges = select_visible_edges(self.graph, vis, seed=self.config.layout.seed)
 
-        # Compute edge colors and widths for gradient rendering
-        edge_colors = {}
-        edge_widths = {}
-
-        if self.config.visualization.gradient_edges:
-            for u, v in visible_edges:
-                # Get endpoint colors and darken them (0.75× like original)
-                color_u = node_colors.get(u, (0.7, 0.7, 0.7))
-                color_v = node_colors.get(v, (0.7, 0.7, 0.7))
-
-                edge_color_u = _darken(color_u)
-                edge_color_v = _darken(color_v)
-
-                # IMPORTANT: Colors are flipped in original implementation!
-                # The half near node u gets node v's color (showing where it's going)
-                # The half near node v gets node u's color (showing where it came from)
-                edge_colors[(u, v)] = (edge_color_v, edge_color_u)  # Flipped!
-
-                # Compute edge width based on min degree (like original)
-                degree_u = degrees.get(u, 1)
-                degree_v = degrees.get(v, 1)
-                min_degree = min(degree_u, degree_v)
-
-                # Normalize to min/max edge width range
-                if max_degree > 1:
-                    normalized = min_degree / max_degree
-                else:
-                    normalized = 0.5
-
-                width = self.config.visualization.min_edge_width + normalized * (
-                    self.config.visualization.max_edge_width
-                    - self.config.visualization.min_edge_width
-                )
-                edge_widths[(u, v)] = width
+        # Edge colours and widths (graphics_kcores.cpp / graphics_kdenses.cpp addCluster)
+        edge_colors: dict[tuple[int, int], tuple[RGB, RGB]] = {}
+        edge_widths: dict[tuple[int, int], float] = {}
+        if vis.gradient_edges:
+            shade = _edge_shade(vis.color_scheme, dense=is_dense)
+            if is_dense:
+                # K-dense: one colour for the whole edge, its own dense index, and a
+                # constant width (the C++ cylinder radius is 0.2 host radii of degree 1)
+                dense_width = 2 * 0.2 * scale * node_radius(1, max_degree)
+                for u, v in visible_edges:
+                    color = compute_shell_color(
+                        edge_index(u, v),
+                        decomposition.max_index,
+                        vis.color_scheme,
+                        color_scale_max,
+                        background=vis.background,
+                        dense=True,
+                    )
+                    edge_colors[(u, v)] = (scale_color(color, shade), scale_color(color, shade))
+                    edge_widths[(u, v)] = dense_width
+            else:
+                # K-cores / d-cores: the half next to u takes v's colour and vice versa;
+                # the C++ cylinder radius is 0.1 host radii of the smaller endpoint degree
+                # (unweighted formula, whatever the graph), so the width is twice that
+                for u, v in visible_edges:
+                    edge_colors[(u, v)] = (
+                        scale_color(node_colors[v], shade),
+                        scale_color(node_colors[u], shade),
+                    )
+                    edge_widths[(u, v)] = (
+                        2 * 0.10 * scale * node_radius(min(degrees[u], degrees[v]), max_degree)
+                    )
 
         # Bounds: the C++ viewport (svg.cpp addHeaders) is 1.6 x 1.2 times 2 * gamma * u * R
         # around the origin, i.e. half-extents of 1.6 and 1.2 times the network radius, so
@@ -369,6 +379,8 @@ class Network:
             edge_widths=edge_widths,
             components=filtered_components,  # nested components >= min_component_size
             bounds=bounds,
+            frame=frame,
+            weighted=weighted and not self.graph.is_multigraph(),
         )
 
     def visualize(
@@ -403,6 +415,8 @@ class Network:
             self.config.visualization,
             output_path,
             self.node_names if self.node_names else None,
+            custom_colors=bool(self.node_colors),
+            measure=MeasureType(self.config.decomposition.measure),
         )
 
     def get_metadata(self) -> dict:

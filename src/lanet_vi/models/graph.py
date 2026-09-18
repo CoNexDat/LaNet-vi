@@ -154,6 +154,11 @@ class VisualizationLayout(BaseModel):
         Component layout information
     bounds : Tuple[float, float, float, float]
         Layout bounds (xmin, xmax, ymin, ymax)
+    frame : float
+        Network radius in layout units (``gamma * u * R`` of the C++, the outermost
+        component's radius); the legends are placed relative to it
+    weighted : bool
+        Node radii are strength-based (the degree legend then shows strengths)
     """
 
     node_positions: dict[int, tuple[float, float]]
@@ -166,6 +171,8 @@ class VisualizationLayout(BaseModel):
     edge_widths: dict[tuple[int, int], float] = Field(default_factory=dict)
     components: list[Component]
     bounds: tuple[float, float, float, float]
+    frame: float = Field(default=0.0, ge=0.0)
+    weighted: bool = False
 
     model_config = ConfigDict(frozen=False, arbitrary_types_allowed=True)
 
