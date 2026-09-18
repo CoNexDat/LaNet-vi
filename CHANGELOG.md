@@ -344,22 +344,28 @@ lanet-vi visualize --input network.txt --verbose --log-file debug.log
 
 ## Migration from C++ LaNet-vi 3.x
 
-LaNet-vi 5.0 is a complete Python rewrite that includes all features from the C++ version:
+LaNet-vi 5.x is a complete Python rewrite of the C++ version. Parity was overstated in
+5.0.0 and restored piece by piece in 5.1.0 (see the 5.1.0 entry and issues #18–#26):
 
 **Key Differences:**
-- **Language**: C++ → Python 3.9+
-- **Rendering**: POV-Ray → Matplotlib
+- **Language**: C++ → Python 3.10+
+- **Rendering**: POV-Ray / SVG → Matplotlib
 - **Configuration**: Custom format → YAML
 - **CLI**: Single-hyphen → Double-hyphen flags (Unix/GNU standard)
 - **Dependencies**: No external renderers, pure Python stack
 
-**Feature Parity:**
-- ✅ K-core decomposition
-- ✅ K-dense (m-core) decomposition
+**Feature Parity (as of 5.1.0):**
+- ✅ K-core decomposition, including the weighted peeling
+- ✅ K-dense (m-core) decomposition (triangle-pair peeling)
 - ✅ D-core decomposition (directed graphs)
-- ✅ Spiral/semicircular layouts
-- ✅ Community detection
-- ✅ Random graph generation
+- ✅ The LaNet-vi placement: `classic`, `pow` and `log` coordinate distributions
+- ✅ Color scale, grayscale, legends, edge sampling
+- ⚠️ Spiral/semicircular layout: option accepted but inert; never in a C++ release (#18)
+- ⚠️ Community detection: NetworkX Louvain / greedy modularity, a replacement, not a
+  port; the CLI flags are not wired into rendering yet (#23, #26)
+- ⚠️ Random graph generation: NetworkX wrappers (#26)
+- ❌ Not ported: k-connectivity, Gomory-Hu connectivity, SVG/PDF/POV-Ray output,
+  `-window` cropping (#25)
 - ➕ Enhanced JSON exports
 - ➕ Information theory metrics
 - ➕ Spatial indexing
