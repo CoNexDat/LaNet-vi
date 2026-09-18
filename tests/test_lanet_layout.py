@@ -449,6 +449,23 @@ def test_dense_variant_counts_same_index_neighbors_and_scales_epsilon_by_tau():
     assert rho3 == pytest.approx(one.ratio * (1 - 0.5 * tau) + 0.5 * tau * one.ratio * 1.5)
 
 
+def test_dense_variant_no_cliques_spreads_a_top_core_at_random():
+    """A k-dense top core with --no-cliques: rho in [0, ratio], no crash on zero depth."""
+    # Two triangles sharing node 0: one top core (index 2) whose nodes have same-index
+    # neighbors, so the C++ average would divide by max - dense_h = 0
+    G = nx.Graph([(0, 1), (1, 2), (2, 0), (0, 3), (3, 4), (4, 0)])
+    index = dict.fromkeys(G, 2)
+    params = LayoutParameters(coord_distribution="pow", dense=True, no_cliques=True, gamma=1.0)
+    layout = compute_lanet_layout(G, index, params, seed=0)
+    leaf = layout.root
+    while leaf.children:
+        leaf = leaf.children[0]
+    assert leaf.end_ratio == 0.0 and set(layout.positions) == set(G)
+    radii = [math.hypot(x - leaf.x, y - leaf.y) for x, y in layout.positions.values()]
+    assert all(0.0 <= r <= leaf.ratio + 1e-9 for r in radii)
+    assert len(set(radii)) > 1  # random rho, not a ring
+
+
 def test_classic_mode_is_untouched_by_the_modern_parameters():
     """Alpha / beta / dense / ratio_constant do not enter the classic placement."""
     G = _two_k4_bridged()

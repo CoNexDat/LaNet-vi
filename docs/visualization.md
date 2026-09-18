@@ -75,8 +75,9 @@ count in the ring position (formula (1)) and in the angle, `epsilon` is scaled b
 levels (the CAIDA k-denses reach 105) the `0.92` shrink leaves the inner cores a tiny
 disc; the mode was designed for shallower decompositions.
 
-Deliberate deviations from the C++: inflated discs are pulled towards their container's
-center (the C++ pulled them towards the picture's origin); neighbors not yet placed are
+Deliberate deviations from the C++: inflated discs keep their angle and are pulled
+towards their container's center (the C++ pulled them towards the picture's origin and
+mixed the updated `x` with the old `y`, skewing the angle); neighbors not yet placed are
 skipped in the angle (the C++ read a zero position); `alpha` defaults to the C++ 0.3.
 
 ## Node Visualization

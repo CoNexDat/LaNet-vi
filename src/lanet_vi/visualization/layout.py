@@ -94,10 +94,11 @@ def distribute_components(
     The C++ re-seeded its generator with ``-seed`` on every call, so every packing of the
     same weights is the same; that is reproduced with a fresh generator per call.
 
-    Deliberate deviation: the C++ pulled the inflated discs towards the origin of the
-    picture, not the container center (harmless for the root, wrong for nested
-    components, which the next round pushed back at random); here they are pulled
-    towards ``(x0, y0)``.
+    Deliberate deviations in the inflation step: the C++ pulled the discs towards the
+    origin of the picture, not the container center (harmless for the root, wrong for
+    nested components, which the next round pushed back at random), and it overwrote
+    ``x`` before computing ``y`` from it, so the pull skewed the angle; here the discs
+    keep their angle and are pulled towards ``(x0, y0)``.
 
     Parameters
     ----------

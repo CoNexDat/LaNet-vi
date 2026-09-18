@@ -581,6 +581,9 @@ class _Placer:
         once it is placed, as for the higher ones); ``epsilon`` is scaled by ``tau``, the
         share of the radius left outside the children's disc; no random rotation of the
         frame; weights are ignored; and the position is ``gamma * rho``, without ``u``.
+        A top core reaches this only with ``no_cliques``, where its nodes are spread at
+        random; the C++ still computed ``average`` for them, dividing by a zero depth
+        (``inf``, unused), which the ``depth > 0`` guard skips.
         """
         eps = self.params.epsilon
         gamma = self.params.gamma

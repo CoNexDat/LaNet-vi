@@ -50,9 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   formula (1) and the angle, `epsilon` scaled by `tau`, no `u`, node radius
   `ratio_constant sqrt(log(1 + d))` with `ratio_constant` auto-adjusted by the top cores).
   `--alpha` and `--beta` now act; `alpha` defaults to the C++ 0.3 (was an inert 1.0).
-  Deliberate deviations: inflated discs are pulled towards their container's center (the
-  C++ pulled them towards the picture's origin), unplaced neighbors are skipped in the
-  angle. `classic` stays the default for every decomposition, although the C++ k-dense
+  Deliberate deviations: inflated discs keep their angle and are pulled towards their
+  container's center (the C++ pulled them towards the picture's origin, and overwrote
+  ``x`` before computing ``y`` from it, skewing the angle), unplaced neighbors are skipped
+  in the angle. `classic` stays the default for every decomposition, although the C++ k-dense
   only ever had this placement (its default flags behaved as `pow`).
 
 ### Deprecated
