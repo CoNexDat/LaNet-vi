@@ -91,6 +91,9 @@ class Network:
         self.decomposition: DecompositionResult | None = None
         self.node_names: dict[int, str] = {}
         self.node_colors: dict[int, tuple[float, float, float]] = {}
+        # A colours file was loaded (even an empty one): nodes take its colours or the
+        # default, never the shell colour, and the colour legend is hidden (C++ -colorsFile)
+        self.custom_colors = False
 
     @classmethod
     def from_edge_list(
@@ -150,6 +153,7 @@ class Network:
             Path to node colors file
         """
         self.node_colors = read_node_colors(file_path)
+        self.custom_colors = True
 
     def decompose(
         self,
@@ -286,9 +290,10 @@ class Network:
         color_scale_max = vis.color_scale_max_value
         if is_dense and mcore and color_scale_max is not None:
             color_scale_max += 2
+        custom_colors = self.custom_colors or bool(self.node_colors)
         node_colors: dict[int, RGB] = {}
         for node in self.graph.nodes():
-            if self.node_colors:
+            if custom_colors:
                 node_colors[node] = self.node_colors.get(node, default_node_color(vis.background))
             else:
                 node_colors[node] = compute_shell_color(
@@ -417,7 +422,7 @@ class Network:
             self.config.visualization,
             output_path,
             self.node_names if self.node_names else None,
-            custom_colors=bool(self.node_colors),
+            custom_colors=self.custom_colors or bool(self.node_colors),
             measure=MeasureType(self.config.decomposition.measure),
         )
 

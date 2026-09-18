@@ -158,7 +158,9 @@ def _draw_edges(
         )
         return
 
-    # Draw order: increasing edge index, so the core's edges end up on top (the C++ z)
+    # Draw order: increasing edge index, so the core's edges end up on top. The C++
+    # painted in call order (edges between clusters, then inside clusters, walking the
+    # component tree outside-in), which the index order approximates.
     edge_indices = decomposition.metadata.get("edge_indices")
     node_index = decomposition.node_indices
 

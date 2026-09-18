@@ -209,6 +209,17 @@ def test_color_legend_hidden_with_custom_colors(
     # Nodes absent from the file are white on the (default) black background
     assert layout.node_colors[1] == (1.0, 1.0, 1.0)
 
+    # An empty colours file still means "custom colours": all default, legend hidden
+    empty = tmp_path / "colors.txt"
+    empty.write_text("")
+    net = Network(karate, _small_config())
+    net.load_node_colors(empty)
+    net.decompose()
+    layout = net.compute_layout()
+    net.visualize(tmp_path / "empty.png", layout=layout)
+    assert calls == []
+    assert set(layout.node_colors.values()) == {(1.0, 1.0, 1.0)}
+
 
 def test_png_is_exactly_width_by_height(karate: nx.Graph, tmp_path: Path):
     """The picture is the requested pixel size, whatever the aspect ratio (#24)."""
