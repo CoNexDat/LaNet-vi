@@ -1805,7 +1805,7 @@ wheels = [
 
 [[package]]
 name = "lanet-vi"
-version = "5.0.0"
+version = "5.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },

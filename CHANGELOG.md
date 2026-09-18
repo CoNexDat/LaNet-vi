@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [5.1.0] - 2026-09-18
+
+The first release after a source-level comparison with the original C++ LaNet-vi 3.x. The
+5.0.0 rewrite had replaced most of the algorithms with approximations; 5.1.0 ports them
+faithfully, so the pictures are the LaNet-vi pictures again: the placement of
+Alvarez-Hamelin, Dall'Asta, Barrat & Vespignani (NIPS 2005), the triangle peeling of
+k-dense, the weighted k-core peeling, the color scale of `types.cpp` with red for the top
+core, the per-edge sampling seeded by `--seed`, and the `pow`/`log` circle packing of
+sibling components. It also fixes the crashes and CLI problems found on the way (d-cores through
+the CLI, tab-separated input, self-loops, `--multigraph`, YAML round trip, `--config`
+precedence, `--names`), drops Python 3.9, resolves every open security alert and adds
+`CITATION.cff`. The details, by category:
+
 ### Documentation
 
 - American English is now the mandatory spelling for identifiers, docstrings, comments
@@ -255,15 +270,20 @@ Complete Python refactor of LaNet-vi 3.x (C++) with all legacy features included
   - Ported from `legacy/Source/graph_dcores.cpp`
   - CLI: `--directed --decomp dcores`
 - **Spiral/semicircular layout**: Mathematical spiral placement using Newton-Raphson solver
-  - Ported from `legacy/Source/espiral.cpp`
+  - Inspired by `legacy/Source/espiral.cpp`, which was never linked into a C++ release;
+    the option is accepted but inert (#18)
   - CLI: `--use-spiral-layout`
 - **Community detection**: Louvain and greedy modularity algorithms
-  - Ported from `legacy/Source/community.cpp`
+  - A NetworkX-based replacement, not a port: the C++ community code
+    (`solution_lanci*.cpp`, `solution_submodular.cpp`) was research code never linked
+    into a LaNet-vi binary, and its local-growth and submodular methods are not in Python
+    (#26)
   - CLI: `--detect-communities`
 - **Community visualization**: Color-coded nodes with boundary overlays
 - **Random graph generation**: Testing and benchmarking utilities
   - Erdős-Rényi, Barabási-Albert, Watts-Strogatz, Powerlaw cluster
-  - Ported from `legacy/Source/erdos_renyi.cpp`
+  - NetworkX wrappers; the C++ `erdos_renyi.cpp` was a 12-line unlinked G(n, p) loop
+    (#26)
   - CLI: `lanet-vi generate`
 
 ### New Python-Specific Features
@@ -345,5 +365,6 @@ LaNet-vi 5.0 is a complete Python rewrite that includes all features from the C+
 
 ---
 
-[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.0.0...HEAD
+[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.1.0...HEAD
+[5.1.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.0.0...v5.1.0
 [5.0.0]: https://github.com/CoNexDat/LaNet-vi/releases/tag/v5.0.0

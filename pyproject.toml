@@ -1,6 +1,6 @@
 [project]
 name = "lanet-vi"
-version = "5.0.0"
+version = "5.1.0"
 description = "Large scale network visualization using k-core, k-dense, and d-core decomposition with community detection"
 readme = "README.md"
 authors = [
@@ -98,4 +98,4 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-addopts = "-v --cov=lanet_vi --cov-report=term-missing --cov-report=xml --cov-fail-under=40"
+addopts = "-v --cov=lanet_vi --cov-report=term-missing --cov-report=xml --cov-fail-under=60"
