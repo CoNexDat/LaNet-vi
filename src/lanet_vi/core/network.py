@@ -331,7 +331,9 @@ class Network:
             shade = _edge_shade(vis.color_scheme, dense=is_dense)
             if is_dense:
                 # K-dense: one colour for the whole edge, its own dense index, and a
-                # constant width (the C++ cylinder radius is 0.2 host radii of degree 1)
+                # constant width (the C++ cylinder radius is 0.2 host radii of degree 1).
+                # The 3.0.1 release painted edges between different clusters a flat 0.9
+                # grey; the 3.0.2 and 4.0.0 drivers dropped that override, as does this.
                 dense_width = 2 * 0.2 * scale * node_radius(1, max_degree)
                 for u, v in visible_edges:
                     color = compute_shell_color(

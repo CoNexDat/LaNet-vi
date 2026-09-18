@@ -58,7 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   per-edge Bernoulli) using the layout `seed`, so `--seed` makes pictures reproducible
   (the stratified sampler used the unseeded `random` module). Edge colours darken by 0.75
   in `col` pictures and lighten by 1.2 in `bw`/`bwi` ones; k-dense edges are one colour,
-  their own dense index darkened by 0.5. Edge width is 0.2 host radii of the smaller
+  their own dense index darkened by 0.5 (the flat grey the 3.0.1 release used for edges
+  between clusters was removed in the 3.0.2 and 4.0.0 drivers and is not reproduced). Edge width is 0.2 host radii of the smaller
   endpoint degree (the C++ `ratioEdge`), in layout units with a one-pixel floor; edges are
   drawn under the nodes in increasing index order. Nodes are opaque (the >1000-node path
   drew them at alpha 0.9).

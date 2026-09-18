@@ -128,8 +128,14 @@ def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
         value = ctx.params[param]
         data[section][field] = value.value if isinstance(value, Enum) else value
         if field in DEPRECATED_ALIASES:
-            # Deprecated CLI aliases (--show-size-legend, --edge-alpha)
-            data[section][DEPRECATED_ALIASES[field]] = value
+            # Deprecated CLI aliases (--show-size-legend, --edge-alpha): the current flag
+            # wins when both are given explicitly
+            target = DEPRECATED_ALIASES[field]
+            target_param = next(
+                (p for p, (s, f) in _CLI_TO_CONFIG.items() if (s, f) == (section, target)), None
+            )
+            if target_param is None or not _given_explicitly(ctx, target_param):
+                data[section][target] = value
 
     try:
         config = LaNetConfig.model_validate(data)

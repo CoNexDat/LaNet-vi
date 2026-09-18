@@ -175,7 +175,7 @@ class VisualizationConfig(BaseModel):
     draw_circles: bool = False
     show_degree_scale: bool = True
     show_color_legend: bool = True
-    color_scale_max_value: int | None = Field(default=None, gt=0)
+    color_scale_max_value: int | None = Field(default=None, ge=0)  # 0: valid m-core number
     gradient_edges: bool = Field(default=True)
     show_node_labels: bool = Field(default=False)
     label_all_nodes: bool = Field(default=True)

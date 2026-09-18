@@ -315,7 +315,9 @@ def _draw_degree_scale(
     ``1.125`` frames to the right of the centre, from ``-0.9`` frames upwards, with at
     most one label every ``max // 15 + 1`` indices counted from the top; the label is
     written in the index colour. The k-dense legend starts at 2 and, with ``mcore``,
-    labels each index ``k - 2``.
+    labels each index ``k - 2``; its positions use the k-core formulas too (the
+    ``graphics_kdenses.cpp`` variant drops the network radius ``R`` and one ``u`` from
+    them, which leaves the legend inside the network on large pictures).
     """
     max_idx = decomposition.max_index
     is_dense = decomposition.decomp_type == "kdenses"

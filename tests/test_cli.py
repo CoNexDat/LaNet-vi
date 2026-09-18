@@ -336,6 +336,18 @@ def test_deprecated_edge_alpha_folds_into_opacity(tmp_path: Path):
     FakeCtx.params = {}
     assert _build_config(FakeCtx(), cfg).visualization.opacity == 0.55  # type: ignore[arg-type]
 
+    # Both flags explicit: the current one wins, whatever the order they are merged in
+    class BothCtx:
+        params = {"opacity": 0.5, "edge_alpha": 0.9}
+
+        def get_parameter_source(self, name: str):  # noqa: D102
+            class Src:
+                name = "COMMANDLINE"
+
+            return Src()
+
+    assert _build_config(BothCtx(), None).visualization.opacity == 0.5  # type: ignore[arg-type]
+
 
 def test_deprecated_show_size_legend_alias():
     """show_size_legend: false folds into show_degree_scale; an explicit flag wins over it."""

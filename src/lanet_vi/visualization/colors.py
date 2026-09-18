@@ -183,7 +183,9 @@ def compute_shell_color(
                     base_color = interpolate_color(c1, c2, (position - p1) / (p2 - p1))
                     break
 
-    # Luminosity alternation between consecutive shells (col only)
+    # Luminosity alternation between consecutive shells (col only). The k-dense C++
+    # function has no return at all for bw/bwi (undefined behaviour); the plain scale
+    # colour is used, as for k-cores.
     if color_scheme == ColorScheme.COLOR:
         if dense and background == BackgroundColor.WHITE:
             luminosity = 0.9  # graphics_kdenses.cpp: no alternation on white
