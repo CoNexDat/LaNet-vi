@@ -29,6 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SECURITY.md` now states supported versions, the private reporting channel, response
   targets and the coordinated-disclosure process.
 
+### Deprecated
+
+- `edge_alpha` (`--edge-alpha`) is an alias of `opacity` (`--opacity`, the C++
+  `-opacity`, default 0.2); `min_edge_width` / `max_edge_width` (`--min-edge-width`,
+  `--max-edge-width`) are accepted and ignored (#24). `lanet-vi config` no longer writes
+  the deprecated aliases (`edge_alpha`, `show_size_legend`) into the template, where they
+  were ignored next to the current field.
+
 ### Removed
 
 - `visualization.circular_average` and `layout.compute_hierarchical_layout` (replaced by
@@ -39,6 +47,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Rendering follows the C++ LaNet-vi again (#24). Colour scale from `types.cpp`: the
+  rainbow runs magenta → blue → cyan → green → yellow → **red** (the maximum index was
+  magenta), the black-and-white scale runs white → grey → **black** (it was inverted) and
+  `bwi` interlaces that same scale; consecutive shells alternate a luminosity of 0.7 and
+  1.2 (was 0.7/1.0), with the k-dense rules of `graphics_kdenses.cpp` (constant 0.9 on a
+  white background; with `measure = mcore`, the default, `--color-scale-max` is read in
+  m-core units and the legend labels each k-dense as `k - 2` under the title `m-core`;
+  `--measure kdense` keeps the k-dense numbers). Nodes absent from a `--colors-file` are
+  white on black / black on white, and the colour legend is hidden in that case.
+- Edges: every edge is kept with probability `max(edges_percent, min_edges / E)` (the C++
+  per-edge Bernoulli) using the layout `seed`, so `--seed` makes pictures reproducible
+  (the stratified sampler used the unseeded `random` module). Edge colours darken by 0.75
+  in `col` pictures and lighten by 1.2 in `bw`/`bwi` ones; k-dense edges are one colour,
+  their own dense index darkened by 0.5 (the flat grey the 3.0.1 release used for edges
+  between clusters was removed in the 3.0.2 and 4.0.0 drivers and is not reproduced). Edge width is 0.2 host radii of the smaller
+  endpoint degree (the C++ `ratioEdge`), in layout units with a one-pixel floor; edges are
+  drawn under the nodes in increasing index order. Nodes are opaque (the >1000-node path
+  drew them at alpha 0.9).
+- Legends are drawn in layout units where `generateNetworkFile` put them, so they scale
+  with the picture: the colour legend has one circle per index (from 1, or 2 for
+  k-denses), labelled in the index colour every `max // 15 + 1` indices; the degree legend
+  shows `ceil(dmax / 4^i)` (down to 2, at most five) with the radius those nodes have in the
+  picture (it used its own size formulas and ignored `node_size_scale`), or strengths for
+  weighted graphs. Weighted graphs whose strengths never exceed 1 (where the C++ strength
+  law divides by `log(max) <= 0`) now size nodes by the degree law instead of a constant
+  radius, and the legend follows.
+- The PNG is exactly `width x height` pixels (`bbox_inches="tight"` cropped it); the frame
+  is scaled uniformly to fit and centred, so any aspect ratio works and the validator that
+  rejected sizes such as 3200x800 is gone.
 - Weighted k-cores (#20) now peel, as the C++ `findCores` weighted branch does: every
   node starts in the strength interval of its total strength and, when a shell is
   removed, its neighbours are re-binned using only the strength they still receive from

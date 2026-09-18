@@ -1,7 +1,15 @@
-"""Matplotlib-based renderer for network visualization."""
+"""Matplotlib-based renderer for network visualization.
 
+The picture is laid out as the C++ SVG writer did (``svg.cpp``, ``graphics_kcores.cpp``
+``generateNetworkFile``): the viewport is the layout's frame, scaled uniformly to the
+requested pixel size and centred; edges are drawn under the nodes in increasing index
+order; the colour and degree legends are drawn in layout units in the margins of the
+frame so they scale with the picture.
+"""
+
+import math
+import random
 from pathlib import Path
-from typing import Any
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
@@ -9,9 +17,17 @@ import networkx as nx
 import numpy as np
 from matplotlib.collections import EllipseCollection, LineCollection
 
-from lanet_vi.models.config import BackgroundColor, VisualizationConfig
+from lanet_vi.decomposition.kdenses import MIN_DENSE_INDEX
+from lanet_vi.models.config import BackgroundColor, MeasureType, VisualizationConfig
 from lanet_vi.models.graph import DecompositionResult, VisualizationLayout
 from lanet_vi.visualization.colors import compute_shell_color
+from lanet_vi.visualization.lanet_layout import node_radius, strength_radii
+
+#: Legend title per decomposition type (``m-core`` for k-dense with ``-measure mcore``)
+_LEGEND_TITLES = {"kcores": "k-core", "kdenses": "k-dense", "dcores": "d-core"}
+
+#: Figure DPI; the pixel size is ``width x height`` exactly
+_DPI = 100
 
 
 def render_network(
@@ -21,6 +37,9 @@ def render_network(
     config: VisualizationConfig,
     output_path: Path | str,
     node_names: dict[int, str] | None = None,
+    *,
+    custom_colors: bool = False,
+    measure: MeasureType = MeasureType.MCORE,
 ) -> None:
     """
     Render network visualization using matplotlib.
@@ -39,65 +58,54 @@ def render_network(
         Output file path (.png, .pdf, .svg)
     node_names : Optional[Dict[int, str]]
         Optional node names for labels
+    custom_colors : bool
+        Nodes were coloured from a colours file: the colour legend is not drawn (the C++
+        hid it with ``-colorsFile``)
+    measure : MeasureType
+        Labels of the k-dense legend: ``mcore`` prints ``k - 2``, ``kdense`` prints ``k``
 
     Examples
     --------
     >>> render_network(G, layout, decomp, config, "output.png")
     """
     output_path = Path(output_path)
+    background = "white" if config.background == BackgroundColor.WHITE else "black"
 
-    # Create figure
-    fig, ax = plt.subplots(
-        figsize=(config.width / 100, config.height / 100),
-        dpi=100,
-        facecolor="white" if config.background == BackgroundColor.WHITE else "black",
-    )
-
-    # Set background color
-    ax.set_facecolor("white" if config.background == BackgroundColor.WHITE else "black")
-
-    # Get bounds
-    xmin, xmax, ymin, ymax = layout.bounds
-
-    # The bounds already are the C++ viewport (legend margin included); pad a hair so
-    # nothing sits on the border
-    padding = max(xmax - xmin, ymax - ymin) * 0.02
-    ax.set_xlim(xmin - padding, xmax + padding)
-    ax.set_ylim(ymin - padding, ymax + padding)
+    # The figure is exactly width x height pixels and the axes fill it
+    fig = plt.figure(figsize=(config.width / _DPI, config.height / _DPI), dpi=_DPI)
+    fig.patch.set_facecolor(background)
+    ax = fig.add_axes((0.0, 0.0, 1.0, 1.0))
+    ax.set_facecolor(background)
     ax.set_aspect("equal")
-
-    # Remove axes
     ax.axis("off")
 
-    # Draw component circles if requested
+    # Viewport: the frame scaled uniformly to fit the picture and centred (the SVG
+    # default preserveAspectRatio "meet"), so the pixel size never distorts the layout
+    xmin, xmax, ymin, ymax = layout.bounds
+    px_per_unit = min(config.width / (xmax - xmin), config.height / (ymax - ymin))
+    half_w = config.width / px_per_unit / 2.0
+    half_h = config.height / px_per_unit / 2.0
+    cx, cy = (xmin + xmax) / 2.0, (ymin + ymax) / 2.0
+    ax.set_xlim(cx - half_w, cx + half_w)
+    ax.set_ylim(cy - half_h, cy + half_h)
+    pts_per_unit = px_per_unit * 72.0 / _DPI
+
     if config.draw_circles:
         _draw_component_circles(ax, layout, config)
 
-    # Draw edges with k-core layering
-    _draw_edges(ax, graph, layout, config, decomposition)
+    _draw_edges(ax, layout, config, decomposition, px_per_unit)
+    _draw_nodes(ax, layout, config, px_per_unit)
 
-    # Draw nodes
-    _draw_nodes(ax, layout, config)
-
-    # Draw node labels if names provided
     if node_names:
         _draw_labels(ax, layout, node_names, config, decomposition)
 
-    # Colour legend (shell / dense index); unconditional in the C++
-    if config.show_color_legend:
-        _draw_degree_scale(ax, decomposition, config)
+    if config.show_color_legend and not custom_colors:
+        _draw_degree_scale(ax, decomposition, config, layout.frame, pts_per_unit, measure)
 
-    # Degree (node size) legend: the C++ -showDegreeScale
     if config.show_degree_scale:
-        _draw_size_legend(ax, graph, config)
+        _draw_size_legend(ax, graph, config, layout, px_per_unit)
 
-    # Save figure
-    plt.savefig(
-        output_path,
-        dpi=100,
-        bbox_inches="tight",
-        facecolor=fig.get_facecolor(),
-    )
+    plt.savefig(output_path, dpi=_DPI, facecolor=background)
     plt.close(fig)
 
 
@@ -124,107 +132,88 @@ def _draw_component_circles(
 
 def _draw_edges(
     ax: plt.Axes,
-    graph: nx.Graph,
     layout: VisualizationLayout,
     config: VisualizationConfig,
-    decomposition: "DecompositionResult",
+    decomposition: DecompositionResult,
+    px_per_unit: float,
 ) -> None:
-    """Draw network edges with optional gradient coloring, layered by k-core."""
-    edge_color = "black" if config.background == BackgroundColor.WHITE else "white"
+    """Draw the visible edges under the nodes, lowest index first.
 
-    if config.gradient_edges and layout.edge_colors:
-        # Use gradient edge rendering with k-core layering
-        # Group edge segments by k-core level for proper layering
-        from collections import defaultdict
+    Each edge is two half-segments with their own colour (the C++ two cylinders meeting
+    at the midpoint); widths are in layout units and never thinner than a pixel.
+    """
+    text_color = "black" if config.background == BackgroundColor.WHITE else "white"
+    positions = layout.node_positions
+    edges = [(u, v) for u, v in layout.visible_edges if u in positions and v in positions]
+    if not edges:
+        return
 
-        segments_by_kcore: defaultdict[int, dict[str, list[Any]]] = defaultdict(
-            lambda: {"segments": [], "colors": [], "widths": []}
-        )
-
-        for source, target in layout.visible_edges:
-            if source not in layout.node_positions or target not in layout.node_positions:
-                continue
-
-            x1, y1 = layout.node_positions[source]
-            x2, y2 = layout.node_positions[target]
-
-            # Midpoint
-            mid_x, mid_y = (x1 + x2) / 2.0, (y1 + y2) / 2.0
-
-            # Get edge colors (darkened endpoint colors)
-            edge_colors_pair = layout.edge_colors.get(
-                (source, target), ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    if not (config.gradient_edges and layout.edge_colors):
+        # Plain edges in the text colour
+        segments = [[positions[u], positions[v]] for u, v in edges]
+        ax.add_collection(
+            LineCollection(
+                segments, colors=text_color, linewidths=0.5, alpha=config.opacity, zorder=1
             )
-            color1, color2 = edge_colors_pair
+        )
+        return
 
-            # Get edge width
-            width = layout.edge_widths.get((source, target), 0.5)
+    # Draw order: increasing edge index, so the core's edges end up on top. The C++
+    # painted in call order (edges between clusters, then inside clusters, walking the
+    # component tree outside-in), which the index order approximates.
+    edge_indices = decomposition.metadata.get("edge_indices")
+    node_index = decomposition.node_indices
 
-            # Determine k-core level for this edge (minimum of endpoints)
-            u_kcore = decomposition.node_indices.get(source, 1)
-            v_kcore = decomposition.node_indices.get(target, 1)
-            min_kcore = min(u_kcore, v_kcore)
+    def index_of(u: int, v: int) -> int:
+        if edge_indices is not None:
+            return int(edge_indices.get((u, v) if u < v else (v, u), MIN_DENSE_INDEX))
+        return min(node_index.get(u, 0), node_index.get(v, 0))
 
-            # Add both edge segments to the appropriate k-core group
-            # First half: source -> midpoint (color1)
-            segments_by_kcore[min_kcore]["segments"].append([(x1, y1), (mid_x, mid_y)])
-            segments_by_kcore[min_kcore]["colors"].append(color1)
-            segments_by_kcore[min_kcore]["widths"].append(width)
+    edges.sort(key=lambda e: index_of(*e))
 
-            # Second half: midpoint -> target (color2)
-            segments_by_kcore[min_kcore]["segments"].append([(mid_x, mid_y), (x2, y2)])
-            segments_by_kcore[min_kcore]["colors"].append(color2)
-            segments_by_kcore[min_kcore]["widths"].append(width)
+    min_width = 1.0 / px_per_unit  # one pixel, in layout units
+    pts_per_unit = px_per_unit * 72.0 / _DPI
+    grey = (0.5, 0.5, 0.5)
+    segments = []
+    colors = []
+    widths = []
+    for u, v in edges:
+        (x1, y1), (x2, y2) = positions[u], positions[v]
+        mid = ((x1 + x2) / 2.0, (y1 + y2) / 2.0)
+        color_u, color_v = layout.edge_colors.get((u, v), (grey, grey))
+        width = max(layout.edge_widths.get((u, v), 0.0), min_width) * pts_per_unit
+        segments.append([(x1, y1), mid])
+        colors.append(color_u)
+        widths.append(width)
+        segments.append([mid, (x2, y2)])
+        colors.append(color_v)
+        widths.append(width)
 
-        # Draw edges in k-core order: lower k-core first (background),
-        # higher k-core last (foreground)
-        # Use negative zorder to ensure all edges are behind nodes (which have zorder=2)
-        max_kcore = max(segments_by_kcore.keys()) if segments_by_kcore else 1
-        for kcore in sorted(segments_by_kcore.keys()):
-            data = segments_by_kcore[kcore]
-            if data["segments"]:
-                # Map k-core to zorder range: [-max_kcore, -1]
-                # Lower k-core gets more negative zorder (further back)
-                # Higher k-core gets less negative zorder (closer to front, but still behind nodes)
-                edge_zorder = kcore - max_kcore - 1
-                lc = LineCollection(
-                    data["segments"],
-                    colors=data["colors"],
-                    linewidths=data["widths"],
-                    alpha=config.edge_alpha,
-                    zorder=edge_zorder,
-                )
-                ax.add_collection(lc)
-    else:
-        # Fallback to simple edge rendering (old behavior)
-        for source, target in layout.visible_edges:
-            if source in layout.node_positions and target in layout.node_positions:
-                x1, y1 = layout.node_positions[source]
-                x2, y2 = layout.node_positions[target]
-
-                ax.plot(
-                    [x1, x2],
-                    [y1, y2],
-                    color=edge_color,
-                    linewidth=0.5,
-                    alpha=config.opacity,
-                    zorder=1,
-                )
+    ax.add_collection(
+        LineCollection(
+            segments,
+            colors=colors,
+            linewidths=widths,
+            alpha=config.opacity,
+            capstyle="round",
+            zorder=1,
+        )
+    )
 
 
 def _draw_nodes(
     ax: plt.Axes,
     layout: VisualizationLayout,
     config: VisualizationConfig,
+    px_per_unit: float,
 ) -> None:
-    """Draw network nodes as circles in layout units, never smaller than a pixel."""
+    """Draw network nodes as opaque circles in layout units, never smaller than a pixel."""
     edge_color = config.node_edge_color if config.node_edge_color else "none"
 
     # Radii come from the layout (the C++ computeHostRatio: 0.4 units for the largest
     # degree, one unit between shells). With many shells that is a fraction of a pixel,
     # so every node keeps at least a one-pixel radius, as the ray-traced spheres did.
-    ymin, ymax = ax.get_ylim()
-    min_radius = (ymax - ymin) / config.height
+    min_radius = 1.0 / px_per_unit
 
     def radius_of(node: int) -> float:
         return max(layout.node_sizes.get(node, 0.0), min_radius)
@@ -250,7 +239,6 @@ def _draw_nodes(
             edgecolors=edge_color,
             linewidths=0.3,
             zorder=2,
-            alpha=0.9,
         )
         ax.add_collection(collection)
     else:
@@ -308,272 +296,233 @@ def _draw_labels(
         )
 
 
-#: Legend title per decomposition type (the C++ prints the index name next to the scale).
-_LEGEND_TITLES = {"kcores": "k-core", "kdenses": "k-dense", "dcores": "d-core"}
+def _legend_fontsize(config: VisualizationConfig, size_units: float, pts_per_unit: float) -> float:
+    """Legend font size in points: the configured one, else the C++ size in layout units."""
+    if config.legend_fontsize:
+        return float(config.legend_fontsize)
+    return size_units * pts_per_unit
 
 
 def _draw_degree_scale(
     ax: plt.Axes,
     decomposition: DecompositionResult,
     config: VisualizationConfig,
+    frame: float,
+    pts_per_unit: float,
+    measure: MeasureType,
 ) -> None:
-    """Draw color scale legend for shell/dense indices using circle markers."""
-    # Create custom legend showing the shell/dense index color mapping
-    legend_elements = []
+    """Draw the colour legend: one circle per index, in the right margin of the frame.
 
-    max_idx = (
-        config.color_scale_max_value if config.color_scale_max_value else decomposition.max_index
-    )
-    if max_idx < 1:
-        return  # every index is 0 (edgeless graph): nothing to put on a scale
+    Positions follow ``generateNetworkFile`` (``graphics_kcores.cpp``): a column at
+    ``1.125`` frames to the right of the centre, from ``-0.9`` frames upwards, with at
+    most one label every ``max // 15 + 1`` indices counted from the top; the label is
+    written in the index colour. The k-dense legend starts at 2 and, with ``mcore``,
+    labels each index ``k - 2``; its positions use the k-core formulas too (the
+    ``graphics_kdenses.cpp`` variant drops the network radius ``R`` and one ``u`` from
+    them, which leaves the legend inside the network on large pictures).
+    """
+    max_idx = decomposition.max_index
+    is_dense = decomposition.decomp_type == "kdenses"
+    first = MIN_DENSE_INDEX if is_dense else 1
+    if max_idx < first or frame <= 0.0:
+        return  # nothing on the scale (edgeless graph)
 
-    # Sample more indices for comprehensive legend (matching reference image)
-    # Reference shows ~13 values from 1 to max
-    indices = np.linspace(1, max_idx, min(13, max_idx), dtype=int)
+    # The colour scale maximum is given in m-core units for k-dense with -measure mcore
+    color_scale_max = config.color_scale_max_value
+    if is_dense and color_scale_max is not None and measure == MeasureType.MCORE:
+        color_scale_max += 2
+    label_offset = 2 if is_dense and measure == MeasureType.MCORE else 0
 
-    # Only label some entries to avoid clutter (every other entry for readability)
-    label_interval = max(1, len(indices) // 6)  # Show ~6-7 labels
+    # Layout units: R * u is the frame without gamma
+    ru = frame / config.gamma
+    max_si = max(max_idx, 15)
+    x = frame * 27.0 / 24.0
+    separation = 0.8 * ru * 2.0 / (max_si * 5.0)
+    radius = 1.5 * separation
+    step = 5.0 * config.gamma * config.unit_length * separation
+    text_size = 4.0 * 0.8 * ru * 2.0 / (15.0 * 5.0)
+    fontsize = _legend_fontsize(config, text_size, pts_per_unit)
+    label_every = max_idx // 15 + 1
 
-    for i, idx in enumerate(indices):
-        color = compute_shell_color(idx, max_idx, config.color_scheme)
-
-        # Smaller circles to match reference image
-        marker_size = 5  # Reduced from 8 for more compact legend
-
-        # Create a circle marker for the legend
-        circle = mpatches.Circle(
-            (0, 0),  # Position doesn't matter for legend
-            radius=marker_size,
-            facecolor=color,
-            edgecolor="black",
-            linewidth=0.5,
+    for i in range(first, max_idx + 1):
+        color = compute_shell_color(
+            i,
+            max_idx,
+            config.color_scheme,
+            color_scale_max,
+            background=config.background,
+            dense=is_dense,
         )
+        y = -0.9 * frame + step * i
+        ax.add_patch(
+            mpatches.Circle((x, y), radius=radius, facecolor=color, edgecolor="none", zorder=4)
+        )
+        if max_idx <= 15 or (max_idx - i) % label_every == 0:
+            ax.text(
+                x + 3.0 * separation,
+                y,
+                str(i - label_offset),
+                fontsize=fontsize,
+                ha="left",
+                va="center",
+                color=color,
+                zorder=4,
+            )
 
-        # Selective labeling: only show labels at intervals
-        if i % label_interval == 0 or i == len(indices) - 1:
-            label = f"{idx}"
-        else:
-            label = ""  # Empty label for unlabeled entries
-
-        legend_elements.append((circle, label))
-
-    # Create custom legend handler for circles
-    from matplotlib.legend_handler import HandlerPatch
-
-    class HandlerCircle(HandlerPatch):
-        def create_artists(  # type: ignore[override]
-            self,
-            legend: Any,
-            orig_handle: Any,
-            xdescent: float,
-            ydescent: float,
-            width: float,
-            height: float,
-            fontsize: float,
-            trans: Any,
-        ) -> list[Any]:
-            center = 0.5 * width - 0.5 * xdescent, 0.5 * height - 0.5 * ydescent
-            p = mpatches.Circle(xy=center, radius=orig_handle.radius)
-            self.update_prop(p, orig_handle, legend)
-            p.set_transform(trans)
-            return [p]
-
-    # Calculate font size: auto-scale with diagram size or use manual setting
-    if config.legend_fontsize:
-        fontsize = config.legend_fontsize
-    else:
-        # Auto-scale: base size 8 for 800px width, scale linearly
-        fontsize = 8 * (config.width / 800)
-
-    # Set text color based on background (white for dark backgrounds)
-    text_color = "black" if config.background == BackgroundColor.WHITE else "white"
-
-    legend = ax.legend(
-        handles=[h[0] for h in legend_elements],
-        labels=[h[1] for h in legend_elements],
-        handler_map={mpatches.Circle: HandlerCircle()},
-        loc="center right",  # Moved from "upper right" to match reference image
-        frameon=False,  # Remove frame completely
+    title_color = "black" if config.background == BackgroundColor.WHITE else "white"
+    title = _LEGEND_TITLES.get(decomposition.decomp_type, decomposition.decomp_type)
+    if label_offset:
+        title = "m-core"
+    ax.text(
+        x,
+        -0.9 * frame + step * (max_idx + 1),
+        title,
         fontsize=fontsize,
-        title=_LEGEND_TITLES.get(decomposition.decomp_type, decomposition.decomp_type),
-        labelcolor=text_color,  # Set label text color
-        title_fontproperties={"size": fontsize, "weight": "bold"},
+        fontweight="bold",
+        ha="left",
+        va="bottom",
+        color=title_color,
+        zorder=4,
     )
-    # Set title color manually (labelcolor doesn't affect title)
-    legend.get_title().set_color(text_color)
-    # Keep reference to prevent it being replaced by subsequent legend calls
-    ax.add_artist(legend)
 
 
 def _draw_size_legend(
     ax: plt.Axes,
     graph: nx.Graph,
     config: VisualizationConfig,
+    layout: VisualizationLayout,
+    px_per_unit: float,
 ) -> None:
-    """Draw size legend showing node degree scale."""
-    # Get degree statistics
-    degrees = dict(graph.degree())
-    if not degrees:
-        return
+    """Draw the degree legend: up to five sample nodes in the left margin of the frame.
 
+    As ``generateNetworkFile``: degrees ``ceil(dmax / 4**i)`` while above 1, drawn with
+    the radius the nodes of that degree have in the picture (``node_radius`` times
+    ``node_size_scale``), white on black / grey on white, at ``-1.25`` frames from the
+    centre. Layouts with strength-based radii show strengths ``smax / 4**i`` instead
+    (the C++ placed those without the ``u * R`` factor, which collapses the legend on
+    large pictures; the degree spacing is used for both).
+    """
+    frame = layout.frame
+    degrees = dict(graph.degree())
+    if not degrees or frame <= 0.0:
+        return
     max_degree = max(degrees.values())
     if max_degree < 1:
         return  # nothing to scale on an edgeless graph
-    n_nodes = graph.number_of_nodes()
 
-    # Compute sample sizes to show in legend
-    # Use same scaling as in network.py compute_layout()
-    import math
-
-    if n_nodes > 1000:
-        # Log scaling for large graphs
-        sample_degrees = [1, max_degree // 4, max_degree // 2, max_degree]
-        sample_sizes = [
-            0.3 + 2.0 * math.log(1 + deg) / math.log(1 + max_degree) for deg in sample_degrees
-        ]
-    else:
-        # Linear scaling for small graphs
-        sample_degrees = [1, max_degree // 2, max_degree]
-        sample_sizes = [0.5 + 3.0 * (deg / max_degree) for deg in sample_degrees]
-
-    # Create legend elements
-    legend_elements = []
-
-    from matplotlib.legend_handler import HandlerPatch
-
-    class HandlerCircle(HandlerPatch):
-        def create_artists(  # type: ignore[override]
-            self,
-            legend: Any,
-            orig_handle: Any,
-            xdescent: float,
-            ydescent: float,
-            width: float,
-            height: float,
-            fontsize: float,
-            trans: Any,
-        ) -> list[Any]:
-            # Ensure proper vertical spacing between legend items
-            center = 0.5 * width - 0.5 * xdescent, 0.5 * height - 0.5 * ydescent
-            p = mpatches.Circle(xy=center, radius=orig_handle.radius)
-            self.update_prop(p, orig_handle, legend)
-            p.set_transform(trans)
-            return [p]
-
-    for deg, size in zip(sample_degrees, sample_sizes, strict=True):
-        circle = mpatches.Circle(
-            (0, 0),
-            radius=size,
-            facecolor="gray",
-            edgecolor="black",
-            linewidth=0.5,
-        )
-        legend_elements.append((circle, f"{deg}"))
-
-    # Calculate font size: auto-scale with diagram size or use manual setting
-    if config.legend_fontsize:
-        fontsize = config.legend_fontsize
-    else:
-        # Auto-scale: base size 8 for 800px width, scale linearly
-        fontsize = 8 * (config.width / 800)
-
-    # Set text color based on background (white for dark backgrounds)
+    ru = frame / config.gamma
+    scale = config.node_size_scale
+    min_radius = 1.0 / px_per_unit
+    pts_per_unit = px_per_unit * 72.0 / _DPI
+    sphere_color = (1.0, 1.0, 1.0) if config.background == BackgroundColor.BLACK else (0.7,) * 3
     text_color = "black" if config.background == BackgroundColor.WHITE else "white"
+    x = -frame * 15.0 / 12.0
 
-    legend = ax.legend(
-        handles=[h[0] for h in legend_elements],
-        labels=[h[1] for h in legend_elements],
-        handler_map={mpatches.Circle: HandlerCircle()},
-        loc="upper left",  # Moved from "lower right" to match reference image
-        frameon=False,  # Remove frame completely
-        fontsize=fontsize,
-        title="degree",
-        labelspacing=1.5,  # Increase spacing to prevent overlap
-        labelcolor=text_color,  # Set label text color
-        title_fontproperties={"size": fontsize, "weight": "bold"},
-    )
-    # Set title color manually (labelcolor doesn't affect title)
-    legend.get_title().set_color(text_color)
+    max_strength = 0.0
+    if layout.weighted:
+        max_strength = max(
+            (sum(float(d.get("weight", 1.0)) for d in graph[v].values()) for v in graph),
+            default=0.0,
+        )
+    # Same rule as the node radii: strengths only when their law applies
+    weighted = strength_radii(layout.weighted, max_strength)
+
+    samples: list[tuple[str, float]] = []
+    if weighted:
+        separation = (
+            1.5 * ru * (0.0007 + 0.029 * math.log(1 + max_strength) / math.log(max_strength))
+        )
+        for i in range(5):
+            strength = max_strength / 4.0**i
+            radius = scale * node_radius(0, max_degree, strength, max_strength, weighted=True)
+            samples.append((f"{strength:g}", radius))
+    else:
+        log_max = math.log(max_degree) if max_degree > 1 else 1.0
+        separation = 1.5 * ru * (0.0007 + 0.029 * math.log(1 + max_degree) / log_max)
+        for i in range(5):
+            degree = math.ceil(max_degree / 4.0**i)
+            if degree <= 1:
+                break
+            samples.append((str(degree), scale * node_radius(degree, max_degree)))
+
+    # The C++ spacing is tuned for large networks; on tiny ones (R of a few units) the
+    # biggest samples would overlap, so keep the rows at least a diameter apart
+    if samples:
+        separation = max(separation, 0.8 * max(radius for _, radius in samples))
+    fontsize = _legend_fontsize(config, 2.0 * separation, pts_per_unit)
+    for i, (label, radius) in enumerate(samples, start=1):
+        y = -0.5 * ru + 3.0 * separation * i
+        ax.add_patch(
+            mpatches.Circle(
+                (x, y),
+                radius=max(radius, min_radius),
+                facecolor=sphere_color,
+                edgecolor="none",
+                zorder=4,
+            )
+        )
+        ax.text(
+            x + separation,
+            y,
+            label,
+            fontsize=fontsize,
+            ha="left",
+            va="center",
+            color=text_color,
+            zorder=4,
+        )
+    if samples:
+        ax.text(
+            x,
+            -0.5 * ru + 3.0 * separation * (len(samples) + 1),
+            "degree" if not weighted else "strength",
+            fontsize=fontsize,
+            fontweight="bold",
+            ha="left",
+            va="bottom",
+            color=text_color,
+            zorder=4,
+        )
 
 
 def select_visible_edges(
     graph: nx.Graph,
     config: VisualizationConfig,
-    decomposition: DecompositionResult,
+    seed: int | None = None,
 ) -> list[tuple[int, int]]:
     """
-    Select subset of edges to display based on configuration.
+    Select the edges to draw: an independent Bernoulli draw per edge, as the C++ did.
 
     Parameters
     ----------
     graph : nx.Graph
         Network graph
     config : VisualizationConfig
-        Visualization configuration with edge visibility settings
-    decomposition : DecompositionResult
-        Decomposition results
+        ``edges_percent`` and ``min_edges``
+    seed : int | None
+        Seed of the draw, so the same seed gives the same picture
 
     Returns
     -------
     List[Tuple[int, int]]
-        List of edges to render
+        Edges to render, in the graph's order
+
+    Notes
+    -----
+    Every edge is kept with probability ``max(edges_percent, min_edges / E)``
+    (``graphics_kcores.cpp`` ``addCluster``), so about that fraction of the edges is
+    drawn, spread over all shells in proportion to their edge counts.
     """
     edges = list(graph.edges())
-
-    if config.edges_percent == 0.0 and config.min_edges == 0:
+    num_edges = len(edges)
+    if num_edges == 0:
         return []
 
-    # Calculate number of edges to show
-    num_edges = len(edges)
-    target_edges = max(
-        int(num_edges * config.edges_percent),
-        min(config.min_edges, num_edges),
-    )
-
-    if target_edges >= num_edges:
+    probability = max(config.edges_percent, config.min_edges / num_edges)
+    if probability >= 1.0:
         return edges
+    if probability <= 0.0:
+        return []
 
-    # Use stratified sampling: select edges from all k-core levels
-    # This ensures we show connectivity across the entire network hierarchy
-    import random
-
-    # Group edges by their shell connectivity
-    from collections import defaultdict
-
-    edges_by_shell = defaultdict(list)
-
-    for edge in edges:
-        u, v = edge
-        u_idx = decomposition.node_indices.get(u, 0)
-        v_idx = decomposition.node_indices.get(v, 0)
-        # Use minimum shell index to categorize edge
-        min_shell = min(u_idx, v_idx)
-        edges_by_shell[min_shell].append(edge)
-
-    # Sample proportionally from each shell level
-    selected_edges = []
-    total_edges_available = len(edges)
-
-    for shell_idx in sorted(edges_by_shell.keys(), reverse=True):
-        shell_edges = edges_by_shell[shell_idx]
-        # Sample proportion of edges from this shell
-        n_to_sample = min(
-            len(shell_edges), max(1, int(len(shell_edges) * target_edges / total_edges_available))
-        )
-        selected_edges.extend(random.sample(shell_edges, n_to_sample))
-
-        if len(selected_edges) >= target_edges:
-            break
-
-    # If we still need more edges, add remaining high-priority edges
-    if len(selected_edges) < target_edges:
-        remaining = set(edges) - set(selected_edges)
-        remaining_sorted = sorted(
-            remaining,
-            key=lambda e: (
-                -(decomposition.node_indices.get(e[0], 0) + decomposition.node_indices.get(e[1], 0))
-            ),
-        )
-        selected_edges.extend(remaining_sorted[: target_edges - len(selected_edges)])
-
-    return selected_edges[:target_edges]
+    rng = random.Random(seed)
+    return [edge for edge in edges if rng.random() < probability]

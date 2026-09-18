@@ -140,9 +140,9 @@ Supports `.txt`, `.txt.gz`, `.txt.bz2` formats.
 **Visualization:**
 - `--width`, `--height`: Image dimensions (default: 2400x2400)
 - `--background [black|white]`: Background color (default: black)
-- `--epsilon FLOAT`: Ring spread (default: 0.40)
+- `--epsilon FLOAT`: Ring thickness as a fraction of its radius (default: 0.18)
 - `--edges-percent FLOAT`: Percentage of edges to show (default: 0.5)
-- `--edge-alpha FLOAT`: Edge transparency (default: 0.6)
+- `--opacity FLOAT`: Edge opacity (default: 0.2)
 
 **Output:**
 - `--output PATH`: Visualization file (PNG, PDF, SVG)
@@ -165,9 +165,9 @@ visualization:
   background: black
   width: 2400
   height: 2400
-  epsilon: 0.40
+  epsilon: 0.18
   edges_percent: 0.5
-  edge_alpha: 0.6
+  opacity: 0.2
 
 layout:
   seed: 0
@@ -222,7 +222,7 @@ lanet-vi visualize --input citations.txt \
 
 ```python
 config.visualization.edges_percent = 0.1  # Show 10% of edges
-config.visualization.edge_alpha = 0.5
+config.visualization.opacity = 0.2
 config.visualization.node_size_scale = 0.4
 ```
 

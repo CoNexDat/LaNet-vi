@@ -210,6 +210,9 @@ def test_node_radius_follows_the_cpp_formula():
     assert node_radius(100, 100) == pytest.approx(0.4 * (math.log(101) / math.log(100)) ** 0.7)
     assert node_radius(1, 100) < node_radius(50, 100) < node_radius(100, 100)
     assert node_radius(1, 1) == 0.4
+    # Strengths that never exceed 1 cannot use the strength law: degree law instead
+    assert node_radius(10, 10, 0.5, 0.5, weighted=True) == node_radius(10, 10)
+    assert node_radius(1, 10, 0.05, 0.5, weighted=True) == node_radius(1, 10)
     assert node_radius(0, 10, 5.0, 100.0, weighted=True) == pytest.approx(
         0.4 * math.log(6.0) / math.log(100.0)
     )

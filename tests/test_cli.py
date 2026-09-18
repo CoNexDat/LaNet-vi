@@ -135,7 +135,7 @@ def test_config_yaml_round_trip(tmp_path: Path):
 def test_cli_flags_override_config_file(small_edge_list: Path, tmp_path: Path):
     """Explicit flags win over --config; unset flags keep the file's values (#23)."""
     cfg = tmp_path / "c.yaml"
-    cfg.write_text("visualization:\n  width: 300\n  height: 300\n  edge_alpha: 0.25\n")
+    cfg.write_text("visualization:\n  width: 300\n  height: 300\n  opacity: 0.25\n")
     cores = tmp_path / "cores.csv"
     result = runner.invoke(
         app,
@@ -167,7 +167,7 @@ def test_build_config_precedence():
     assert result.exit_code == 0
 
     class FakeCtx:
-        params = {"width": 1000, "height": 500, "edge_alpha": 0.9, "decomp": "kdenses"}
+        params = {"width": 1000, "height": 500, "opacity": 0.9, "decomp": "kdenses"}
 
         def get_parameter_source(self, name: str):  # noqa: D102
             class Src:
@@ -179,7 +179,7 @@ def test_build_config_precedence():
 
     config = _build_config(FakeCtx(), None)  # type: ignore[arg-type]
     assert (config.visualization.width, config.visualization.height) == (1000, 500)
-    assert config.visualization.edge_alpha == 0.6  # default kept
+    assert config.visualization.opacity == 0.2  # default kept
     assert config.decomposition.decomp_type == "kcores"  # not explicit
 
 
@@ -263,14 +263,16 @@ def test_names_file_enables_labels(small_edge_list: Path, tmp_path: Path):
 
 
 def test_build_config_validates_after_merge(tmp_path: Path):
-    """A width/height pair that is invalid in the YAML alone passes once flags fix it."""
+    """A YAML that is invalid on its own (custom intervals, no file) passes once a flag fixes it."""
     from lanet_vi.cli import _build_config
 
     cfg = tmp_path / "c.yaml"
-    cfg.write_text("visualization:\n  width: 3200\n  height: 800\n")  # aspect 4.0: invalid
+    cfg.write_text("decomposition:\n  strength_intervals: custom\n")  # needs a file: invalid
+    boundaries = tmp_path / "b.txt"
+    boundaries.write_text("0\n1\n2\n")
 
     class FakeCtx:
-        params = {"height": 1600}
+        params = {"strength_intervals_file": boundaries}
 
         def get_parameter_source(self, name: str):  # noqa: D102
             class Src:
@@ -279,7 +281,92 @@ def test_build_config_validates_after_merge(tmp_path: Path):
             return Src()
 
     config = _build_config(FakeCtx(), cfg)  # type: ignore[arg-type]
-    assert (config.visualization.width, config.visualization.height) == (3200, 1600)
+    assert config.decomposition.strength_intervals == "custom"
+    assert config.decomposition.strength_intervals_file == boundaries
+
+
+def test_any_aspect_ratio_is_accepted(small_edge_list: Path, tmp_path: Path):
+    """Wide pictures such as 3200x800 are rendered at exactly that size (#24)."""
+    from PIL import Image
+
+    out = tmp_path / "wide.png"
+    result = runner.invoke(
+        app,
+        [
+            "visualize",
+            "--input",
+            str(small_edge_list),
+            "--width",
+            "640",
+            "--height",
+            "160",
+            "--output",
+            str(out),
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    with Image.open(out) as image:
+        assert image.size == (640, 160)
+
+
+def test_deprecated_edge_alpha_folds_into_opacity(tmp_path: Path):
+    """edge_alpha in a YAML file or --edge-alpha sets opacity unless opacity is given too."""
+    from lanet_vi.cli import _build_config
+    from lanet_vi.models.config import VisualizationConfig
+
+    assert VisualizationConfig(edge_alpha=0.7).opacity == 0.7
+    assert VisualizationConfig(edge_alpha=0.7, opacity=0.4).opacity == 0.4
+
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text("visualization:\n  edge_alpha: 0.55\n")
+
+    class FakeCtx:
+        params = {"edge_alpha": 0.9}
+
+        def get_parameter_source(self, name: str):  # noqa: D102
+            class Src:
+                pass
+
+            src = Src()
+            src.name = "COMMANDLINE" if name == "edge_alpha" else "DEFAULT"
+            return src
+
+    assert _build_config(FakeCtx(), cfg).visualization.opacity == 0.9  # type: ignore[arg-type]
+    FakeCtx.params = {}
+    assert _build_config(FakeCtx(), cfg).visualization.opacity == 0.55  # type: ignore[arg-type]
+
+    # Both flags explicit: the current one wins, whatever the order they are merged in
+    class BothCtx:
+        params = {"opacity": 0.5, "edge_alpha": 0.9}
+
+        def get_parameter_source(self, name: str):  # noqa: D102
+            class Src:
+                name = "COMMANDLINE"
+
+            return Src()
+
+    assert _build_config(BothCtx(), None).visualization.opacity == 0.5  # type: ignore[arg-type]
+
+
+def test_config_template_has_no_deprecated_aliases(tmp_path: Path):
+    """lanet-vi config omits edge_alpha/show_size_legend, so editing the template works."""
+    import yaml
+
+    from lanet_vi.io.config_loader import load_config_from_yaml
+
+    cfg = tmp_path / "c.yaml"
+    result = runner.invoke(app, ["config", str(cfg)])
+    assert result.exit_code == 0, result.output
+    visualization = yaml.safe_load(cfg.read_text())["visualization"]
+    assert "edge_alpha" not in visualization and "show_size_legend" not in visualization
+    assert visualization["opacity"] == 0.2
+
+    # A template where the user replaces opacity by the old name still applies it
+    visualization.pop("opacity")
+    visualization["edge_alpha"] = 0.9
+    cfg.write_text(yaml.safe_dump({"visualization": visualization}))
+    assert load_config_from_yaml(cfg).visualization.opacity == 0.9
 
 
 def test_deprecated_show_size_legend_alias():

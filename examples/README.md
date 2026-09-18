@@ -131,7 +131,7 @@ uv run python examples/caida_kdenses_example.py
 **K-denses (triangle-based):**
 - Identifies cohesive communities
 - Edge in k-dense if it closes ≥k−2 triangles within the k-dense; a node takes its densest edge
-- Narrower range of shells (2-105 for this dataset)
+- Narrower range of shells (2-105 for this dataset; the legend counts them as m-cores, k−2, so 0-103)
 - Reveals tightly-knit groups with strong interconnections
 
 ### Interpretation

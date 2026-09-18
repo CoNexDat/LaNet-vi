@@ -535,6 +535,11 @@ def compute_lanet_layout(
     return LanetLayout(positions=placer.positions, root=root, frame=frame)
 
 
+def strength_radii(weighted: bool, max_strength: float) -> bool:
+    """Whether node radii follow the strength law (weighted and a usable maximum)."""
+    return weighted and max_strength > 1.0
+
+
 def node_radius(
     degree: int,
     max_degree: int,
@@ -542,10 +547,13 @@ def node_radius(
     max_strength: float = 0.0,
     weighted: bool = False,
 ) -> float:
-    """Node radius in layout units (``computeHostRatio``, classic mode)."""
-    if weighted:
-        if max_strength <= 1.0:
-            return 0.4
+    """Node radius in layout units (``computeHostRatio``, classic mode).
+
+    The strength law needs ``log(max_strength) > 0``; when every strength is at most 1
+    (the C++ would divide by zero or a negative number) the degree law is used instead,
+    see :func:`strength_radii`.
+    """
+    if strength_radii(weighted, max_strength):
         return 0.4 * math.log(1.0 + strength) / math.log(max_strength)
     if max_degree <= 1:
         return 0.4  # the C++ would divide by log(1) = 0

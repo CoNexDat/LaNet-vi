@@ -4,7 +4,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class BackgroundColor(str, Enum):
@@ -95,6 +95,10 @@ class CommunityConfig(BaseModel):
     colormap: str = Field(default="tab20")
 
 
+#: Deprecated ``VisualizationConfig`` fields and the field each one folds into
+DEPRECATED_ALIASES = {"show_size_legend": "show_degree_scale", "edge_alpha": "opacity"}
+
+
 class VisualizationConfig(BaseModel):
     """Configuration for network visualization.
 
@@ -123,7 +127,7 @@ class VisualizationConfig(BaseModel):
     min_edges : int
         Minimum number of visible edges
     opacity : float
-        Edge opacity (0.0-1.0), primarily for SVG/interactive renderers
+        Edge opacity (0.0-1.0), the C++ ``-opacity``
     unit_length : float
         Base unit length for scaling
     draw_circles : bool
@@ -136,12 +140,6 @@ class VisualizationConfig(BaseModel):
         Maximum value for color scale normalization
     gradient_edges : bool
         Whether to use gradient edge coloring
-    edge_alpha : float
-        Edge transparency (0.0-1.0)
-    min_edge_width : float
-        Minimum edge thickness
-    max_edge_width : float
-        Maximum edge thickness
     show_node_labels : bool
         Whether to show node labels
     label_all_nodes : bool
@@ -150,6 +148,14 @@ class VisualizationConfig(BaseModel):
         Minimum k-core for labeling (only if label_all_nodes=False)
     label_kcore_max : Optional[int]
         Maximum k-core for labeling (only if label_all_nodes=False)
+    node_edge_color : Optional[str]
+        Border colour of the nodes (the C++ drew none: border = node colour)
+    node_size_scale : float
+        Multiplier on the node radius (1.0 = the C++ size)
+    edge_alpha : float
+        Deprecated alias of ``opacity``
+    show_size_legend : bool
+        Deprecated alias of ``show_degree_scale``
     """
 
     # Changed from WHITE to match CAIDA defaults
@@ -169,48 +175,32 @@ class VisualizationConfig(BaseModel):
     draw_circles: bool = False
     show_degree_scale: bool = True
     show_color_legend: bool = True
-    color_scale_max_value: int | None = Field(default=None, gt=0)
+    color_scale_max_value: int | None = Field(default=None, ge=0)  # 0: valid m-core number
     gradient_edges: bool = Field(default=True)
-    # Changed from 0.3 to 0.6 for better visibility
-    edge_alpha: float = Field(default=0.6, ge=0.0, le=1.0)
-    min_edge_width: float = Field(default=0.08, gt=0.0)  # Changed from 0.05 to match CAIDA defaults
-    max_edge_width: float = Field(default=0.3, gt=0.0)  # Changed from 0.2 to match CAIDA defaults
     show_node_labels: bool = Field(default=False)
     label_all_nodes: bool = Field(default=True)
     label_kcore_min: int | None = Field(default=None, ge=1)
     label_kcore_max: int | None = Field(default=None, ge=1)
     node_edge_color: str | None = Field(default=None)
-    # Deprecated alias of show_degree_scale (kept so old YAML files still load)
-    show_size_legend: bool = Field(default=True)
-    # Changed from 1.0 to 0.5 for moderate node sizes
     node_size_scale: float = Field(default=1.0, gt=0.0)
+    # Deprecated aliases (kept so old YAML files still load; see DEPRECATED_ALIASES)
+    show_size_legend: bool = Field(default=True)
+    edge_alpha: float = Field(default=0.2, ge=0.0, le=1.0)
 
     @model_validator(mode="before")
     @classmethod
-    def fold_deprecated_size_legend(cls, data: Any) -> Any:
-        """Map the deprecated ``show_size_legend`` alias onto ``show_degree_scale``.
+    def fold_deprecated_aliases(cls, data: Any) -> Any:
+        """Map the deprecated aliases onto their current fields.
 
-        The alias only applies when ``show_degree_scale`` itself is absent, so a
-        file that sets the current field is never overridden by the old one.
+        An alias only applies when the current field itself is absent, so a file that
+        sets the current field is never overridden by the old one.
         """
-        if isinstance(data, dict) and "show_size_legend" in data:
-            data = dict(data)
-            alias = data.pop("show_size_legend")
-            data.setdefault("show_degree_scale", alias)
+        if isinstance(data, dict):
+            for alias, field in DEPRECATED_ALIASES.items():
+                if alias in data:
+                    data = dict(data)
+                    data.setdefault(field, data.pop(alias))
         return data
-
-    @field_validator("width", "height")
-    @classmethod
-    def check_aspect_ratio(cls, v: int, info: ValidationInfo) -> int:
-        """Validate that resolution maintains reasonable aspect ratio."""
-        if info.field_name == "height" and "width" in info.data:
-            width = info.data["width"]
-            aspect = width / v
-            if aspect < 0.5 or aspect > 3.0:
-                raise ValueError(
-                    f"Aspect ratio {aspect:.2f} is unusual. Recommended ratio is 4:3 (width/height)"
-                )
-        return v
 
 
 class DecompositionConfig(BaseModel):
@@ -221,7 +211,9 @@ class DecompositionConfig(BaseModel):
     decomp_type : DecompositionType
         Type of decomposition to apply
     measure : MeasureType
-        Centrality measure to use
+        Name of the k-dense measure in the legend: ``mcore`` labels a k-dense as
+        ``k - 2`` (its m-core number, the C++ default) and reads ``color_scale_max_value``
+        in the same units; ``kdense`` labels it ``k``
     from_layer : int
         Consider graph induced from this layer upward
     granularity : int

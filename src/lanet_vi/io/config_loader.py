@@ -6,7 +6,7 @@ from typing import Any
 import yaml
 
 from lanet_vi.logging_config import get_logger
-from lanet_vi.models.config import LaNetConfig
+from lanet_vi.models.config import DEPRECATED_ALIASES, LaNetConfig
 
 logger = get_logger(__name__)
 
@@ -128,6 +128,10 @@ def save_config_to_yaml(config: LaNetConfig, file_path: Path | str) -> None:
     # Convert config to plain JSON-compatible types (enums become their values),
     # so the file can be read back with yaml.safe_load
     config_dict = config.model_dump(mode="json", exclude_none=True)
+    # Deprecated aliases stay out of the template: written next to the current field
+    # they would be ignored on reload (the alias only applies when the field is absent)
+    for alias in DEPRECATED_ALIASES:
+        config_dict.get("visualization", {}).pop(alias, None)
 
     # Save to YAML file
     with open(file_path, "w") as f:
