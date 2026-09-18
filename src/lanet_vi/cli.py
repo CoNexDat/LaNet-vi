@@ -6,10 +6,13 @@ from pathlib import Path
 from typing import Any
 
 import typer
+import yaml
+from pydantic import ValidationError
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from lanet_vi.core.network import Network
+from lanet_vi.decomposition.kcores import read_custom_intervals
 from lanet_vi.io.config_loader import read_config_yaml, save_config_to_yaml
 from lanet_vi.io.writers import write_decomposition_csv, write_decomposition_json
 from lanet_vi.logging_config import setup_logging
@@ -35,6 +38,8 @@ _CLI_TO_CONFIG: dict[str, tuple[str, str]] = {
     "from_layer": ("decomposition", "from_layer"),
     "granularity": ("decomposition", "granularity"),
     "strength_intervals": ("decomposition", "strength_intervals"),
+    "maximum_strength": ("decomposition", "maximum_strength"),
+    "strength_intervals_file": ("decomposition", "strength_intervals_file"),
     "no_cliques": ("decomposition", "no_cliques"),
     "background": ("visualization", "background"),
     "color_scheme": ("visualization", "color_scheme"),
@@ -95,7 +100,11 @@ def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
     data: dict[str, Any] = LaNetConfig().model_dump(mode="json")
 
     if config_file is not None:
-        for section, values in read_config_yaml(config_file).items():
+        try:
+            file_data = read_config_yaml(config_file)
+        except (OSError, ValueError, yaml.YAMLError) as exc:
+            raise typer.BadParameter(str(exc), param_hint="--config") from exc
+        for section, values in file_data.items():
             if isinstance(values, dict) and isinstance(data.get(section), dict):
                 if section == "visualization" and "show_size_legend" in values:
                     # Deprecated alias: honour it only when the current field is absent
@@ -119,7 +128,21 @@ def _build_config(ctx: typer.Context, config_file: Path | None) -> LaNetConfig:
             # Deprecated CLI alias of --show-degree-scale
             data[section]["show_degree_scale"] = value
 
-    return LaNetConfig.model_validate(data)
+    try:
+        config = LaNetConfig.model_validate(data)
+    except ValidationError as exc:
+        problems = "; ".join(
+            f"{'.'.join(str(loc) for loc in err['loc'])}: {err['msg']}" for err in exc.errors()
+        )
+        raise typer.BadParameter(f"Invalid configuration: {problems}") from exc
+
+    if config.decomposition.strength_intervals == StrengthIntervalMethod.CUSTOM:
+        # Fail before loading the network if the boundaries file is unusable
+        try:
+            read_custom_intervals(config.decomposition.strength_intervals_file)
+        except (OSError, ValueError) as exc:
+            raise typer.BadParameter(str(exc), param_hint="--strength-intervals-file") from exc
+    return config
 
 
 app = typer.Typer(
@@ -185,11 +208,23 @@ def visualize(
     from_layer: int = typer.Option(
         0, "--from-layer", help="Start from this layer (not implemented yet, #23)"
     ),
-    granularity: int = typer.Option(-1, "--granularity", help="Groups in weighted graphs"),
+    granularity: int = typer.Option(
+        -1, "--granularity", help="Groups in weighted graphs (-1: maximum degree)"
+    ),
     strength_intervals: StrengthIntervalMethod = typer.Option(
         StrengthIntervalMethod.EQUAL_SIZE,
         "--strength-intervals",
-        help="Strength interval method",
+        help="How to build the strength intervals of weighted graphs",
+    ),
+    maximum_strength: float | None = typer.Option(
+        None,
+        "--maximum-strength",
+        help="Upper limit of the strength intervals (to compare pictures of different networks)",
+    ),
+    strength_intervals_file: Path | None = typer.Option(
+        None,
+        "--strength-intervals-file",
+        help="Interval boundaries, one per line, for --strength-intervals custom",
     ),
     coord_distribution: CoordDistributionAlgorithm = typer.Option(
         CoordDistributionAlgorithm.CLASSIC,
@@ -315,7 +350,12 @@ def visualize(
 
         # Decompose
         progress.update(task, description=f"Computing {decomp.value} decomposition...")
-        result = network.decompose()
+        try:
+            result = network.decompose()
+        except ValueError as exc:
+            # Input/option combinations the decomposition refuses (negative weights,
+            # d-cores on an undirected graph, ...): a usage error, not a traceback
+            raise typer.BadParameter(str(exc)) from exc
 
         console.print(
             f"[green]✓[/green] Decomposition complete: "

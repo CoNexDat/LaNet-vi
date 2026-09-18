@@ -324,8 +324,8 @@ def test_deprecated_show_size_legend_alias():
 
 
 def test_build_config_reports_malformed_section_via_validation(tmp_path: Path):
-    """A non-mapping section in the YAML is reported by validation, not a TypeError."""
-    from pydantic import ValidationError
+    """A non-mapping section in the YAML is reported as a usage error, not a TypeError."""
+    import typer
 
     from lanet_vi.cli import _build_config
 
@@ -341,7 +341,7 @@ def test_build_config_reports_malformed_section_via_validation(tmp_path: Path):
 
             return Src()
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(typer.BadParameter, match="visualization"):
         _build_config(FakeCtx(), cfg)  # type: ignore[arg-type]
 
 
@@ -414,3 +414,131 @@ def test_no_node_labels_overrides_names(small_edge_list: Path, tmp_path: Path):
         )
     assert result.exit_code == 0, result.output
     assert seen["labels"] is False
+
+
+def test_weighted_strength_flags_reach_the_decomposition(small_edge_list: Path, tmp_path: Path):
+    """--maximum-strength and --strength-intervals custom/--strength-intervals-file (#20)."""
+    from unittest.mock import patch
+
+    from lanet_vi.core.network import Network
+
+    seen: dict[str, object] = {}
+    original = Network.visualize
+
+    def spy(self, *args, **kwargs):  # noqa: ANN001, ANN202
+        seen["decomposition"] = self.config.decomposition
+        seen["p_function"] = self.decomposition.p_function
+        return original(self, *args, **kwargs)
+
+    intervals = tmp_path / "intervals.txt"
+    intervals.write_text("1\n2\n")
+    common = [
+        "visualize",
+        "--input",
+        str(small_edge_list),
+        "--output",
+        str(tmp_path / "o.png"),
+        "--weighted",
+        "--width",
+        "300",
+        "--height",
+        "300",
+        "--quiet",
+    ]
+
+    with patch.object(Network, "visualize", spy):
+        result = runner.invoke(app, [*common, "--granularity", "2", "--maximum-strength", "6"])
+    assert result.exit_code == 0, result.output
+    assert seen["decomposition"].maximum_strength == 6.0
+    assert seen["p_function"] == [0.0, 3.0, 6.0]
+
+    with patch.object(Network, "visualize", spy):
+        custom = ["--strength-intervals", "custom", "--strength-intervals-file", str(intervals)]
+        result = runner.invoke(app, [*common, *custom])
+    assert result.exit_code == 0, result.output
+    assert seen["decomposition"].strength_intervals_file == intervals
+    assert seen["p_function"] == [0.0, 1.0, 2.0]
+
+    result = runner.invoke(app, [*common, "--strength-intervals", "custom"])
+    assert result.exit_code != 0
+    assert "strength_intervals_file" in result.output
+
+
+def test_config_file_with_non_mapping_top_level_is_a_usage_error(
+    small_edge_list: Path, tmp_path: Path
+):
+    """A list at the top level or malformed YAML is reported by the CLI, not a traceback."""
+    cfg = tmp_path / "list.yaml"
+    cfg.write_text("- 1\n- 2\n")
+    result = _invoke_with_config(small_edge_list, tmp_path, cfg)
+    assert result.exit_code == 2
+    assert isinstance(result.exception, SystemExit)
+
+    cfg.write_text("visualization: [unterminated\n")
+    result = _invoke_with_config(small_edge_list, tmp_path, cfg)
+    assert result.exit_code == 2
+    assert isinstance(result.exception, SystemExit)
+
+    result = _invoke_with_config(small_edge_list, tmp_path, tmp_path / "missing.yaml")
+    assert result.exit_code == 2
+    assert isinstance(result.exception, SystemExit)
+
+
+def _invoke_with_config(small_edge_list: Path, tmp_path: Path, cfg: Path):  # noqa: ANN202
+    return runner.invoke(
+        app,
+        [
+            "visualize",
+            "--input",
+            str(small_edge_list),
+            "--output",
+            str(tmp_path / "o.png"),
+            "--config",
+            str(cfg),
+            "--quiet",
+        ],
+    )
+
+
+def test_unusable_custom_intervals_file_is_a_usage_error(small_edge_list: Path, tmp_path: Path):
+    """A missing or malformed --strength-intervals-file fails before the network loads."""
+    for path, content in ((tmp_path / "missing.txt", None), (tmp_path / "bad.txt", "3\n1\n")):
+        if content is not None:
+            path.write_text(content)
+        result = runner.invoke(
+            app,
+            [
+                "visualize",
+                "--input",
+                str(small_edge_list),
+                "--output",
+                str(tmp_path / "o.png"),
+                "--weighted",
+                "--strength-intervals",
+                "custom",
+                "--strength-intervals-file",
+                str(path),
+                "--quiet",
+            ],
+        )
+        assert result.exit_code == 2, result.output
+        assert isinstance(result.exception, SystemExit)
+
+
+def test_decomposition_value_errors_are_usage_errors(small_edge_list: Path, tmp_path: Path):
+    """--decomp dcores on an undirected graph is reported by the CLI, not a traceback."""
+    result = runner.invoke(
+        app,
+        [
+            "visualize",
+            "--input",
+            str(small_edge_list),
+            "--output",
+            str(tmp_path / "o.png"),
+            "--decomp",
+            "dcores",
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 2, result.output
+    assert isinstance(result.exception, SystemExit)
