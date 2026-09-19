@@ -629,3 +629,47 @@ def test_decomposition_value_errors_are_usage_errors(small_edge_list: Path, tmp_
     )
     assert result.exit_code == 2, result.output
     assert isinstance(result.exception, SystemExit)
+
+
+def test_window_flag_and_yaml_round_trip(small_edge_list: Path, tmp_path: Path):
+    """--window takes four fractions; the template writes it as a list that loads back."""
+    import yaml
+
+    from lanet_vi.io.config_loader import load_config_from_yaml
+
+    out = tmp_path / "crop.png"
+    result = runner.invoke(
+        app,
+        [
+            "visualize",
+            "-i",
+            str(small_edge_list),
+            "-o",
+            str(out),
+            "--width",
+            "120",
+            "--height",
+            "100",
+            "--window",
+            "0",
+            "0.5",
+            "0",
+            "0.5",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert out.exists() and out.stat().st_size > 0
+
+    result = runner.invoke(
+        app,
+        ["visualize", "-i", str(small_edge_list), "-o", str(out), "--window", "1", "0", "0", "1"],
+    )
+    assert result.exit_code != 0 and "window" in result.output
+
+    cfg = tmp_path / "c.yaml"
+    assert runner.invoke(app, ["config", str(cfg)]).exit_code == 0
+    data = yaml.safe_load(cfg.read_text())
+    assert data["visualization"]["window"] == [0.0, 1.0, 0.0, 1.0]
+    data["visualization"]["window"] = [0.25, 0.75, 0.0, 1.0]
+    cfg.write_text(yaml.safe_dump(data))
+    assert load_config_from_yaml(cfg).visualization.window == (0.25, 0.75, 0.0, 1.0)

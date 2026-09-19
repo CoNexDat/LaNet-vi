@@ -574,3 +574,37 @@ def test_degree_legend_rows_never_overlap_in_pow_mode(karate: nx.Graph):
         assert text.get_position()[1] == pytest.approx(y)
     title = next(t for t in ax.texts if t.get_text() == "degree")
     assert title.get_position()[1] > circles[-1][0] + circles[-1][1]
+
+
+def test_window_crops_the_viewport_from_the_top_left(karate: nx.Graph):
+    """--window hstart hend vstart vend: a fraction of the full 3.2 x 2.4 frame viewport."""
+    G = nx.Graph(karate.edges())
+    config = _small_config()
+    net = Network(G, config)
+    net.decompose()
+    full = net.compute_layout()
+    frame = full.frame
+    assert full.bounds[0] <= -1.6 * frame and full.bounds[3] >= 1.2 * frame
+
+    config.visualization.window = (0.0, 0.5, 0.0, 0.5)  # top-left quarter
+    net = Network(G, config)
+    net.decompose()
+    quarter = net.compute_layout()
+    assert quarter.bounds == pytest.approx((-1.6 * frame, 0.0, 0.0, 1.2 * frame))
+    assert quarter.frame == full.frame  # the legends keep their place, cropped or not
+
+    config.visualization.window = (0.25, 0.75, 0.5, 1.0)  # middle half, bottom half
+    net = Network(G, config)
+    net.decompose()
+    bounds = net.compute_layout().bounds
+    assert bounds == pytest.approx((-0.8 * frame, 0.8 * frame, -1.2 * frame, 0.0))
+
+
+def test_window_must_be_a_sub_rectangle():
+    """Start must be below end and both inside [0, 1]."""
+    from pydantic import ValidationError
+
+    for window in ((0.5, 0.4, 0.0, 1.0), (0.0, 1.0, 0.2, 0.2), (-0.1, 1.0, 0.0, 1.0)):
+        with pytest.raises(ValidationError, match="window"):
+            VisualizationConfig(window=window)
+    assert VisualizationConfig(window=(0.1, 0.9, 0.2, 0.8)).window == (0.1, 0.9, 0.2, 0.8)

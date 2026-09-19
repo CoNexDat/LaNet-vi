@@ -377,12 +377,24 @@ class Network:
         frame = lanet.frame if lanet.frame > 0 else 1.0
         xs = [pos[0] for pos in node_positions.values()] or [0.0]
         ys = [pos[1] for pos in node_positions.values()] or [0.0]
-        bounds = (
-            min(-1.6 * frame, min(xs)),
-            max(1.6 * frame, max(xs)),
-            min(-1.2 * frame, min(ys)),
-            max(1.2 * frame, max(ys)),
-        )
+        hstart, hend, vstart, vend = vis.window
+        if (hstart, hend, vstart, vend) == (0.0, 1.0, 0.0, 1.0):
+            bounds = (
+                min(-1.6 * frame, min(xs)),
+                max(1.6 * frame, max(xs)),
+                min(-1.2 * frame, min(ys)),
+                max(1.2 * frame, max(ys)),
+            )
+        else:
+            # -window: the viewBox is the fraction of the full viewport, measured from
+            # its top-left corner (SVG y points down), at the same pixel size
+            full_w, full_h = 3.2 * frame, 2.4 * frame
+            bounds = (
+                -1.6 * frame + hstart * full_w,
+                -1.6 * frame + hend * full_w,
+                1.2 * frame - vend * full_h,
+                1.2 * frame - vstart * full_h,
+            )
 
         return VisualizationLayout(
             node_positions=node_positions,

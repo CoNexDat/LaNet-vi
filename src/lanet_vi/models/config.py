@@ -112,6 +112,10 @@ class VisualizationConfig(BaseModel):
         Image width in pixels
     height : int
         Image height in pixels
+    window : tuple of four floats
+        ``(hstart, hend, vstart, vend)``, fractions of the full picture to render (the
+        C++ ``-window``): ``(0, 1, 0, 1)`` is the whole picture, ``(0, 0.5, 0, 0.5)`` its
+        top-left quarter, at the same pixel size
     epsilon : float
         Ring thickness as a fraction of its radius (formula (1) of NIPS 2005)
     delta : float
@@ -163,6 +167,7 @@ class VisualizationConfig(BaseModel):
     color_scheme: ColorScheme = ColorScheme.COLOR
     width: int = Field(default=2400, gt=0)  # Changed from 800 to match CAIDA defaults
     height: int = Field(default=2400, gt=0)  # Changed from 600 to match CAIDA defaults
+    window: tuple[float, float, float, float] = (0.0, 1.0, 0.0, 1.0)
     epsilon: float = Field(default=0.18, ge=0.0, le=1.0)  # C++ default: ring thickness
     delta: float = Field(default=1.3, gt=0.0)
     gamma: float = Field(default=1.5, gt=0.0)
@@ -186,6 +191,17 @@ class VisualizationConfig(BaseModel):
     # Deprecated aliases (kept so old YAML files still load; see DEPRECATED_ALIASES)
     show_size_legend: bool = Field(default=True)
     edge_alpha: float = Field(default=0.2, ge=0.0, le=1.0)
+
+    @field_validator("window")
+    @classmethod
+    def window_is_a_sub_rectangle(
+        cls, value: tuple[float, float, float, float]
+    ) -> tuple[float, float, float, float]:
+        """Require ``0 <= hstart < hend <= 1`` and the same vertically."""
+        hstart, hend, vstart, vend = value
+        if not (0.0 <= hstart < hend <= 1.0 and 0.0 <= vstart < vend <= 1.0):
+            raise ValueError("window must be hstart hend vstart vend with 0 <= start < end <= 1")
+        return value
 
     @model_validator(mode="before")
     @classmethod

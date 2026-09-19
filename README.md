@@ -139,6 +139,7 @@ Supports `.txt`, `.txt.gz`, `.txt.bz2` formats.
 
 **Visualization:**
 - `--width`, `--height`: Image dimensions (default: 2400x2400)
+- `--window HSTART HEND VSTART VEND`: Render only that part of the picture (fractions from the top-left; `0.25 0.75 0.25 0.75` zooms 2x on the core)
 - `--background [black|white]`: Background color (default: black)
 - `--epsilon FLOAT`: Ring thickness as a fraction of its radius (default: 0.18)
 - `--edges-percent FLOAT`: Percentage of edges to show (default: 0.5)
