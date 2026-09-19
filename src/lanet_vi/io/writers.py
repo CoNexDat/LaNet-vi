@@ -213,8 +213,9 @@ def write_graph_json(
     # Optionally strip attributes
     if not include_node_attrs:
         for node in data["nodes"]:
+            node_id = node["id"]
             node.clear()
-            node["id"] = node.get("id", 0)
+            node["id"] = node_id
 
     if not include_edge_attrs:
         for edge in data["links"]:

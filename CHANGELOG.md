@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `write_graph_json(include_node_attrs=False)` wrote every node with `id: 0` (the id was
+  read after the attributes were cleared); the real ids are kept now.
 - `write_graph_json` always writes the edges under `"links"`: NetworkX 3.6 changes the
   default key of `node_link_data` to `"edges"`, which would have silently changed the
   file format.

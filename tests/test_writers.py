@@ -105,16 +105,18 @@ def test_write_graph_json_node_link_roundtrip(tmp_path: Path):
 
 
 def test_write_graph_json_can_strip_attributes(tmp_path: Path):
-    """With the flags off only ids, sources and targets remain."""
+    """With the flags off only ids, sources and targets remain, and the ids are the real ones."""
     graph = nx.Graph()
-    graph.add_node(0, name="a")
-    graph.add_edge(0, 1, weight=2.5)
+    graph.add_node(5, name="a")
+    graph.add_edge(5, 7, weight=2.5)
     out = tmp_path / "graph.json"
 
     write_graph_json(graph, out, include_node_attrs=False, include_edge_attrs=False)
 
     data = json.loads(out.read_text())
     assert all(set(node) == {"id"} for node in data["nodes"])
+    assert {node["id"] for node in data["nodes"]} == {5, 7}
+    assert {(link["source"], link["target"]) for link in data["links"]} == {(5, 7)}
     assert all(set(link) == {"source", "target"} for link in data["links"])
 
 
