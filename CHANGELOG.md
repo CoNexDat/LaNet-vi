@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- `--window HSTART HEND VSTART VEND` (`window` in YAML), the C++ `-window`: render only
+  that fraction of the frame, measured from the top-left corner, at the full pixel size
+  (#25). PDF and SVG output (by the `--output` extension) already worked and is now
+  documented.
 
 ## [5.1.0] - 2026-09-18
 

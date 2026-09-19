@@ -48,6 +48,7 @@ _CLI_TO_CONFIG: dict[str, tuple[str, str]] = {
     "color_scheme": ("visualization", "color_scheme"),
     "width": ("visualization", "width"),
     "height": ("visualization", "height"),
+    "window": ("visualization", "window"),
     "epsilon": ("visualization", "epsilon"),
     "delta": ("visualization", "delta"),
     "gamma": ("visualization", "gamma"),
@@ -188,6 +189,13 @@ def visualize(
     ),
     width: int = typer.Option(2400, "--width", "-W", help="Image width in pixels"),
     height: int = typer.Option(2400, "--height", "-H", help="Image height in pixels"),
+    window: tuple[float, float, float, float] = typer.Option(
+        (0.0, 1.0, 0.0, 1.0),
+        "--window",
+        metavar="HSTART HEND VSTART VEND",
+        help="Render only this part of the picture (fractions of width and height, "
+        "top-left origin) at the full pixel size",
+    ),
     background: BackgroundColor = typer.Option(
         BackgroundColor.BLACK, "--background", help="Background color"
     ),

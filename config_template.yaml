@@ -68,6 +68,10 @@ visualization:
   width: 1920
   height: 1080
 
+  # Part of the picture to render, as fractions of width and height from the top-left
+  # corner (the C++ -window): [hstart, hend, vstart, vend]; [0, 1, 0, 1] is everything
+  window: [0.0, 1.0, 0.0, 1.0]
+
   # Layout parameters
   epsilon: 0.18  # Ring thickness as a fraction of its radius
   delta: 1.3     # Shrink factor of sibling components

@@ -150,6 +150,15 @@ The picture is exactly `width` x `height` pixels. The layout frame (1.6 x 1.2 ti
 network radius, the C++ viewport) is scaled uniformly to fit and centered, so any aspect
 ratio works without distorting the network; the legends sit in the margins of the frame.
 
+`--window HSTART HEND VSTART VEND` (the C++ `-window`) renders only that part of the
+frame, as fractions of its width and height measured from the top-left corner, at the
+full pixel size: `--window 0 0.5 0 0.5` is the top-left quarter, `--window 0.25 0.75
+0.25 0.75` the central half (a 2x zoom on the core). Whatever falls outside, legends
+included, is not drawn.
+
+The output format follows the extension of `--output`: PNG, and also PDF or SVG (vector,
+every node a circle), through matplotlib.
+
 ## Component Circles
 
 Optional component border circles:

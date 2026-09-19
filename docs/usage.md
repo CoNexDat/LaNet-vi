@@ -156,6 +156,13 @@ lanet-vi visualize --input network.txt \\
   --output viz.png
 ```
 
+**Zoom on the center (the C++ `-window`):**
+
+```bash
+# The central half of the picture at the full pixel size: a 2x zoom on the core
+lanet-vi visualize --input network.txt --output core.png --window 0.25 0.75 0.25 0.75
+```
+
 **Customize visualization:**
 
 ```bash
