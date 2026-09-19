@@ -4,6 +4,7 @@
 [![PyPI](https://img.shields.io/pypi/v/lanet-vi)](https://pypi.org/project/lanet-vi/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![CI](https://github.com/CoNexDat/LaNet-vi/actions/workflows/ci.yml/badge.svg)](https://github.com/CoNexDat/LaNet-vi/actions/workflows/ci.yml)
+[![Docs](https://github.com/CoNexDat/LaNet-vi/actions/workflows/docs.yml/badge.svg)](https://conexdat.github.io/LaNet-vi/)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
@@ -105,6 +106,9 @@ net.visualize("internet.png")
 random graphs to try things on.
 
 ## 📖 Documentation
+
+The full documentation is at **<https://conexdat.github.io/LaNet-vi/>** (the same pages
+as `docs/`, with search and an API reference generated from the docstrings):
 
 - **[Usage guide](docs/usage.md)** — every CLI option, the configuration file, the Python API
 - **[Visualization guide](docs/visualization.md)** — how the picture is built: placement, colors, sizes, edges, legends

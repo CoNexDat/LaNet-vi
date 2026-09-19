@@ -65,7 +65,7 @@ class MeasureType(str, Enum):
 class CommunityConfig(BaseModel):
     """Configuration for community detection.
 
-    Parameters
+    Attributes
     ----------
     detect_communities : bool
         Whether to detect and visualize communities
@@ -102,7 +102,7 @@ DEPRECATED_ALIASES = {"show_size_legend": "show_degree_scale", "edge_alpha": "op
 class VisualizationConfig(BaseModel):
     """Configuration for network visualization.
 
-    Parameters
+    Attributes
     ----------
     background : BackgroundColor
         Background color for the visualization
@@ -222,7 +222,7 @@ class VisualizationConfig(BaseModel):
 class DecompositionConfig(BaseModel):
     """Configuration for network decomposition.
 
-    Parameters
+    Attributes
     ----------
     decomp_type : DecompositionType
         Type of decomposition to apply
@@ -278,7 +278,7 @@ class DecompositionConfig(BaseModel):
 class GraphConfig(BaseModel):
     """Configuration for graph construction.
 
-    Parameters
+    Attributes
     ----------
     multigraph : bool
         Allow repeated edges
@@ -296,7 +296,7 @@ class GraphConfig(BaseModel):
 class LayoutConfig(BaseModel):
     """Configuration for layout algorithm.
 
-    Parameters
+    Attributes
     ----------
     coord_distribution : CoordDistributionAlgorithm
         Placement of the components: ``classic`` (concentric rings, the C++ default) or
@@ -342,7 +342,7 @@ class LayoutConfig(BaseModel):
 class LaNetConfig(BaseModel):
     """Complete LaNet-vi configuration.
 
-    Parameters
+    Attributes
     ----------
     graph : GraphConfig
         Graph construction settings

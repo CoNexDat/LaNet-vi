@@ -51,9 +51,10 @@ class Network:
     Main class for network analysis and visualization.
 
     This class provides a high-level API for:
-    - Loading network data
-    - Computing k-core or k-dense decomposition
-    - Generating visualizations
+
+    - loading network data,
+    - computing the k-core, k-dense or d-core decomposition,
+    - computing the layout and rendering the picture.
 
     Parameters
     ----------
@@ -78,7 +79,7 @@ class Network:
     Examples
     --------
     >>> config = LaNetConfig()
-    >>> G = nx.karate_club_graph()
+    >>> G = nx.Graph(nx.karate_club_graph().edges())  # drop the weights
     >>> net = Network(G, config)
     >>> net.decompose()
     >>> net.visualize("output.png")

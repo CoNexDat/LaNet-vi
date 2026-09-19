@@ -53,3 +53,6 @@ dev_tmp/
 legacy/*.o
 legacy/lanet
 legacy/doc/
+
+# mkdocs build output
+site/

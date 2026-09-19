@@ -1,0 +1,88 @@
+# Documentation site: `uv run mkdocs serve` to preview, `uv run mkdocs build --strict`
+# is what CI runs. Deployed to GitHub Pages by .github/workflows/docs.yml on every push
+# to main.
+site_name: LaNet-vi
+site_description: Large-scale network visualization by k-core, k-dense and d-core decomposition
+site_url: https://conexdat.github.io/LaNet-vi/
+repo_url: https://github.com/CoNexDat/LaNet-vi
+repo_name: CoNexDat/LaNet-vi
+edit_uri: edit/main/docs/
+copyright: MIT license. Python version of the C++ LaNet-vi (AFL 3.0).
+
+nav:
+  - Home: index.md
+  - Usage guide: usage.md
+  - Visualization guide: visualization.md
+  - Concepts: concepts.md
+  - Coming from the C++ LaNet-vi: cpp-migration.md
+  - API reference: api.md
+  - Changelog: changelog.md
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: red
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: red
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      # Paths in --8<-- directives are relative to the repository root (where mkdocs runs).
+      base_path: ["."]
+      check_paths: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: numpy
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            show_if_no_docstring: false
+            filters: ["!^_"]
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+strict: false  # CI passes --strict explicitly

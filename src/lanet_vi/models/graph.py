@@ -10,7 +10,7 @@ from lanet_vi.visualization.lanet_layout import RadiusLaw
 class NodeData(BaseModel):
     """Node attributes and metadata.
 
-    Parameters
+    Attributes
     ----------
     node_id : int
         Unique node identifier
@@ -45,7 +45,7 @@ class NodeData(BaseModel):
 class EdgeData(BaseModel):
     """Edge attributes and metadata.
 
-    Parameters
+    Attributes
     ----------
     source : int
         Source node ID
@@ -68,7 +68,7 @@ class EdgeData(BaseModel):
 class Component(BaseModel):
     """Connected component in the network.
 
-    Parameters
+    Attributes
     ----------
     component_id : int
         Unique component identifier
@@ -106,7 +106,7 @@ class Component(BaseModel):
 class DecompositionResult(BaseModel):
     """Results from k-core or k-dense decomposition.
 
-    Parameters
+    Attributes
     ----------
     decomp_type : str
         Type of decomposition ('kcores' or 'kdenses')
@@ -138,7 +138,7 @@ class DecompositionResult(BaseModel):
 class VisualizationLayout(BaseModel):
     """Complete layout information for visualization.
 
-    Parameters
+    Attributes
     ----------
     node_positions : Dict[int, Tuple[float, float]]
         Mapping from node ID to (x, y) coordinates
@@ -186,7 +186,7 @@ class VisualizationLayout(BaseModel):
 class NetworkMetadata(BaseModel):
     """Metadata about the network.
 
-    Parameters
+    Attributes
     ----------
     num_nodes : int
         Total number of nodes
