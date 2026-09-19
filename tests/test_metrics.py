@@ -192,10 +192,10 @@ def test_ari_is_one_for_identical_partitions_and_relabelings():
     assert compute_adjusted_rand_index(BALANCED, relabeled) == pytest.approx(1.0)
 
 
-def test_ari_is_low_for_unrelated_partitions():
-    """Independent partitions score around zero (can be slightly negative)."""
-    independent = {0: 0, 1: 1, 2: 0, 3: 1}
-    assert compute_adjusted_rand_index(BALANCED, independent) < 0.5
+def test_ari_of_crossed_partitions_is_negative():
+    """{0,1}|{2,3} vs {0,2}|{1,3} agree on no pair: ARI = -0.5, below chance level (0)."""
+    crossed = {0: 0, 1: 1, 2: 0, 3: 1}
+    assert compute_adjusted_rand_index(BALANCED, crossed) == pytest.approx(-0.5)
 
 
 def test_ari_rejects_different_node_sets():
