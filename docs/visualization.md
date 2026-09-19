@@ -154,7 +154,10 @@ ratio works without distorting the network; the legends sit in the margins of th
 frame, as fractions of its width and height measured from the top-left corner, at the
 full pixel size: `--window 0 0.5 0 0.5` is the top-left quarter, `--window 0.25 0.75
 0.25 0.75` the central half (a 2x zoom on the core). Whatever falls outside, legends
-included, is not drawn.
+included, is not drawn. The window is scaled uniformly to fit the picture and centered
+(the SVG "meet" rule of the C++), so give `--width`/`--height` the window's own aspect
+ratio — `4 (hend - hstart) : 3 (vend - vstart)` — for an exact crop; a wider or taller
+picture shows extra margin on the longer side.
 
 The output format follows the extension of `--output`: PNG, and also PDF or SVG (vector,
 every node a circle), through matplotlib.
