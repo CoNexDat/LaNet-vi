@@ -15,8 +15,9 @@ What is different by design:
   YAML file (`lanet-vi config`, `--config`), with the C++ precedence: defaults < file <
   explicit flags.
 - **Defaults** are the C++ ones except where noted below (`--edges-percent 0.5`,
-  `--min-edges 50000`, `--background black`, 2400 × 2400 pixels; the C++ drew 0 % of the
-  edges with a floor of 1000, on white, at 800 × 600).
+  `--min-edges 50000`, 2400 × 2400 pixels; the C++ drew 0 % of the edges with a floor of
+  1000, at 800 × 600). The background is black in both (the C++ help text said white,
+  its constructor said black).
 - **Logs.** `log/cores.log`, `log/kconn.log`, `log/gomory_hu*.log` do not exist;
   `--cores-file` writes the decomposition (CSV or JSON) and `--log-file` the run log.
 
@@ -40,7 +41,7 @@ What is different by design:
 | `-maximumStrength S` | `--maximum-strength S` | |
 | `-granularity N` | `--granularity N` | default: maximum degree, as the C++ (no cap at 100) |
 | `-fromlayer K` | `--from-layer K` | accepted, not implemented yet (#23) |
-| `-bckgnd white\|black` | `--background white\|black` | default is `black` here |
+| `-bckgnd white\|black` | `--background white\|black` | black by default in both |
 | `-color col\|bw\|bwi` | `--color-scheme col\|bw\|bwi` | |
 | `-colorScaleMaxValue K` | `--color-scale-max K` | |
 | `-showDegreeScale 0\|1` | `--show-degree-scale` / `--no-show-degree-scale` | plus `--show-color-legend` for the index legend |

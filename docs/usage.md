@@ -151,7 +151,8 @@ take the same three.
 `erdos-renyi`), `--nodes N` (required), and per model: `--probability P` or `--edges M`
 (Erdős–Rényi G(n, p) / G(n, m)), `--edges M` (Barabási–Albert attachment, powerlaw-cluster),
 `--neighbors K --rewire P` (Watts–Strogatz), `--triangle-prob P` (powerlaw-cluster);
-`--directed`, `--weighted` (random weights), `--seed N`. The output is a plain edge list
+`--directed` (Erdős–Rényi only; the other models ignore it), `--weighted` (random
+weights), `--seed N`. The output is a plain edge list
 that `visualize` reads back.
 
 ### Configuration file
@@ -207,14 +208,20 @@ CAIDA AS-relationship snapshots (`<as1>|<as2>|<relation>` lines) are read by
 import networkx as nx
 from lanet_vi import DecompositionType, LaNetConfig, Network
 
-G = nx.karate_club_graph()
+# networkx's karate club carries edge weights, which LaNet-vi would detect and use
+# (strength-based cores); nx.Graph(G.edges()) keeps the plain graph
+G = nx.Graph(nx.karate_club_graph().edges())
 net = Network(G, LaNetConfig())
 result = net.decompose(DecompositionType.KCORES)
 net.visualize("karate.png")
 
 print(result.min_index, result.max_index)   # 1 4: the k-core range
-print(result.node_indices[0])               # the k-core number of node 0
+print(result.node_indices[0])               # 4: the k-core number of node 0
 ```
+
+Edge weights are detected automatically: a graph whose edges carry a `weight` attribute
+(or a third column with `--weighted`) gets strength-based cores; see
+[concepts.md](concepts.md#weighted-k-cores).
 
 `Network` takes a NetworkX graph (`Graph`, `DiGraph`, `MultiGraph`) or reads an edge list:
 
