@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- Content pass on the docs: `docs/usage.md` is now the reference for every CLI option
+  (default, meaning, C++ equivalent, inert ones marked), the configuration file, the input
+  and output formats and the Python API; new `docs/cpp-migration.md` translates every
+  LaNet-vi 3.x flag; the README is shorter, drops the claims that did not hold (rendering
+  "millions of nodes", community detection as a CLI feature) and links to the guides;
+  `docs/concepts.md` cites the actual papers (NIPS 2005, NJP 2008, D-cores, k-truss).
+  Every shell block in the docs is now a command that runs as written (the multi-line
+  ones had `\\` continuations that broke when pasted).
+
 ### Added
 
 - `--window HSTART HEND VSTART VEND` (`window` in YAML), the C++ `-window`: render only

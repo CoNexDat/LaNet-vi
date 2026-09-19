@@ -63,12 +63,14 @@ The visualization reveals the hierarchical structure of the Internet:
 The example uses optimized default settings. To customize:
 
 ```python
+from lanet_vi.models.config import CoordDistributionAlgorithm
+
 config = LaNetConfig()
 
 # Adjust visualization
 config.visualization.width = 3600  # Higher resolution
-config.visualization.epsilon = 0.50  # More radial spread
-config.visualization.edges_percent = 0.3  # More edges
+config.visualization.edges_percent = 0.3  # Fewer edges (default 0.5)
+config.layout.coord_distribution = CoordDistributionAlgorithm.POWER  # circle packing
 
 # Adjust layout
 config.layout.seed = 42  # Different random seed
@@ -169,12 +171,14 @@ For Internet topology analysis:
 The example uses optimized default settings. To customize:
 
 ```python
+from lanet_vi.models.config import CoordDistributionAlgorithm
+
 config = LaNetConfig()
 
 # Adjust visualization
 config.visualization.width = 3600  # Higher resolution
-config.visualization.epsilon = 0.50  # More radial spread
-config.visualization.edges_percent = 0.3  # More edges
+config.visualization.edges_percent = 0.3  # Fewer edges (default 0.5)
+config.layout.coord_distribution = CoordDistributionAlgorithm.POWER  # circle packing
 
 # Adjust layout
 config.layout.seed = 42  # Different random seed

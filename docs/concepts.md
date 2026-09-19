@@ -60,7 +60,8 @@ This creates a hierarchical "onion-like" structure where:
 - **Fast computation**: O(|E|) time complexity
 - **Hierarchical view**: Natural layers reveal network organization
 - **Resilience measure**: High k-core nodes are more central and important
-- **Scalability**: Works on networks with millions of nodes
+- **Scalability**: the decomposition itself is linear; LaNet-vi draws networks of
+  hundreds of thousands of nodes
 
 **Applications:**
 - **Social networks**: Identify influential users and communities
@@ -118,14 +119,21 @@ LaNet-vi also supports **k-dense decomposition** (also called m-core):
 
 ## Directed Cores (D-Cores)
 
-For directed networks, LaNet-vi computes **d-cores**:
+For directed networks (`--directed --decomp dcores`), LaNet-vi computes **d-cores**
+(Giatsidis, Thilikos & Vazirgiannis, 2011):
 
-- Considers **in-degree** and **out-degree** separately
-- Node coreness: (k_in, k_out) tuple
-- Useful for citation networks, web graphs, and social media
+- In-degree and out-degree are peeled separately: `k_in` is the largest k such that the
+  node belongs to the subgraph where every node has in-degree ≥ k, and `k_out` the same
+  for the out-degree
+- Every node gets the pair `(k_in, k_out)` (exported in the JSON output and kept in
+  `result.metadata["d_cores"]`); the picture places it by `max(k_in, k_out)`
+- Useful for citation networks, web graphs and follower networks, where being cited and
+  citing are different roles
 
 ## References
 
-- Alvarez-Hamelin, J.I., Dall'Asta, L., Barrat, A., Vespignani, A. (2005). "k-core decomposition: a tool for the visualization of large scale networks". *arXiv preprint*.
-
-- Seidman, S.B. (1983). "Network structure and minimum degree". *Social Networks*, 5(3), 269-287.
+- Seidman, S.B. (1983). "Network structure and minimum degree". *Social Networks*, 5(3), 269–287.
+- Alvarez-Hamelin, J.I., Dall'Asta, L., Barrat, A., Vespignani, A. (2006). "Large scale networks fingerprinting and visualization using the k-core decomposition". *Advances in Neural Information Processing Systems 18* (NIPS 2005). Also as "k-core decomposition: a tool for the visualization of large scale networks", arXiv:cs/0504107.
+- Beiró, M.G., Alvarez-Hamelin, J.I., Busch, J.R. (2008). "A low complexity visualization tool that helps to perform complex systems analysis". *New Journal of Physics*, 10, 125003.
+- Giatsidis, C., Thilikos, D.M., Vazirgiannis, M. (2011). "D-cores: measuring collaboration of directed graphs based on degeneracy". *IEEE ICDM 2011*.
+- Cohen, J. (2008). "Trusses: cohesive subgraphs for social network analysis". *National Security Agency technical report* (the k-truss, which the k-dense decomposition computes).

@@ -8,232 +8,109 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
-**Large-scale network visualization using k-core decomposition**
+**Large-scale network visualization by k-core decomposition**
 
-LaNet-vi is a Python package for visualizing large-scale networks through hierarchical decomposition algorithms. It reveals network structure by identifying the k-core hierarchy - from peripheral nodes to densely connected cores.
+LaNet-vi draws large networks so that their structure is readable at a glance: nodes are
+placed in concentric rings by their k-core (or k-dense, or d-core) index, the densest core
+at the center, with node size following the degree and colors following the index. It is
+the Python version of the C++ LaNet-vi that produced the well-known Internet AS-level maps
+(Alvarez-Hamelin, Dall'Asta, Barrat & Vespignani, NIPS 2005; Beiró, Alvarez-Hamelin &
+Busch, New J. Phys. 2008), and since 5.1.0 it follows the original algorithms.
 
-## 🧅 What is K-Core Decomposition?
-
-K-core decomposition identifies hierarchical layers in networks where each k-core is a maximal subgraph with all nodes having at least k neighbors. This creates an "onion-like" structure revealing:
-
-- **Core nodes** (high k): Densely connected, central, resilient
-- **Peripheral nodes** (low k): Loosely connected, on the edges
-- **Intermediate layers**: Transitional connectivity
-
-Perfect for analyzing social networks, internet topology, biological networks, and collaboration graphs.
-
-📖 **[Learn more about k-core concepts →](docs/concepts.md)**
+<p align="center">
+  <img src="examples/outputs/caida_as_relationships_kcores.png" width="45%" alt="CAIDA AS relationships, k-cores">
+  <img src="examples/outputs/caida_as_relationships_kdenses.png" width="45%" alt="CAIDA AS relationships, k-denses">
+  <br>
+  <em>The Internet at the AS level (CAIDA AS relationships, October 2025: 78,370 ASes,
+  489,407 links). Left: k-cores 1–149, Tier-1 and hypergiant networks in the red core.
+  Right: k-denses (m-cores), the triangle-based decomposition.</em>
+</p>
 
 ## ✨ Features
 
-- 🧅 **K-core, k-dense, and d-core decomposition** algorithms
-- 🎯 **Circular hierarchical layout** with smooth rings and gradient edge coloring
-- ⚡ **High-performance rendering** for networks with millions of nodes
-- 📂 **Flexible I/O** supporting compressed formats (gzip, bz2)
-- 🕸️ **Community detection** with Louvain and modularity algorithms
-- 🐍 **Python API and CLI** with full configurability
-- 📊 **Publication-ready** visualizations with auto-scaling legends
+- 🧅 **K-core**, **k-dense (m-core)** and **d-core** decompositions, weighted k-cores by
+  strength intervals, all as in the C++ LaNet-vi
+- 🎯 **The LaNet-vi placement**: nested components, rings by index, top-core cliques,
+  and the `pow`/`log` circle packing of disconnected cores
+- 🎨 **The LaNet-vi look**: rainbow or grayscale color scale, gradient edges, seeded edge
+  sampling, index and degree legends, `--window` zoom, PNG/PDF/SVG output
+- 📂 **Plain edge lists** (optionally weighted, directed, compressed) and CAIDA
+  AS-relationship snapshots
+- 🐍 **CLI and Python API** with the same settings, also as a YAML file
+- ⚙️ Tested on Python 3.10–3.13; the 78k-node AS graph renders in about a minute
 
 ## 📦 Installation
 
 ```bash
-# Using uv (recommended)
-uv pip install lanet-vi
-
-# Or with pip
 pip install lanet-vi
 ```
 
+(or `uv pip install lanet-vi`). Python 3.10 or newer.
+
 ## 🚀 Quick Start
 
-### Command Line
-
 ```bash
-# Visualize a network
-lanet-vi visualize --input network.txt --output viz.png
-
-# With custom settings
-lanet-vi visualize --input network.txt \
-  --width 2400 --height 2400 \
-  --background black \
-  --output viz.png
-
-# Generate configuration template
-lanet-vi config my_config.yaml
+lanet-vi visualize --input network.txt --output network.png
 ```
-
-### Python API
 
 ```python
 import networkx as nx
-from lanet_vi import Network, LaNetConfig, DecompositionType
+from lanet_vi import LaNetConfig, Network
 
-# Load network
-G = nx.karate_club_graph()
-
-# Decompose and visualize
-config = LaNetConfig()
-net = Network(G, config)
-net.decompose(DecompositionType.KCORES)
-net.visualize("output.png")
-```
-
-## 🌐 Example: Internet Topology
-
-```python
-from lanet_vi.io.readers import read_caida_snapshot
-from lanet_vi import Network, LaNetConfig
-
-# Download and visualize CAIDA AS-relationships data
-graph, _ = read_caida_snapshot(
-    "https://publicdata.caida.org/datasets/as-relationships/serial-1/20251001.as-rel.txt.bz2"
-)
-
-config = LaNetConfig()  # Uses optimized defaults
-net = Network(graph, config)
+net = Network(nx.karate_club_graph(), LaNetConfig())
 net.decompose()
-net.visualize("internet_topology.png")
+net.visualize("karate.png")
 ```
 
-**See example output:** [examples/outputs/caida_as_relationships_kcores.png](examples/outputs/caida_as_relationships_kcores.png)
-
-The visualization reveals the Internet's hierarchical structure with Tier-1 providers in the center and stub networks at the periphery.
-
-## 🖼️ Example Visualizations
-
-<p align="center">
-  <img src="examples/outputs/caida_as_relationships_kcores.png" width="45%" alt="K-cores decomposition">
-  <img src="examples/outputs/caida_as_relationships_kdenses.png" width="45%" alt="K-denses decomposition">
-  <br>
-  <em>CAIDA AS-Relationships Network, 20251001 snapshot (78,370 nodes): K-cores (left) vs K-denses (right)</em>
-</p>
-
-The visualizations reveal the hierarchical structure of the Internet, with densely connected core networks (red/orange) at the center and peripheral networks (blue/purple) at the edges. K-cores use degree-based decomposition while k-denses use triangle-based decomposition, highlighting different structural properties.
-
-## 📄 Input Format
-
-Edge list (space or tab separated):
+The input is an edge list, one `source target [weight]` per line (`#` comments,
+`.gz`/`.bz2` accepted):
 
 ```
-# Comments start with #
 0 1
-1 2
+1 2 2.5
 2 0
 ```
 
-Weighted networks:
+### The Internet topology
 
-```
-0 1 2.5
-1 2 3.0
+```python
+from lanet_vi import LaNetConfig, Network
+from lanet_vi.io.readers import read_caida_snapshot
+
+graph, _ = read_caida_snapshot(
+    "https://publicdata.caida.org/datasets/as-relationships/serial-1/20251001.as-rel.txt.bz2"
+)
+net = Network(graph, LaNetConfig())
+net.decompose()
+net.visualize("internet.png")
 ```
 
-Supports `.txt`, `.txt.gz`, `.txt.bz2` formats.
+[`examples/`](examples/) has the full scripts behind the pictures above.
 
 ## ⚙️ Common Options
 
-**Decomposition:**
-- `--decomp [kcores|kdenses|dcores]`: Decomposition algorithm (default: kcores)
-- `--weighted`: Graph has edge weights (strength-based k-cores; see `--granularity`, `--strength-intervals`, `--maximum-strength`)
-- `--directed`: Graph is directed (required for dcores)
+- `--decomp kcores|kdenses|dcores` — the decomposition (`dcores` needs `--directed`)
+- `--weighted` — the third column is a weight: strength-based cores
+- `--edges-percent 0.1` — fraction of edges drawn (default 0.5, never below `--min-edges`)
+- `--background white` — or `black` (default); `--color-scheme col|bw|bwi`
+- `--width 3200 --height 2400` — any size and aspect ratio
+- `--window 0.25 0.75 0.25 0.75` — zoom: the central half of the picture at full size
+- `--coord-distribution pow` — circle packing of disconnected cores (default: `classic` rings)
+- `--seed 42` — reproducible layout and edge sample
+- `--cores-file cores.csv` — also write the decomposition (CSV, or JSON by extension)
+- `--config settings.yaml` — settings from a file; explicit flags override it
 
-**Visualization:**
-- `--width`, `--height`: Image dimensions (default: 2400x2400)
-- `--window HSTART HEND VSTART VEND`: Render only that part of the picture (fractions from the top-left; `0.25 0.75 0.25 0.75` zooms 2x on the core)
-- `--background [black|white]`: Background color (default: black)
-- `--epsilon FLOAT`: Ring thickness as a fraction of its radius (default: 0.18)
-- `--edges-percent FLOAT`: Percentage of edges to show (default: 0.5)
-- `--opacity FLOAT`: Edge opacity (default: 0.2)
-
-**Output:**
-- `--output PATH`: Visualization file (PNG, PDF, SVG)
-- `--cores-file PATH`: Export decomposition data (CSV or JSON)
-
-**Full CLI reference:** See [docs/usage.md](docs/usage.md#using-lanet-vi-via-command-line)
-
-## 🔧 Configuration
-
-Generate a template:
-
-```bash
-lanet-vi config my_config.yaml
-```
-
-Example configuration:
-
-```yaml
-visualization:
-  background: black
-  width: 2400
-  height: 2400
-  epsilon: 0.18
-  edges_percent: 0.5
-  opacity: 0.2
-
-layout:
-  seed: 0
-
-decomposition:
-  decomp_type: kcores
-```
-
-Use it:
-
-```bash
-lanet-vi visualize --input network.txt --config my_config.yaml
-```
+`lanet-vi config settings.yaml` writes a template with every setting and its default;
+`lanet-vi info network.txt` prints the network statistics; `lanet-vi generate` makes
+random graphs to try things on.
 
 ## 📖 Documentation
 
-- **[K-Core Concepts](docs/concepts.md)** - Understanding k-core decomposition
-- **[Visualization Guide](docs/visualization.md)** - How the plots work (colors, sizing, layout)
-- **[Usage Guide](docs/usage.md)** - Detailed Python API and CLI examples
-- **[Examples](examples/)** - Working examples with real datasets
-
-## 🔬 Advanced Features
-
-### Community Detection
-
-```bash
-lanet-vi visualize --input network.txt \
-  --detect-communities \
-  --draw-community-boundaries \
-  --output communities.png
-```
-
-### Random Graph Generation
-
-```bash
-lanet-vi generate --output test.txt \
-  --model barabasi-albert \
-  --nodes 1000 --edges 3
-```
-
-### D-Cores (Directed Networks)
-
-```bash
-lanet-vi visualize --input citations.txt \
-  --directed --decomp dcores \
-  --output dcores.png
-```
-
-## ⚡ Performance Tips
-
-**Large networks (>100K nodes):**
-
-```python
-config.visualization.edges_percent = 0.1  # Show 10% of edges
-config.visualization.opacity = 0.2
-config.visualization.node_size_scale = 0.4
-```
-
-**Publication quality:**
-
-```python
-config.visualization.width = 3600
-config.visualization.height = 3600
-config.visualization.background = "white"
-```
+- **[Usage guide](docs/usage.md)** — every CLI option, the configuration file, the Python API
+- **[Visualization guide](docs/visualization.md)** — how the picture is built: placement, colors, sizes, edges, legends
+- **[Concepts](docs/concepts.md)** — k-cores, weighted k-cores, k-denses, d-cores
+- **[Coming from the C++ LaNet-vi](docs/cpp-migration.md)** — flag translation and what differs
+- **[Examples](examples/)** — the CAIDA scripts
 
 ## 🛠️ Development
 
