@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `write_graph_json` always writes the edges under `"links"`: NetworkX 3.6 changes the
+  default key of `node_link_data` to `"edges"`, which would have silently changed the
+  file format.
+- Loggers were named `lanet_vi.lanet_vi.<module>`; `get_logger` no longer doubles the
+  package prefix. `setup_logging` closes the handlers of a previous call instead of
+  leaking the log file handle.
+- `draw_community_circles` no longer triggers a matplotlib warning about `color`
+  overriding `edgecolor`.
+
+### Changed
+
+- Coverage gate raised from 60 % to 80 % (#11) now that `metrics/`, `generators/`,
+  `community/`, `visualization/community_viz.py`, `io/writers.py` and
+  `logging_config.py` have tests (the suite covers 90 %; the remainder is the unused
+  `spatial_index.py` and `spiral_layout.py`).
+
 ### Documentation
 
 - Documentation site at <https://conexdat.github.io/LaNet-vi/> (#12): MkDocs with the
