@@ -11,7 +11,7 @@ dependencies, building, and publishing.
 ```bash
 git clone git@github.com:CoNexDat/LaNet-vi.git
 cd LaNet-vi
-uv sync --all-extras          # creates .venv with runtime + dev + interactive extras
+uv sync --all-extras          # creates .venv with runtime + dev + docs + interactive extras
 uv run pre-commit install     # installs the git hooks (ruff lint/format, file hygiene)
 ```
 
@@ -24,9 +24,15 @@ uv run mypy src/lanet_vi
 uv run pytest                 # coverage threshold is enforced (see pyproject.toml)
 uv build
 uvx --from cffconvert==2.0.0 cffconvert --validate   # CITATION.cff
+uv run mkdocs build --strict  # documentation site (broken links and docstrings fail it)
 ```
 
 `uv run pre-commit run --all-files` runs the lint and hygiene hooks on the whole tree.
+
+The documentation site (<https://conexdat.github.io/LaNet-vi/>) is built with
+[MkDocs](https://www.mkdocs.org/) from `docs/*.md` and the docstrings (`mkdocs.yml` has
+the page list). `uv run mkdocs serve` previews it locally with live reload; it is deployed
+to GitHub Pages by `.github/workflows/docs.yml` on every push to `main`.
 
 ## Project conventions
 

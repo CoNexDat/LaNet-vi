@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- Documentation site at <https://conexdat.github.io/LaNet-vi/> (#12): MkDocs with the
+  Material theme, the existing guides, the changelog and an API reference generated from
+  the docstrings by mkdocstrings. `mkdocs build --strict` runs in CI on every PR;
+  `.github/workflows/docs.yml` deploys to GitHub Pages on every push to `main`. The
+  `docs` extra installs the tooling; `uv run mkdocs serve` previews the site.
 - Content pass on the docs: `docs/usage.md` is now the reference for every CLI option
   (default, meaning, C++ equivalent, inert ones marked), the configuration file, the input
   and output formats and the Python API; new `docs/cpp-migration.md` translates every

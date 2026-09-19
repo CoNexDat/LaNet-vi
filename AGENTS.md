@@ -24,7 +24,8 @@ src/lanet_vi/
   models/                config.py (Pydantic settings), graph.py (result/layout models)
   metrics/, community/, generators/   partition metrics, Louvain/greedy, random graphs
 tests/                   pytest; conftest.py has shared fixtures
-docs/                    concepts.md, usage.md, visualization.md (plain markdown)
+docs/                    MkDocs pages (usage, visualization, concepts, cpp-migration, api);
+                         mkdocs.yml at the root; deployed to GitHub Pages by docs.yml
 examples/                CAIDA AS-relationship examples + tracked output PNGs
 ```
 
@@ -42,6 +43,7 @@ uv run ruff format src/ tests/ examples/   # format (CI checks with --check)
 uv run mypy src/lanet_vi                   # types (strict: disallow_untyped_defs)
 uv run pytest                              # tests + coverage gate (see pyproject addopts)
 uv build                                   # sdist + wheel via uv_build
+uv run mkdocs build --strict               # docs site (CI job `docs`); `mkdocs serve` to preview
 uv run lanet-vi visualize --input edges.txt --output out.png
 ```
 
@@ -58,6 +60,10 @@ uv run lanet-vi visualize --input edges.txt --output out.png
 - Line length 100. NumPy-style docstrings on public API (ruff `D`, convention `numpy`).
 - All settings live in Pydantic models in `models/config.py`; the CLI builds a
   `LaNetConfig` from flags. New options go there first, then the CLI, then docs.
+- Pydantic model docstrings document their fields under `Attributes` (not
+  `Parameters`): mkdocstrings checks `Parameters` against the signature and the strict
+  docs build fails otherwise. The API page (`docs/api.md`) lists modules explicitly; add
+  new public modules there.
 - Type hints on every function. mypy is part of CI.
 - Tests: one file per module (`tests/test_<module>.py`), plain functions, fixtures in
   `tests/conftest.py`. Use `nx.karate_club_graph()` for small realistic graphs and
