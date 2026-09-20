@@ -193,8 +193,9 @@ layout:
 `--window` crops the picture; `--from-layer K` changes the network instead: it keeps the
 subgraph induced by the nodes of index ≥ K, computes the decomposition of that subgraph
 and runs the usual pipeline on it, as the C++ `-fromlayer` did. The outer layers
-disappear, the remaining ones get the whole frame, and the legends, `--cores-file` and
-`lanet-vi info` describe the subgraph. Details:
+disappear, the remaining ones get the whole frame, and the legends and `--cores-file`
+describe the subgraph (`lanet-vi info` has no such option and always reports the whole
+file). Details:
 
 - For k-cores the indices of the kept nodes do not change (the K-core of a graph
   contains all its higher cores). Weighted graphs reuse the strength intervals of the
