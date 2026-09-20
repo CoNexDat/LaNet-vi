@@ -193,9 +193,3 @@ community:
   # Matplotlib colormap of the community colors: a qualitative one ("tab20", "tab10",
   # "Set3") is used entry by entry, a continuous one ("viridis", "hsv") is sampled evenly
   colormap: "tab20"
-
-# ==============================================================================
-# RENDERER
-# ==============================================================================
-# Rendering engine: "matplotlib", "networkx", or "plotly"
-renderer: "matplotlib"

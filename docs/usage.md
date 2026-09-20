@@ -136,7 +136,7 @@ compatibility and do nothing yet; their `--help` text names the tracking issue.
 | `--draw-circles` | off | Draw the disc of every component | `-drawCircles` |
 | `--show-color-legend` / `--no-show-color-legend` | on | Index color legend (right margin) | |
 | `--show-degree-scale` / `--no-show-degree-scale` | on | Degree (node size) legend (left margin); `--show-size-legend` is a deprecated alias | `-showDegreeScale` |
-| `--node-labels` / `--no-node-labels` | on with `--names` | Draw node names | |
+| `--node-labels` / `--no-node-labels` | on with `--names` | Draw node names; without `--names`, every node is labeled with its number (the C++ `-names` with no file) | `-names` |
 | `--font-zoom Z` | 1.0 | Font size multiplier for node names | `-font` |
 | `--legend-fontsize PT` | auto | Legend font size in points (default: the C++ size, relative to the picture) | |
 | `--min-edge-width`, `--max-edge-width` | | *inert*, deprecated: widths follow the C++ rule | |

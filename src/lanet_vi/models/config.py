@@ -47,14 +47,6 @@ class CoordDistributionAlgorithm(str, Enum):
     LOG = "log"
 
 
-class Renderer(str, Enum):
-    """Rendering engine options."""
-
-    MATPLOTLIB = "matplotlib"
-    NETWORKX = "networkx"
-    PLOTLY = "plotly"
-
-
 class MeasureType(str, Enum):
     """Centrality measure type."""
 
@@ -349,8 +341,6 @@ class LaNetConfig(BaseModel):
         Layout algorithm settings
     community : CommunityConfig
         Community detection settings
-    renderer : Renderer
-        Rendering engine to use
     """
 
     graph: GraphConfig = Field(default_factory=GraphConfig)
@@ -358,6 +348,5 @@ class LaNetConfig(BaseModel):
     visualization: VisualizationConfig = Field(default_factory=VisualizationConfig)
     layout: LayoutConfig = Field(default_factory=LayoutConfig)
     community: CommunityConfig = Field(default_factory=CommunityConfig)
-    renderer: Renderer = Renderer.MATPLOTLIB
 
     model_config = ConfigDict(use_enum_values=True)

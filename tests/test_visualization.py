@@ -772,3 +772,46 @@ def test_edgeless_graph_renders_with_communities(tmp_path: Path):
     assert net.communities.num_communities == 3
     net.visualize(tmp_path / "isolated.png")
     assert (tmp_path / "isolated.png").exists()
+
+
+def test_labels_without_names_are_the_node_numbers(
+    karate: nx.Graph, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """show_node_labels with no names labels every node with its number (C++ -names alone)."""
+    from matplotlib.axes import Axes
+
+    drawn: list[str] = []
+    original_text = Axes.text
+
+    def spy(self, x, y, s, *args, **kwargs):  # noqa: ANN001, ANN202
+        drawn.append(str(s))
+        return original_text(self, x, y, s, *args, **kwargs)
+
+    monkeypatch.setattr(Axes, "text", spy)
+    config = LaNetConfig(
+        visualization=VisualizationConfig(
+            width=300,
+            height=300,
+            show_node_labels=True,
+            show_degree_scale=False,
+            show_color_legend=False,
+        )
+    )
+    net = Network(karate, config)
+    net.decompose()
+    net.visualize(tmp_path / "numbers.png")
+    assert sorted(drawn, key=int) == [str(node) for node in sorted(karate.nodes())]
+
+    # With a names file only the named nodes are labeled (nodes absent from it get none)
+    drawn.clear()
+    net.node_names = {3: "three"}
+    net.visualize(tmp_path / "named.png")
+    assert drawn == ["three"]
+
+    # Labels off: nothing, names or not
+    drawn.clear()
+    config.visualization.show_node_labels = False
+    net.visualize(tmp_path / "off.png")
+    net.node_names = {}
+    net.visualize(tmp_path / "off2.png")
+    assert drawn == []

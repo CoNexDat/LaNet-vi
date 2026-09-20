@@ -290,7 +290,8 @@ def visualize(
     show_node_labels: bool | None = typer.Option(
         None,
         "--node-labels/--no-node-labels",
-        help="Draw node names (default: on when --names is given)",
+        help="Draw node names (default: on when --names is given; without --names, "
+        "label every node with its number as the C++ -names did)",
     ),
     # Community detection options
     detect_communities: bool = typer.Option(
