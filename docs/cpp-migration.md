@@ -31,6 +31,7 @@ What is different by design:
 | `-directed` (4.0) | `--directed` | needed for `dcores` |
 | `-measure mcore\|kdense` | `--measure mcore\|kdense` | k-dense legend numbering |
 | `-names FILE` | `--names FILE` | labels are drawn when the file is given (`--no-node-labels` to keep them off) |
+| `-names` (no file, or `-names 0`) | `--node-labels` | every node labeled with its number |
 | `-font Z` | `--font-zoom Z` | |
 | `-coresfile FILE` | `--cores-file FILE` | the C++ option was dead; the decomposition went to `log/cores.log` |
 | `-colorsFile FILE` | `--colors-file FILE` | same format `node r g b` |

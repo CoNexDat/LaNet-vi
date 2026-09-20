@@ -28,8 +28,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `--cores-file` describe that subgraph. `compute_kcores` takes a `p_function` to
   reuse. A layer above the maximum index is a usage error.
 
+- `--node-labels` without `--names` labels every node with its number, the C++ `-names`
+  with no file (`-names 0`) (#23). With a names file only the named nodes are labeled,
+  as before.
+
 ### Removed
 
+- The dead `renderer` setting (`LaNetConfig.renderer`, the `Renderer` enum and the
+  top-level `renderer:` key of `lanet-vi config` output): matplotlib is the only
+  renderer and nothing read it (#23). Older YAML files that still have the key load
+  unchanged (unknown keys are ignored).
 - The inert spiral layout and spatial index: `visualization/spiral_layout.py` and
   `visualization/spatial_index.py` (nothing called them; the C++ `espiral.cpp` was
   never in a release), the `--use-spiral-layout`, `--spiral-K`, `--spiral-beta` and

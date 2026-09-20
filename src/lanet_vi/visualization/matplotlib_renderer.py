@@ -69,7 +69,9 @@ def render_network(
     output_path : Union[Path, str]
         Output file path (.png, .pdf, .svg)
     node_names : Optional[Dict[int, str]]
-        Optional node names for labels
+        Node names for the labels (``config.show_node_labels``): a mapping labels the
+        nodes it names (an empty one labels nothing); ``None`` labels every node with
+        its number (the C++ ``-names`` with no file)
     custom_colors : bool
         Nodes were colored from a colors file: the color legend is not drawn (the C++
         hid it with ``-colorsFile``)
@@ -117,8 +119,13 @@ def render_network(
     _draw_edges(ax, layout, config, decomposition, px_per_unit)
     _draw_nodes(ax, layout, config, px_per_unit)
 
-    if node_names:
-        _draw_labels(ax, layout, node_names, config, decomposition)
+    if config.show_node_labels:
+        labels = (
+            {node: str(node) for node in layout.node_positions}
+            if node_names is None
+            else node_names
+        )
+        _draw_labels(ax, layout, labels, config, decomposition)
 
     if config.show_color_legend and not custom_colors:
         _draw_degree_scale(ax, decomposition, config, layout.frame, pts_per_unit, measure)
@@ -313,9 +320,6 @@ def _draw_labels(
     decomposition: DecompositionResult,
 ) -> None:
     """Draw node labels with optional filtering by k-core."""
-    if not config.show_node_labels:
-        return
-
     text_color = "black" if config.background == BackgroundColor.WHITE else "white"
 
     for node, (x, y) in layout.node_positions.items():
