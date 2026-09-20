@@ -16,6 +16,7 @@ from collections import defaultdict
 
 import networkx as nx
 
+from lanet_vi.decomposition.kcores import _without_self_loops
 from lanet_vi.logging_config import get_logger
 from lanet_vi.models.config import DecompositionConfig
 from lanet_vi.models.graph import Component, DecompositionResult
@@ -83,9 +84,7 @@ def compute_dcores(
 
     # Self-loops count for neither degree (the edge-list reader drops them; a node is
     # not its own neighbor), as in compute_dcore_table
-    if nx.number_of_selfloops(graph):
-        graph = graph.copy()
-        graph.remove_edges_from(nx.selfloop_edges(graph))
+    graph = _without_self_loops(graph, "the d-core decomposition")
 
     # Compute in-degree and out-degree cores separately
     logger.debug("Computing in-degree cores")

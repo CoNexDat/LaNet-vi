@@ -167,9 +167,14 @@ def test_dcore_table_edge_cases():
     }
 
 
-def test_dcores_ignore_self_loops():
+def test_dcores_ignore_self_loops(caplog: pytest.LogCaptureFixture):
     """A self-loop is not an in- or out-neighbor: a lone looped node is a (0, 0) node."""
+    import logging
+
     graph = nx.DiGraph([(0, 0)])
-    assert compute_dcores(graph).metadata["d_cores"] == {0: (0, 0)}
+    with caplog.at_level(logging.WARNING, logger="lanet_vi"):
+        assert compute_dcores(graph).metadata["d_cores"] == {0: (0, 0)}
+    assert "Ignoring 1 self-loop(s) for the d-core decomposition" in caplog.text
+    assert graph.has_edge(0, 0)  # the caller's graph is untouched
     cycle = nx.DiGraph([(0, 1), (1, 2), (2, 0), (1, 1)])
     assert compute_dcores(cycle).metadata["d_cores"] == {0: (1, 1), 1: (1, 1), 2: (1, 1)}

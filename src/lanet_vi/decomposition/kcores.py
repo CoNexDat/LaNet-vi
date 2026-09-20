@@ -117,7 +117,7 @@ def compute_kcores(
         )
 
 
-def _without_self_loops(graph: nx.Graph) -> nx.Graph:
+def _without_self_loops(graph: nx.Graph, what: str = "the k-core decomposition") -> nx.Graph:
     """Return ``graph`` without self-loops (copied only if any exist).
 
     The C++ LaNet-vi ignored the self-loop contribution to the core index and
@@ -126,7 +126,7 @@ def _without_self_loops(graph: nx.Graph) -> nx.Graph:
     n_loops = nx.number_of_selfloops(graph)
     if not n_loops:
         return graph
-    logger.warning(f"Ignoring {n_loops} self-loop(s) for the k-core decomposition")
+    logger.warning(f"Ignoring {n_loops} self-loop(s) for {what}")
     graph = graph.copy()
     graph.remove_edges_from(nx.selfloop_edges(graph))
     return graph
