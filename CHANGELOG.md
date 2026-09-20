@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--kconn`, `--kconn-type wide|strict` and `--kconn-file FILE` (`kconn`, `kconn_type`
+  in YAML; `Network.compute_kconnectivity()` / `Network.kconnectivity` in Python): the
+  k-connectivity of the shells, the C++ `-kconn` (#47). Port of
+  `computeKConnectivityWide` / `computeKConnectivityStrict` of
+  `graph_kcores_components.cpp` (Beiró, Alvarez-Hamelin & Busch, NJP 2008): a walk from
+  the top shell down that seeds a k-connected set with the first cluster of diameter ≤ 2
+  (wide: or minimum edge cut ≥ shell; strict: and minimum degree ≥ shell) and grows it
+  with the contracted-diameter and frontier / φ conditions, each shell's clusters
+  examined once in the order of the component tree. Verified against a literal
+  transcription of the C++ loops on 2 400 random graphs. Nodes that are not k-connected
+  are painted black on white / white on black and drawn as squares in the `bw` / `bwi`
+  schemes, as the C++ did; the C++ "border color" (a same-radius circle under the node in
+  its SVG, invisible) is not drawn. `--kconn-file` writes the C++ `log/kconn.log`
+  (`node shell_index k_connectivity`, 0 = not k-connected). Refused for k-denses,
+  d-cores, weighted, directed and multigraph inputs, as the C++ did. Not reproduced: the
+  crash on a shell without clusters and the `shell == 77` debugging escape of the strict
+  seed.
+
 ### Documentation
 
 - Issue #25 is closed as won't-fix for the Gomory-Hu connectivity report and the POV-Ray
@@ -473,13 +493,13 @@ LaNet-vi 5.x is a complete Python rewrite of the C++ version. Parity was oversta
 - ✅ D-core decomposition (directed graphs), with the (k, l)-core table of the 4.0.0 tool
 - ✅ The LaNet-vi placement: `classic`, `pow` and `log` coordinate distributions
 - ✅ Color scale, grayscale, legends, edge sampling, `-window`, `-fromlayer`, `-names`
+- ✅ K-connectivity (`-kconn`, `-kconntype`)
 - ✅ SVG and PDF output (matplotlib, by the `--output` extension; not the C++ SVG writer)
 - ⚠️ Community detection: NetworkX Louvain / greedy modularity drawn on the picture; a
   5.x addition, the C++ had no community rendering (#26)
 - ⚠️ Random graph generation: NetworkX wrappers (#26)
-- ❌ Not ported: k-connectivity (planned, #47); Gomory-Hu connectivity and POV-Ray
-  scenes (won't-fix, #25). The spiral layout of the development tree was never in a C++
-  release and was removed.
+- ❌ Not ported: Gomory-Hu connectivity and POV-Ray scenes (won't-fix, #25). The spiral
+  layout of the development tree was never in a C++ release and was removed.
 - ➕ Enhanced JSON exports
 - ➕ Information theory metrics
 - ➕ Type-safe configuration

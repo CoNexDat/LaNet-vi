@@ -266,3 +266,100 @@ def test_detect_communities_on_directed_and_weighted_graphs():
     assert net.communities.modularity == pytest.approx(
         nx_community.modularity(weighted, parts, weight="weight")
     )
+
+
+def test_kconnectivity_paints_the_nodes_that_are_not_k_connected(karate: nx.Graph):
+    """With kconn set, decompose() computes it and the layout marks the nodes left out."""
+    from lanet_vi.models.config import BackgroundColor, ColorScheme, KConnectivityType
+
+    plain = nx.Graph(karate.edges())
+    config = _config(kconn=True, kconn_type=KConnectivityType.STRICT)
+    net = Network(plain, config)
+    assert net.kconnectivity is None
+    net.decompose()
+    assert net.kconnectivity is not None
+    assert set(net.kconnectivity) == set(plain)
+    # Strict finds no seed on the karate club (its 4-core has diameter 3)
+    assert set(net.kconnectivity.values()) == {0}
+
+    # Color: black on the white background, whatever colored the others; no squares in col
+    config.visualization.background = BackgroundColor.WHITE
+    layout = net.compute_layout()
+    assert all(layout.node_colors[v] == (0.0, 0.0, 0.0) for v in plain)
+    assert layout.square_nodes == set()
+    # Grayscale: squares
+    config.visualization.color_scheme = ColorScheme.GRAYSCALE
+    config.visualization.background = BackgroundColor.BLACK
+    layout = net.compute_layout()
+    assert layout.square_nodes == set(plain)
+    assert all(layout.node_colors[v] == (1.0, 1.0, 1.0) for v in plain)
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "kconn.png"
+        net.visualize(out, layout)
+        assert out.exists()
+
+    # Wide: everybody is k-connected, the top core at 4; colors are the shell colors again
+    config.decomposition.kconn_type = KConnectivityType.WIDE
+    config.visualization.color_scheme = ColorScheme.COLOR
+    net.decompose()
+    assert all(net.kconnectivity[v] > 0 for v in plain)
+    top = [v for v, k in net.decomposition.node_indices.items() if k == 4]
+    assert all(net.kconnectivity[v] == 4 for v in top)
+    layout = net.compute_layout()
+    assert layout.square_nodes == set()
+    assert len({layout.node_colors[v] for v in plain}) > 1
+
+    # Off again: a new decompose() drops it; an explicit call computes it anyway
+    config.decomposition.kconn = False
+    net.decompose()
+    assert net.kconnectivity is None
+    explicit = net.compute_kconnectivity()
+    assert explicit is net.kconnectivity
+    assert all(explicit[v] == 4 for v in top)
+
+
+def test_kconnectivity_refuses_what_the_cpp_refused(karate: nx.Graph):
+    """No decomposition, k-denses, directed, multigraph and weighted graphs are errors."""
+    from lanet_vi.models.config import KConnectivityType
+
+    plain = nx.Graph(karate.edges())
+    net = Network(plain)
+    with pytest.raises(ValueError, match="decompose"):
+        net.compute_kconnectivity()
+
+    net = Network(plain, _config(decomp_type=DecompositionType.KDENSES))
+    net.decompose()
+    with pytest.raises(ValueError, match="k-core"):
+        net.compute_kconnectivity()
+
+    net = Network(karate)  # the weights are autodetected: weighted k-cores
+    net.decompose()
+    with pytest.raises(ValueError, match="weighted"):
+        net.compute_kconnectivity()
+
+    multi = nx.MultiGraph(plain.edges())
+    net = Network(multi, LaNetConfig(graph=GraphConfig(multigraph=True)))
+    net.decompose()
+    with pytest.raises(ValueError, match="multigraph"):
+        net.compute_kconnectivity()
+
+    digraph = nx.DiGraph([(0, 1), (1, 2), (2, 0)])
+    config = LaNetConfig(
+        graph=GraphConfig(directed=True),
+        decomposition=DecompositionConfig(decomp_type=DecompositionType.DCORES),
+    )
+    net = Network(digraph, config)
+    net.decompose()
+    with pytest.raises(ValueError, match="k-core"):
+        net.compute_kconnectivity()
+
+    # The configuration refuses the combinations up front
+    with pytest.raises(ValueError, match="k-core"):
+        DecompositionConfig(kconn=True, decomp_type=DecompositionType.KDENSES)
+    for flag in ("weighted", "directed", "multigraph"):
+        with pytest.raises(ValueError, match=flag):
+            LaNetConfig(
+                graph=GraphConfig(**{flag: True}),
+                decomposition=DecompositionConfig(kconn=True),
+            )
+    assert DecompositionConfig(kconn=True).kconn_type == KConnectivityType.WIDE

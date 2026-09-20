@@ -95,6 +95,11 @@ LaNet-vi (`types.cpp`):
 - `bwi`: the same scale interlaced: indices with the parity of the maximum take the dark
   half, the others the light half, so adjacent shells contrast strongly.
 
+With `--kconn` the nodes that are not k-connected ignore the scale: they are black on a
+white background, white on a black one, and squares instead of circles in `bw` / `bwi`
+(the C++ drew blocks instead of spheres); their edges take those colors too
+([usage guide](usage.md#k-connectivity)).
+
 `color_scale_max_value` (`--color-scale-max`) fixes the index drawn with the last color;
 higher indices share it, which makes pictures of different networks comparable. For k-dense
 pictures with `measure = mcore` (the default) the value is an m-core number (k-dense
@@ -262,4 +267,3 @@ config.visualization.height = 3600
 config.visualization.background = "white"
 config.visualization.opacity = 0.6
 ```
-

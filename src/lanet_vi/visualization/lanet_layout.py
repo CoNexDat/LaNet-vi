@@ -283,6 +283,27 @@ def build_component_tree(
     return root
 
 
+def clusters_by_index(root: LayoutComponent) -> dict[int, list[list[int]]]:
+    """Collect the clusters of every index in tree-walk order (``buildClustersMap``).
+
+    Parameters
+    ----------
+    root : LayoutComponent
+        The component tree of :func:`build_component_tree`
+
+    Returns
+    -------
+    Dict[int, List[List[int]]]
+        Clusters keyed by their component's index, parents' clusters before children's;
+        indices without clusters are absent
+    """
+    out: dict[int, list[list[int]]] = {}
+    for comp in root.walk():
+        if comp.clusters:
+            out.setdefault(comp.index, []).extend(comp.clusters)
+    return out
+
+
 def _greedy_cliques(cluster: list[int], graph: nx.Graph) -> list[list[int]]:
     """Partition a top-core cluster into cliques (``Clique::buildCliques``).
 

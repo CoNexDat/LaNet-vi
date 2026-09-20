@@ -54,6 +54,13 @@ class MeasureType(str, Enum):
     MCORE = "mcore"
 
 
+class KConnectivityType(str, Enum):
+    """How the k-connectivity walk treats the clusters it skips (``-kconntype``)."""
+
+    WIDE = "wide"
+    STRICT = "strict"
+
+
 class CommunityConfig(BaseModel):
     """Configuration for community detection.
 
@@ -244,6 +251,13 @@ class DecompositionConfig(BaseModel):
         Boundaries, one per line, for ``strength_intervals = custom``
     no_cliques : bool
         Whether to omit cliques in central core
+    kconn : bool
+        Compute the k-connectivity of the shells (the C++ ``-kconn``; k-cores of an
+        undirected, unweighted, simple graph only): nodes that are not k-connected are
+        drawn black on white / white on black, as squares in the grayscale schemes
+    kconn_type : KConnectivityType
+        ``wide`` (the C++ default) gives the clusters skipped by the walk another
+        chance at every lower index; ``strict`` drops them
     """
 
     decomp_type: DecompositionType = DecompositionType.KCORES
@@ -254,6 +268,8 @@ class DecompositionConfig(BaseModel):
     maximum_strength: float | None = Field(default=None, gt=0.0, allow_inf_nan=False)
     strength_intervals_file: Path | None = None
     no_cliques: bool = False
+    kconn: bool = False
+    kconn_type: KConnectivityType = KConnectivityType.WIDE
 
     @field_validator("granularity")
     @classmethod
@@ -274,6 +290,13 @@ class DecompositionConfig(BaseModel):
                 "strength_intervals 'custom' needs strength_intervals_file "
                 "(--strength-intervals-file)"
             )
+        return self
+
+    @model_validator(mode="after")
+    def kconn_needs_kcores(self) -> "DecompositionConfig":
+        """Refuse ``kconn`` outside the k-cores: it is defined on their clusters."""
+        if self.kconn and self.decomp_type != DecompositionType.KCORES:
+            raise ValueError("kconn (--kconn) needs the k-core decomposition (--decomp kcores)")
         return self
 
 
@@ -350,3 +373,14 @@ class LaNetConfig(BaseModel):
     community: CommunityConfig = Field(default_factory=CommunityConfig)
 
     model_config = ConfigDict(use_enum_values=True)
+
+    @model_validator(mode="after")
+    def kconn_needs_a_simple_unweighted_graph(self) -> "LaNetConfig":
+        """Refuse ``kconn`` on weighted, directed or multigraph inputs, as the C++ did."""
+        if self.decomposition.kconn:
+            for flag in ("weighted", "directed", "multigraph"):
+                if getattr(self.graph, flag):
+                    raise ValueError(
+                        f"kconn (--kconn) is not available for {flag} graphs (--{flag})"
+                    )
+        return self

@@ -35,6 +35,8 @@ Busch, New J. Phys. 2008), and since 5.1.0 it follows the original algorithms.
   and the `pow`/`log` circle packing of disconnected cores
 - 🎨 **The LaNet-vi look**: rainbow or grayscale color scale, gradient edges, seeded edge
   sampling, index and degree legends, `--window` zoom, PNG/PDF/SVG output
+- 🔗 **K-connectivity** of the shells (`--kconn`), the analysis of Beiró, Alvarez-Hamelin
+  & Busch (2008), as in the C++ tool
 - 📂 **Plain edge lists** (optionally weighted, directed, compressed) and CAIDA
   AS-relationship snapshots
 - 🐍 **CLI and Python API** with the same settings, also as a YAML file
@@ -113,7 +115,7 @@ as `docs/`, with search and an API reference generated from the docstrings):
 
 - **[Usage guide](docs/usage.md)** — every CLI option, the configuration file, the Python API
 - **[Visualization guide](docs/visualization.md)** — how the picture is built: placement, colors, sizes, edges, legends
-- **[Concepts](docs/concepts.md)** — k-cores, weighted k-cores, k-denses, d-cores
+- **[Concepts](docs/concepts.md)** — k-cores, weighted k-cores, k-denses, k-connectivity, d-cores
 - **[Coming from the C++ LaNet-vi](docs/cpp-migration.md)** — flag translation and what differs
 - **[Examples](examples/)** — the CAIDA scripts
 

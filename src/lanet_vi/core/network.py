@@ -4,9 +4,11 @@ import time
 from pathlib import Path
 
 import networkx as nx
+import numpy as np
 
 from lanet_vi.community import CommunityResult, detect_communities
 from lanet_vi.decomposition.dcores import compute_dcores, find_components_by_dcore
+from lanet_vi.decomposition.kconnectivity import compute_kconnectivity
 from lanet_vi.decomposition.kcores import compute_kcores, find_components_by_shell
 from lanet_vi.decomposition.kdenses import (
     MIN_DENSE_INDEX,
@@ -18,6 +20,7 @@ from lanet_vi.logging_config import get_logger
 from lanet_vi.models.config import (
     ColorScheme,
     DecompositionType,
+    KConnectivityType,
     LaNetConfig,
     MeasureType,
 )
@@ -27,6 +30,8 @@ from lanet_vi.visualization.community_viz import assign_node_colors_by_community
 from lanet_vi.visualization.lanet_layout import (
     LayoutParameters,
     RadiusLaw,
+    build_component_tree,
+    clusters_by_index,
     compute_lanet_layout,
 )
 from lanet_vi.visualization.matplotlib_renderer import render_network, select_visible_edges
@@ -79,6 +84,10 @@ class Network:
     communities : Optional[CommunityResult]
         Communities of ``graph`` (None until ``detect_communities()`` runs, which
         ``decompose()`` does when ``config.community.detect_communities`` is set)
+    kconnectivity : Optional[Dict[int, int]]
+        K-connectivity of every node, 0 for the nodes that are not k-connected (None
+        until ``compute_kconnectivity()`` runs, which ``decompose()`` does when
+        ``config.decomposition.kconn`` is set)
     node_names : Dict[int, str]
         Node name mappings
     custom_names : bool
@@ -105,6 +114,7 @@ class Network:
         self.config = config if config else LaNetConfig()
         self.decomposition: DecompositionResult | None = None
         self.communities: CommunityResult | None = None
+        self.kconnectivity: dict[int, int] | None = None
         self.node_names: dict[int, str] = {}
         self.custom_names = False
         self.node_colors: dict[int, tuple[float, float, float]] = {}
@@ -232,6 +242,11 @@ class Network:
         if self.config.community.detect_communities:
             self.detect_communities()
 
+        # The k-connectivity is built on the clusters of this decomposition
+        self.kconnectivity = None
+        if self.config.decomposition.kconn:
+            self.compute_kconnectivity()
+
         return self.decomposition
 
     def detect_communities(self) -> CommunityResult:
@@ -266,6 +281,63 @@ class Network:
             f"modularity {self.communities.modularity:.4f}"
         )
         return self.communities
+
+    def compute_kconnectivity(self) -> dict[int, int]:
+        """
+        Compute the k-connectivity of the shells (the C++ ``-kconn``).
+
+        ``decompose()`` calls this when ``config.decomposition.kconn`` is set; calling it
+        directly computes it regardless of that flag, with ``config.decomposition.kconn_type``
+        (``wide`` or ``strict``). The result is kept in ``kconnectivity`` and, from then
+        on, ``compute_layout()`` paints the nodes that are not k-connected black on white
+        / white on black (squares in the grayscale schemes), as the C++ did.
+
+        The clusters are those of the component tree the layout draws, in the same order
+        (the tree depends on ``config.layout.seed``), so the walk sees what the picture
+        shows.
+
+        Returns
+        -------
+        Dict[int, int]
+            K-connectivity of every node, 0 when not k-connected
+
+        Raises
+        ------
+        ValueError
+            If ``decompose()`` has not run, the decomposition is not the k-cores, or the
+            graph is directed, a multigraph or weighted (the C++ refused those too)
+
+        Examples
+        --------
+        >>> net.decompose()
+        >>> kconn = net.compute_kconnectivity()
+        >>> net.visualize("kconn.png")
+        """
+        decomposition = self.decomposition
+        if decomposition is None:
+            raise ValueError("Must call decompose() before compute_kconnectivity()")
+        if decomposition.decomp_type != "kcores":
+            raise ValueError("The k-connectivity needs the k-core decomposition")
+        if self.graph.is_directed():
+            raise ValueError("The k-connectivity is not available for directed graphs")
+        if self.graph.is_multigraph():
+            raise ValueError("The k-connectivity is not available for multigraphs")
+        if self.config.graph.weighted or decomposition.p_function is not None:
+            raise ValueError("The k-connectivity is not available for weighted graphs")
+
+        start_time = time.time()
+        node_index = decomposition.node_indices
+
+        def edge_index(u: int, v: int) -> int:
+            return min(node_index[u], node_index[v])
+
+        # The same tree, in the same cluster order, as compute_lanet_layout builds
+        rng = np.random.default_rng(self.config.layout.seed)
+        root = build_component_tree(self.graph, node_index, edge_index, rng)
+        kind = KConnectivityType(self.config.decomposition.kconn_type).value
+        self.kconnectivity = compute_kconnectivity(self.graph, clusters_by_index(root), kind)
+        logger.info(f"K-connectivity complete in {time.time() - start_time:.2f}s")
+        return self.kconnectivity
 
     @property
     def colors_by_community(self) -> bool:
@@ -442,6 +514,17 @@ class Network:
                     dense=is_dense,
                 )
 
+        # -kconn (generateNetworkFile): the nodes that are not k-connected are black on
+        # white / white on black whatever colored the others, and blocks instead of
+        # spheres in the grayscale schemes (addCluster); the edges follow the colors
+        square_nodes: set[int] = set()
+        if self.kconnectivity is not None:
+            not_connected = [v for v in self.graph.nodes() if not self.kconnectivity.get(v, 0)]
+            for node in not_connected:
+                node_colors[node] = default_node_color(vis.background)
+            if vis.color_scheme != ColorScheme.COLOR:
+                square_nodes = set(not_connected)
+
         # Node radii in layout units, as the C++ computeHostRatio (scaled by node_size_scale)
         degrees = dict(self.graph.degree())
         max_degree = max(degrees.values()) if degrees else 1
@@ -545,6 +628,7 @@ class Network:
             frame=frame,
             weighted=weighted and not self.graph.is_multigraph(),
             radius_law=radius_law,
+            square_nodes=square_nodes,
         )
 
     def visualize(

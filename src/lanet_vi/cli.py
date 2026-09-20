@@ -19,6 +19,7 @@ from lanet_vi.io.writers import (
     write_dcore_table,
     write_decomposition_csv,
     write_decomposition_json,
+    write_kconnectivity,
 )
 from lanet_vi.logging_config import setup_logging
 from lanet_vi.models.config import (
@@ -29,6 +30,7 @@ from lanet_vi.models.config import (
     DecompositionConfig,
     DecompositionType,
     GraphConfig,
+    KConnectivityType,
     LaNetConfig,
     MeasureType,
     StrengthIntervalMethod,
@@ -49,6 +51,8 @@ _CLI_TO_CONFIG: dict[str, tuple[str, str]] = {
     "maximum_strength": ("decomposition", "maximum_strength"),
     "strength_intervals_file": ("decomposition", "strength_intervals_file"),
     "no_cliques": ("decomposition", "no_cliques"),
+    "kconn": ("decomposition", "kconn"),
+    "kconn_type": ("decomposition", "kconn_type"),
     "background": ("visualization", "background"),
     "color_scheme": ("visualization", "color_scheme"),
     "width": ("visualization", "width"),
@@ -289,6 +293,23 @@ def visualize(
     no_cliques: bool = typer.Option(
         False, "--no-cliques", help="Spread the top core uniformly instead of by cliques"
     ),
+    kconn: bool = typer.Option(
+        False,
+        "--kconn",
+        help="Compute the k-connectivity of the shells and paint the nodes that are not "
+        "k-connected black/white (k-cores of a simple unweighted graph only)",
+    ),
+    kconn_type: KConnectivityType = typer.Option(
+        KConnectivityType.WIDE,
+        "--kconn-type",
+        help="wide: clusters skipped by the walk get another chance at lower indices; "
+        "strict: they are dropped",
+    ),
+    kconn_file: Path | None = typer.Option(
+        None,
+        "--kconn-file",
+        help="Write the k-connectivity of every node (the C++ log/kconn.log); needs --kconn",
+    ),
     color_scale_max: int | None = typer.Option(
         None, "--color-scale-max", help="Max value for color scale"
     ),
@@ -377,6 +398,8 @@ def visualize(
                 "--dcore-table needs --decomp dcores (a directed graph)",
                 param_hint="--dcore-table",
             )
+        if kconn_file is not None and not config.decomposition.kconn:
+            raise typer.BadParameter("--kconn-file needs --kconn", param_hint="--kconn-file")
 
         progress.update(task, description="Loading network...")
         network = Network.from_edge_list(input_file, config)
@@ -420,6 +443,16 @@ def visualize(
                 f"{network.communities.num_communities}, "
                 f"modularity {network.communities.modularity:.3f}"
             )
+        if network.kconnectivity is not None:
+            connected = sum(1 for value in network.kconnectivity.values() if value)
+            kind = KConnectivityType(config.decomposition.kconn_type).value
+            console.print(
+                f"[green]✓[/green] K-connectivity ({kind}): {connected} of "
+                f"{len(network.kconnectivity)} nodes are k-connected"
+            )
+            if kconn_file:
+                write_kconnectivity(network.kconnectivity, result.node_indices, kconn_file)
+                console.print(f"[green]✓[/green] K-connectivity written to {kconn_file}")
 
         # Export decomposition if requested
         if cores_file:

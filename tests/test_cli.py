@@ -842,3 +842,57 @@ def test_dcore_table_flag_writes_the_table_and_needs_dcores(tmp_path: Path):
     # Rich may wrap and color the option names, so check the message text instead
     assert "directed graph" in result.output
     assert not (tmp_path / "no.txt").exists()
+
+
+def test_kconn_flag_reports_and_writes_the_kconnectivity(tmp_path: Path):
+    """--kconn prints the summary; --kconn-file writes the C++ kconn.log table."""
+    edges = tmp_path / "clique.txt"
+    graph = nx.complete_graph(5)
+    graph.add_edge(0, 5)
+    edges.write_text("".join(f"{u} {v}\n" for u, v in graph.edges()))
+    kconn = tmp_path / "kconn.txt"
+    result = runner.invoke(
+        app,
+        [
+            "visualize",
+            "--input",
+            str(edges),
+            "--output",
+            str(tmp_path / "k.png"),
+            "--kconn",
+            "--kconn-type",
+            "strict",
+            "--kconn-file",
+            str(kconn),
+            "--color-scheme",
+            "bw",
+            "--width",
+            "300",
+            "--height",
+            "300",
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "K-connectivity (strict): 6 of 6 nodes are k-connected" in result.output
+    lines = kconn.read_text().splitlines()
+    assert lines[0] == "# node shell_index k_connectivity"
+    assert lines[1] == "5 1 1"
+    assert sorted(lines[2:]) == [f"{v} 4 4" for v in range(5)]
+    assert (tmp_path / "k.png").exists()
+
+
+def test_kconn_usage_errors(small_edge_list: Path, tmp_path: Path):
+    """--kconn-file without --kconn, and --kconn with k-denses or weights, exit with 2."""
+    base = ["visualize", "--input", str(small_edge_list), "--output", str(tmp_path / "x.png")]
+    result = runner.invoke(app, [*base, "--kconn-file", str(tmp_path / "k.txt"), "--quiet"])
+    assert result.exit_code == 2, result.output
+    assert "--kconn-file needs --kconn" in result.output
+
+    result = runner.invoke(app, [*base, "--kconn", "--decomp", "kdenses", "--quiet"])
+    assert result.exit_code == 2, result.output
+    assert "k-core" in result.output
+
+    result = runner.invoke(app, [*base, "--kconn", "--weighted", "--quiet"])
+    assert result.exit_code == 2, result.output
+    assert "weighted" in result.output

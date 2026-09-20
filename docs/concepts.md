@@ -117,6 +117,34 @@ LaNet-vi also supports **k-dense decomposition** (also called m-core):
 - Identifies more cohesive structures than k-cores
 - Useful for community detection and clustering analysis
 
+## K-Connectivity
+
+The k-core index bounds the degree, not the connectivity: a node of the k-core has at
+least k neighbors in it, but k edge-disjoint paths to the rest of the core are not
+guaranteed. Beiró, Alvarez-Hamelin & Busch (2008) derived a lower bound of the edge
+connectivity from the picture itself (`--kconn`, the C++ `-kconn`):
+
+- The nodes of each shell are split into **clusters**, the connected pieces of the shell
+  inside a component (the same clusters the layout draws).
+- The walk starts at the top: the first cluster whose induced subgraph has diameter at
+  most 2 (or, in the `wide` variant, a minimum edge cut of at least its shell index; in
+  `strict`, a minimum degree of at least the index) seeds the **k-connected set** `C`.
+- Going down shell by shell, a cluster `Q` of shell `k` joins `C` with k-connectivity
+  `k` when `Q` with `C` contracted to one vertex has diameter at most 2 and either at
+  least `k` of its nodes touch `C`, or all of them do, or the bound
+  `phi(Q) = sum(min(max(1, |N(v) ∩ NotB2|), |N(v) ∩ C|))` reaches `k`, where `NotB2`
+  are the nodes of `Q` with fewer than two neighbors in `C`.
+- `wide` (the default) keeps the clusters it skipped and tries them again at every
+  lower index, so a node can be k-connected for a `k` below its shell index; `strict`
+  drops them, so its values are either 0 or the shell index.
+
+Nodes that never join `C` are not k-connected; the picture paints them black on white /
+white on black (squares in the grayscale schemes). The values are those the C++ tool
+computed, including its order effects: clusters are examined once per shell in the
+order of the component tree, so a cluster rejected before its neighbors joined `C` may
+stay out (the strict variant finds no seed at all when the top core has diameter 3, as
+in the karate club).
+
 ## Directed Cores (D-Cores)
 
 For directed networks (`--directed --decomp dcores`), LaNet-vi computes **d-cores**

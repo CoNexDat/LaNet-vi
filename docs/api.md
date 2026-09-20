@@ -29,6 +29,8 @@ from the top-level `lanet_vi` package; everything else is imported from its modu
 
 ::: lanet_vi.decomposition.dcores
 
+::: lanet_vi.decomposition.kconnectivity
+
 ## Layout
 
 ::: lanet_vi.visualization.lanet_layout

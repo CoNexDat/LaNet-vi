@@ -19,7 +19,8 @@ What is different by design:
   1000, at 800 × 600). The background is black in both (the C++ help text said white,
   its constructor said black).
 - **Logs.** `log/cores.log`, `log/kconn.log`, `log/gomory_hu*.log` do not exist;
-  `--cores-file` writes the decomposition (CSV or JSON) and `--log-file` the run log.
+  `--cores-file` writes the decomposition (CSV or JSON), `--kconn-file` the
+  k-connectivity table and `--log-file` the run log.
 
 ## Flag translation
 
@@ -64,7 +65,7 @@ What is different by design:
 | `-render povray\|svg` | — | matplotlib; see `--output` |
 | `-java`, `-onlygraphic`, `-nographic`, `-net` | — | not applicable |
 | `-logfile`, `-logstdout` | `--log-file FILE`, `--verbose` | |
-| `-kconn`, `-kconntype strict\|wide` | — | not ported yet (#47) |
+| `-kconn`, `-kconntype strict\|wide` | `--kconn`, `--kconn-type strict\|wide` | same walk; nodes that are not k-connected are black/white (squares in `bw`); the invisible "border color" of the C++ SVG is not drawn; `--kconn-file` replaces `log/kconn.log` |
 | `-connectivity`, `-innerConnectivity` | — | not ported; won't be (#25) |
 
 New in 5.x, without a C++ equivalent: `--config`, `--node-size-scale`,
@@ -74,8 +75,7 @@ New in 5.x, without a C++ equivalent: `--config`, `--node-size-scale`,
 
 ## What is not there
 
-k-connectivity (`-kconn`) is the one C++ feature still planned
-([issue #47](https://github.com/CoNexDat/LaNet-vi/issues/47)). The Gomory-Hu connectivity
+The Gomory-Hu connectivity
 report (`-connectivity`) and the POV-Ray scenes will not be ported
 ([issue #25](https://github.com/CoNexDat/LaNet-vi/issues/25), closed as won't-fix). The community
 detection and random graph generators of the Python package are NetworkX-based
