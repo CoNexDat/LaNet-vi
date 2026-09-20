@@ -141,9 +141,25 @@ compatibility and do nothing yet; their `--help` text names the tracking issue.
 | `--legend-fontsize PT` | auto | Legend font size in points (default: the C++ size, relative to the picture) | |
 | `--min-edge-width`, `--max-edge-width` | | *inert*, deprecated: widths follow the C++ rule | |
 
-**Communities** — `--detect-communities`, `--community-algorithm`, `--community-resolution`,
-`--color-by-community`, `--draw-community-boundaries`: *inert* (#23); community detection is
-available in the Python API (`lanet_vi.community`) but not wired into the CLI rendering.
+**Communities** (a NetworkX-based addition; the C++ tool had none):
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--detect-communities` | off | Detect the communities of the drawn graph (the layer subgraph with `--from-layer`) and show them |
+| `--community-algorithm louvain\|greedy_modularity` | `louvain` | NetworkX's Louvain (seeded by `--seed`) or greedy modularity maximization |
+| `--community-resolution R` | 1.0 | Modularity resolution; higher gives more, smaller communities |
+| `--color-by-community` / `--no-color-by-community` | on | Nodes (and gradient edges) take their community's color instead of the index color; the index color legend is then not drawn. A `--colors-file` takes precedence |
+| `--draw-community-boundaries` / `--no-draw-community-boundaries` | on | A translucent convex hull under each community of three or more nodes |
+
+The YAML `community` section also has `draw_circles` (a translucent circle around each
+community instead of, or besides, the hull), `boundary_alpha` (opacity of the overlays,
+0.2) and `colormap` (`tab20`; a qualitative colormap is used entry by entry, a
+continuous one is sampled evenly). The number of communities and the modularity of
+the partition are printed after the decomposition. Communities are found on the
+undirected version of a directed graph and use the edge weights when present. The
+layout places nodes by index, not by community, so the hulls of a large graph with
+many communities overlap into a haze: there, keep the colors and pass
+`--no-draw-community-boundaries`.
 
 **Logging** — `--verbose`, `-v` (debug output), `--quiet`, `-q` (no console output),
 `--log-file PATH` (also write the log to a file). `lanet-vi generate` and `lanet-vi info`
@@ -294,12 +310,29 @@ write_decomposition_csv(result, "cores.csv")    # node,index
 write_decomposition_json(result, "cores.json")  # indices, components, metadata
 ```
 
-### Community detection (API only)
+### Community detection
 
 `lanet_vi.community` wraps NetworkX's Louvain and greedy-modularity algorithms and
 `lanet_vi.metrics` provides partition comparison metrics (NMI and friends). They are
-NetworkX-based replacements, not ports of the C++ code, and they are not connected to
-the CLI or the renderer yet (#23, #26).
+NetworkX-based replacements, not ports of the C++ research code (#26). `Network`
+detects the communities of the drawn graph when `config.community.detect_communities`
+is set, or on demand:
+
+```python
+from lanet_vi import LaNetConfig, Network
+from lanet_vi.models.config import CommunityConfig
+
+config = LaNetConfig(community=CommunityConfig(algorithm="greedy_modularity"))
+net = Network.from_edge_list("network.txt", config)
+net.decompose()
+communities = net.detect_communities()   # kept in net.communities
+print(communities.num_communities, communities.modularity)
+net.visualize("communities.png")         # community colors and hulls
+```
+
+`compute_layout()` then colors the nodes by community (`color_by_community`) and
+`visualize()` draws the hulls and circles (`draw_boundaries`, `draw_circles`); the
+overlay functions themselves are in `lanet_vi.visualization.community_viz`.
 
 ## Notes on large networks
 

@@ -608,3 +608,167 @@ def test_window_must_be_a_sub_rectangle():
         with pytest.raises(ValidationError, match="window"):
             VisualizationConfig(window=window)
     assert VisualizationConfig(window=(0.1, 0.9, 0.2, 0.8)).window == (0.1, 0.9, 0.2, 0.8)
+
+
+def _community_config(**community: object) -> LaNetConfig:
+    from lanet_vi.models.config import CommunityConfig
+
+    return LaNetConfig(
+        visualization=VisualizationConfig(width=300, height=300),
+        community=CommunityConfig(detect_communities=True, **community),  # type: ignore[arg-type]
+    )
+
+
+def test_communities_color_the_nodes_and_hide_the_color_legend(
+    karate: nx.Graph, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """With detect_communities the nodes (and edges) take community colors, no index legend."""
+    from lanet_vi.visualization import matplotlib_renderer as mr
+    from lanet_vi.visualization.community_viz import get_community_colors
+
+    calls: list[str] = []
+    monkeypatch.setattr(mr, "_draw_degree_scale", lambda *a, **k: calls.append("color"))
+    net = Network(karate, _community_config())
+    net.decompose()
+    assert net.communities is not None
+    assert net.colors_by_community
+    layout = net.compute_layout()
+    net.visualize(tmp_path / "out.png", layout=layout)
+
+    assert calls == []
+    palette = get_community_colors(net.communities.num_communities)
+    for node, color in layout.node_colors.items():
+        assert color == palette[net.communities.node_to_community[node]]
+    # Gradient edges follow the node colors: the half next to u takes v's color, shaded
+    u, v = layout.visible_edges[0]
+    assert layout.edge_colors[(u, v)][0] == tuple(0.75 * c for c in layout.node_colors[v])
+
+
+def test_community_overlays_follow_the_config(
+    karate: nx.Graph, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """draw_boundaries / draw_circles gate the hulls and circles; both go under the edges."""
+    from lanet_vi.visualization import matplotlib_renderer as mr
+
+    calls: list[str] = []
+    monkeypatch.setattr(mr, "draw_community_boundaries", lambda *a, **k: calls.append("hull"))
+    monkeypatch.setattr(mr, "draw_community_circles", lambda *a, **k: calls.append("circle"))
+
+    for boundaries, circles in [(True, False), (False, True), (True, True), (False, False)]:
+        calls.clear()
+        net = Network(
+            karate,
+            _community_config(draw_boundaries=boundaries, draw_circles=circles),
+        )
+        net.decompose()
+        net.visualize(tmp_path / "out.png")
+        assert ("hull" in calls) is boundaries
+        assert ("circle" in calls) is circles
+
+    # Without detection nothing community-related is drawn
+    calls.clear()
+    net = Network(karate, _small_config())
+    net.decompose()
+    net.visualize(tmp_path / "plain.png")
+    assert calls == []
+
+
+def test_community_hulls_are_drawn_under_the_edges(karate: nx.Graph):
+    """The hulls are one collection at zorder 0 with the configured alpha and colormap."""
+    import matplotlib.pyplot as plt
+    from matplotlib.collections import PatchCollection
+
+    from lanet_vi.visualization import matplotlib_renderer as mr
+    from lanet_vi.visualization.community_viz import get_community_colors
+
+    net = Network(karate, _community_config(boundary_alpha=0.3, colormap="Set3"))
+    net.decompose()
+    layout = net.compute_layout()
+    assert net.communities is not None
+    fig = plt.figure()
+    try:
+        ax = fig.add_subplot()
+        mr._draw_communities(ax, layout, net.communities, net.config.community)
+        hulls = [c for c in ax.collections if isinstance(c, PatchCollection)]
+        assert len(hulls) == 1
+        assert hulls[0].get_zorder() == 0
+        assert hulls[0].get_alpha() == 0.3
+        assert len(hulls[0].get_paths()) >= 2
+        palette = get_community_colors(net.communities.num_communities, colormap="Set3")
+        drawn = {tuple(round(float(c), 6) for c in rgba[:3]) for rgba in hulls[0].get_facecolor()}
+        assert drawn <= {tuple(round(c, 6) for c in color) for color in palette}
+    finally:
+        plt.close(fig)
+
+
+def test_color_by_community_off_keeps_the_shell_colors_and_the_legend(
+    karate: nx.Graph, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """color_by_community=False: shell colors, color legend drawn, overlays still drawn."""
+    from lanet_vi.visualization import matplotlib_renderer as mr
+
+    calls: list[str] = []
+    monkeypatch.setattr(mr, "_draw_degree_scale", lambda *a, **k: calls.append("color"))
+    monkeypatch.setattr(mr, "draw_community_boundaries", lambda *a, **k: calls.append("hull"))
+
+    net = Network(karate, _community_config(color_by_community=False))
+    net.decompose()
+    layout = net.compute_layout()
+    net.visualize(tmp_path / "out.png", layout=layout)
+    plain = Network(karate, _small_config())
+    plain.decompose()
+    assert layout.node_colors == plain.compute_layout().node_colors
+    assert calls == ["hull", "color"]
+
+
+def test_colors_file_wins_over_community_colors(karate: nx.Graph, caplog: pytest.LogCaptureFixture):
+    """A colors file names each node's color: it takes precedence, with a warning."""
+    import logging
+
+    net = Network(karate, _community_config())
+    net.node_colors = {0: (0.1, 0.2, 0.3)}
+    net.decompose()
+    assert not net.colors_by_community
+    with caplog.at_level(logging.WARNING, logger="lanet_vi"):
+        layout = net.compute_layout()
+    assert layout.node_colors[0] == (0.1, 0.2, 0.3)
+    assert layout.node_colors[1] == (1.0, 1.0, 1.0)
+    assert "colors file wins" in caplog.text
+
+
+def test_kdense_edges_follow_the_community_colors(karate: nx.Graph):
+    """With community colors the k-dense edges take the endpoint colors, dense shade and width."""
+    from lanet_vi.models.config import DecompositionConfig
+    from lanet_vi.visualization.colors import scale_color
+
+    config = _community_config()
+    config.decomposition = DecompositionConfig(decomp_type=DecompositionType.KDENSES)
+    config.visualization.edges_percent = 1.0
+    net = Network(karate, config)
+    net.decompose()
+    layout = net.compute_layout()
+    plain = LaNetConfig(
+        decomposition=DecompositionConfig(decomp_type=DecompositionType.KDENSES),
+        visualization=VisualizationConfig(width=300, height=300, edges_percent=1.0),
+    )
+    reference = Network(karate, plain)
+    reference.decompose()
+    reference_layout = reference.compute_layout()
+    for u, v in layout.visible_edges:
+        assert layout.edge_colors[(u, v)] == (
+            scale_color(layout.node_colors[v], 0.5),
+            scale_color(layout.node_colors[u], 0.5),
+        )
+        assert layout.edge_widths[(u, v)] == reference_layout.edge_widths[(u, v)]
+
+
+def test_edgeless_graph_renders_with_communities(tmp_path: Path):
+    """--detect-communities on a graph without edges draws a picture, no traceback."""
+    graph = nx.Graph()
+    graph.add_nodes_from([0, 1, 2])
+    net = Network(graph, _community_config())
+    net.decompose()
+    assert net.communities is not None
+    assert net.communities.num_communities == 3
+    net.visualize(tmp_path / "isolated.png")
+    assert (tmp_path / "isolated.png").exists()

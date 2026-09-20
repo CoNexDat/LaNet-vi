@@ -8,11 +8,13 @@ import numpy as np
 import pytest
 from networkx.algorithms import community as nx_community
 
+from lanet_vi.community import detect_communities
 from lanet_vi.community.base import Community, CommunityResult
 from lanet_vi.community.louvain import (
     detect_communities_greedy_modularity,
     detect_communities_louvain,
 )
+from lanet_vi.models.config import CommunityConfig
 from lanet_vi.visualization.community_viz import (
     assign_node_colors_by_community,
     draw_community_boundaries,
@@ -52,6 +54,51 @@ def test_get_community_colors_are_rgb_triples():
         for color in colors:
             assert len(color) == 3
             assert all(0.0 <= c <= 1.0 for c in color)
+    assert get_community_colors(0) == []
+
+
+def test_get_community_colors_are_distinct_and_honor_the_colormap():
+    """Qualitative maps are used entry by entry (no two communities alike); others sampled."""
+    cmap = plt.get_cmap("tab10")
+    # Up to 10 communities: the dark tab10 shades, not tab20's dark/light pairs
+    assert get_community_colors(4) == [tuple(float(c) for c in cmap(i)[:3]) for i in range(4)]
+    for n in (10, 20, 25, 60):
+        assert len(set(get_community_colors(n))) == n
+    # A qualitative map given explicitly is honored entry by entry
+    set3 = plt.get_cmap("Set3")
+    assert get_community_colors(3, colormap="Set3") == [
+        tuple(float(c) for c in set3(i)[:3]) for i in range(3)
+    ]
+    # A continuous map is sampled evenly over its range
+    viridis = plt.get_cmap("viridis")
+    assert get_community_colors(4, colormap="viridis") == [
+        tuple(float(c) for c in viridis(i / 4)[:3]) for i in range(4)
+    ]
+    with pytest.raises(ValueError):
+        get_community_colors(3, colormap="no-such-colormap")
+
+
+def test_detect_communities_dispatches_on_the_config(karate: nx.Graph):
+    """detect_communities runs the configured algorithm with its resolution and the seed."""
+    louvain = detect_communities(karate, CommunityConfig(algorithm="louvain"), seed=1)
+    assert louvain.algorithm == "louvain"
+    assert louvain.node_to_community == detect_communities_louvain(karate, seed=1).node_to_community
+
+    greedy = detect_communities(karate, CommunityConfig(algorithm="greedy_modularity"))
+    assert greedy.algorithm == "greedy_modularity"
+    assert (
+        greedy.node_to_community == detect_communities_greedy_modularity(karate).node_to_community
+    )
+
+    # A higher resolution gives at least as many communities, for both algorithms
+    for algorithm in ("louvain", "greedy_modularity"):
+        low = detect_communities(karate, CommunityConfig(algorithm=algorithm, resolution=0.5))
+        high = detect_communities(karate, CommunityConfig(algorithm=algorithm, resolution=2.0))
+        assert high.num_communities >= low.num_communities
+
+    config = CommunityConfig.model_construct(algorithm="bogus")
+    with pytest.raises(ValueError, match="Unknown community algorithm"):
+        detect_communities(karate, config)
 
 
 def test_louvain_result_is_consistent_and_reproducible(karate: nx.Graph):
@@ -156,22 +203,46 @@ def test_draw_community_boundaries_adds_one_hull_per_large_community():
         plt.close(fig)
 
 
-def test_draw_community_boundaries_skips_degenerate_hulls(caplog: pytest.LogCaptureFixture):
-    """Collinear points have no convex hull: a warning, and nothing is drawn."""
+def test_draw_community_boundaries_handles_degenerate_hulls(caplog: pytest.LogCaptureFixture):
+    """Collinear points get a sliver hull; fewer than three distinct points get none."""
     result = CommunityResult(
         algorithm="test",
-        communities=[Community(id=0, nodes=[0, 1, 2])],
-        node_to_community={0: 0, 1: 0, 2: 0},
+        communities=[Community(id=0, nodes=[0, 1, 2]), Community(id=1, nodes=[3, 4, 5])],
+        node_to_community={0: 0, 1: 0, 2: 0, 3: 1, 4: 1, 5: 1},
     )
-    positions = {0: (0.0, 0.0), 1: (1.0, 1.0), 2: (2.0, 2.0)}
+    # Community 0 is collinear; community 1 has three nodes on two distinct positions
+    # (nodes of one cluster can share a position in the layout)
+    positions = {
+        0: (0.0, 0.0),
+        1: (1.0, 1.0),
+        2: (2.0, 2.0),
+        3: (5.0, 5.0),
+        4: (5.0, 5.0),
+        5: (6.0, 5.0),
+    }
     fig, ax = plt.subplots()
     try:
         with caplog.at_level(logging.WARNING, logger="lanet_vi"):
             draw_community_boundaries(ax, result, positions)
-        assert len(ax.collections) == 0
-        assert "Could not compute convex hull" in caplog.text
+        assert len(ax.collections) == 1
+        assert len(ax.collections[0].get_paths()) == 1  # the collinear community only
+        assert "Could not compute" not in caplog.text
     finally:
         plt.close(fig)
+
+
+def test_community_colors_are_keyed_by_id_not_position():
+    """Community ids need not be 0..n-1: colors follow the id, not the list index."""
+    result = CommunityResult(
+        algorithm="test",
+        communities=[Community(id=7, nodes=[0, 1]), Community(id=3, nodes=[2])],
+        node_to_community={0: 7, 1: 7, 2: 3},
+    )
+    positions = {0: (0.0, 0.0), 1: (1.0, 0.0), 2: (0.0, 1.0)}
+    colors = assign_node_colors_by_community(result, positions)
+    palette = get_community_colors(2)
+    assert colors[0] == colors[1] == palette[0]
+    assert colors[2] == palette[1]
 
 
 def test_draw_community_circles_enclose_their_nodes():
@@ -189,3 +260,16 @@ def test_draw_community_circles_enclose_their_nodes():
                 assert np.linalg.norm(np.array(positions[node]) - center) <= circle.radius + 1e-9
     finally:
         plt.close(fig)
+
+
+def test_edgeless_graphs_have_zero_modularity():
+    """An edgeless graph (isolated nodes) is a valid input: one community per node, Q = 0."""
+    graph = nx.Graph()
+    graph.add_nodes_from([1, 2, 3])
+    for detect in (detect_communities_louvain, detect_communities_greedy_modularity):
+        result = detect(graph)
+        assert set(result.node_to_community) == {1, 2, 3}
+        assert result.modularity == 0.0
+    single = nx.Graph()
+    single.add_node(0)
+    assert detect_communities_louvain(single).num_communities == 1

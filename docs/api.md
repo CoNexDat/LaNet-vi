@@ -60,3 +60,5 @@ from the top-level `lanet_vi` package; everything else is imported from its modu
 ## Community detection
 
 ::: lanet_vi.community
+
+::: lanet_vi.visualization.community_viz
