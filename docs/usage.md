@@ -87,6 +87,7 @@ compatibility and do nothing yet; their `--help` text names the tracking issue.
 | `--output`, `-o PATH` | `output.png` | Picture; the extension selects PNG, PDF or SVG | `-output` |
 | `--config`, `-c PATH` | | YAML settings file (see [Configuration file](#configuration-file)) | |
 | `--cores-file PATH` | | Write the decomposition: `.json` for the full result, anything else as CSV `node,index` | `-coresfile` |
+| `--dcore-table PATH` | | With `--decomp dcores`: write the (k, l)-core table, one `node k l` line per node and out-degree threshold l (see [Concepts](concepts.md#directed-cores-d-cores)) | `dcores_list.txt` of `-directed` (4.0) |
 | `--names PATH` | | Node names, one `node name` per line; turns `--node-labels` on | `-names` |
 | `--colors-file PATH` | | Node colors, `node r g b` per line (values in 0–1); nodes absent from the file are drawn white on black / black on white and the color legend is hidden | `-colorsFile` |
 | `--weighted`, `-w` | off | Third column is an edge weight; cores are computed on strengths | `-weighted` |

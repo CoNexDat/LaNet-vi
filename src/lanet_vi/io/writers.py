@@ -46,6 +46,33 @@ def write_decomposition_csv(
     logger.info(f"Wrote {len(df)} nodes to {output_path}")
 
 
+def write_dcore_table(table: dict[int, dict[int, int]], file_path: Path | str) -> None:
+    """
+    Write a (k, l)-core table as the C++ ``dcores_list.txt``.
+
+    One ``node k l`` line per node and out-degree threshold l, after a ``# node k l``
+    header, sorted by l then node.
+
+    Parameters
+    ----------
+    table : Dict[int, Dict[int, int]]
+        ``{l: {node: k}}`` from ``compute_dcore_table``
+    file_path : Union[Path, str]
+        Output path
+
+    Examples
+    --------
+    >>> write_dcore_table(compute_dcore_table(G), "dcores_list.txt")
+    """
+    file_path = Path(file_path)
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write("# node k l\n")
+        for out_min in sorted(table):
+            for node in sorted(table[out_min]):
+                f.write(f"{node} {table[out_min][node]} {out_min}\n")
+    logger.info(f"Wrote the (k, l)-core table ({len(table)} rows of l) to {file_path}")
+
+
 def write_decomposition_json(
     result: DecompositionResult,
     output_path: Path | str,

@@ -28,7 +28,7 @@ What is different by design:
 | `-input FILE` | `--input FILE` | `.gz` / `.bz2` are read directly |
 | `-output FILE` | `--output FILE` | PNG, PDF or SVG by extension |
 | `-decomp kcores\|kdenses` | `--decomp kcores\|kdenses\|dcores` | |
-| `-directed` (4.0) | `--directed` | needed for `dcores` |
+| `-directed` (4.0) | `--directed --decomp dcores` | the 4.0.0 driver only wrote `dcores_list.txt` for a directed graph and drew nothing; `--dcore-table FILE` writes that table, and the picture is a 5.x addition |
 | `-measure mcore\|kdense` | `--measure mcore\|kdense` | k-dense legend numbering |
 | `-names FILE` | `--names FILE` | labels are drawn when the file is given (`--no-node-labels` to keep them off) |
 | `-names` (no file, or `-names 0`) | `--node-labels` | every node labeled with its number |

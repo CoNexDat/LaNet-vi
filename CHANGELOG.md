@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `--dcore-table FILE` and `compute_dcore_table` (#21): the (k, l)-core table of
+  Giatsidis et al. for a directed graph — for every out-degree threshold l, the largest
+  k with each node in the (k, l)-core — written as the C++ 4.0.0 `dcores_list.txt`
+  (`node k l` lines). That driver computed only this table for a directed graph and drew
+  nothing; it also kept a node in the in-degree peeling after its out-degree had dropped
+  below l, reporting a larger k for such nodes, while this implementation follows the
+  definition (checked against a brute-force table in the tests). The picture and the
+  `(k_in, k_out)` pairs are unchanged.
 - Community detection is wired into the picture (#23): `--detect-communities` (and the
   `community` YAML section) detects the communities of the drawn graph with Louvain or
   greedy modularity (`--community-algorithm`, `--community-resolution`, seeded by
@@ -48,6 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `compute_dcores` counted a self-loop toward both the in- and the out-degree, so a node
+  with only a self-loop was a (1, 1) node; self-loops are ignored now, as the edge-list
+  reader, the k-core path and the (k, l)-core table already do.
 - `get_community_colors` ignored its `colormap` argument and, for 21-40 communities,
   sampled `tab20b` at fractions that repeat colors. A qualitative colormap is now used
   entry by entry (up to 10 communities take the `tab10` shades instead of `tab20`'s
@@ -360,7 +371,9 @@ Complete Python refactor of LaNet-vi 3.x (C++) with all legacy features included
 - **K-core decomposition**: Classic k-core algorithm using NetworkX
 - **K-dense decomposition**: Triangle-based decomposition (m-cores)
 - **D-core decomposition**: Directed graphs with (k_in, k_out) pairs per node
-  - Ported from `legacy/Source/graph_dcores.cpp`
+  - Not a port of `legacy/Source/graph_dcores.cpp`, which computed the per-l (k, l)-core
+    table and drew nothing (see `--dcore-table` under Unreleased); the independent in/out cores
+    are the older `graph_dcores_old.cpp` (#21)
   - CLI: `--directed --decomp dcores`
 - **Spiral/semicircular layout**: Mathematical spiral placement using Newton-Raphson solver
   - Inspired by `legacy/Source/espiral.cpp`, which was never linked into a C++ release;

@@ -158,3 +158,12 @@ def test_write_community_json_with_no_communities(tmp_path: Path):
         "smallest_community": 0,
         "mean_community_size": 0,
     }
+
+
+def test_write_dcore_table_is_the_cpp_dcores_list(tmp_path: Path):
+    """One `node k l` line per node and l after a header, sorted by l then node."""
+    from lanet_vi.io.writers import write_dcore_table
+
+    path = tmp_path / "dcores_list.txt"
+    write_dcore_table({1: {3: 0, 1: 2}, 0: {1: 2, 3: 1}}, path)
+    assert path.read_text().splitlines() == ["# node k l", "1 2 0", "3 1 0", "1 2 1", "3 0 1"]

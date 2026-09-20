@@ -12,9 +12,14 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from lanet_vi.core.network import Network
+from lanet_vi.decomposition.dcores import compute_dcore_table
 from lanet_vi.decomposition.kcores import read_custom_intervals
 from lanet_vi.io.config_loader import read_config_yaml, save_config_to_yaml
-from lanet_vi.io.writers import write_decomposition_csv, write_decomposition_json
+from lanet_vi.io.writers import (
+    write_dcore_table,
+    write_decomposition_csv,
+    write_decomposition_json,
+)
 from lanet_vi.logging_config import setup_logging
 from lanet_vi.models.config import (
     DEPRECATED_ALIASES,
@@ -175,6 +180,12 @@ def visualize(
     ),
     names: Path | None = typer.Option(None, "--names", help="Node names file"),
     colors_file: Path | None = typer.Option(None, "--colors-file", help="Node colors file"),
+    dcore_table: Path | None = typer.Option(
+        None,
+        "--dcore-table",
+        help="Write the (k, l)-core table of a directed graph (the C++ dcores_list.txt); "
+        "needs --decomp dcores",
+    ),
     cores_file: Path | None = typer.Option(
         None, "--cores-file", help="Export decomposition to file"
     ),
@@ -361,6 +372,11 @@ def visualize(
             # when no names file is given)
             config.visualization.show_node_labels = True
         decomp = DecompositionType(config.decomposition.decomp_type)
+        if dcore_table is not None and decomp != DecompositionType.DCORES:
+            raise typer.BadParameter(
+                "--dcore-table needs --decomp dcores (a directed graph)",
+                param_hint="--dcore-table",
+            )
 
         progress.update(task, description="Loading network...")
         network = Network.from_edge_list(input_file, config)
@@ -388,6 +404,16 @@ def visualize(
             f"{result.min_index} - {result.max_index}, "
             f"{len(result.components)} components"
         )
+
+        if dcore_table:
+            # The C++ 4.0.0 -directed output: for every out-degree threshold l, the
+            # largest k with each node in the (k, l)-core
+            progress.update(task, description="Computing the (k, l)-core table...")
+            table = compute_dcore_table(network.graph)
+            write_dcore_table(table, dcore_table)
+            console.print(
+                f"[green]✓[/green] (k, l)-core table ({len(table)} values of l) to {dcore_table}"
+            )
         if network.communities is not None:
             console.print(
                 f"[green]✓[/green] Communities ({network.communities.algorithm}): "

@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import networkx as nx
 import pytest
 from typer.testing import CliRunner
 
@@ -786,3 +787,58 @@ def test_visualize_detect_communities_reports_and_draws_them(
     )
     assert result.exit_code == 0, result.output
     assert "Communities" not in result.output
+
+
+def test_dcore_table_flag_writes_the_table_and_needs_dcores(tmp_path: Path):
+    """--dcore-table writes the (k, l)-core table; with another decomposition it is an error."""
+    from lanet_vi.decomposition.dcores import compute_dcore_table
+
+    edges = tmp_path / "digraph.txt"
+    graph = nx.DiGraph([(0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (4, 2), (1, 3)])
+    edges.write_text("".join(f"{u} {v}\n" for u, v in graph.edges()))
+    table = tmp_path / "dcores_list.txt"
+    result = runner.invoke(
+        app,
+        [
+            "visualize",
+            "--input",
+            str(edges),
+            "--output",
+            str(tmp_path / "d.png"),
+            "--directed",
+            "--decomp",
+            "dcores",
+            "--dcore-table",
+            str(table),
+            "--width",
+            "300",
+            "--height",
+            "300",
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    rows = [tuple(map(int, line.split())) for line in table.read_text().splitlines()[1:]]
+    expected = compute_dcore_table(graph)
+    assert {(node, k, out_min) for node, k, out_min in rows} == {
+        (node, k, out_min) for out_min, row in expected.items() for node, k in row.items()
+    }
+    assert "(k, l)-core table" in result.output
+
+    result = runner.invoke(
+        app,
+        [
+            "visualize",
+            "--input",
+            str(edges),
+            "--output",
+            str(tmp_path / "k.png"),
+            "--dcore-table",
+            str(tmp_path / "no.txt"),
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 2
+    # Rich may wrap and color the option names, so check the message text instead
+    assert "directed graph" in result.output
+    assert not (tmp_path / "no.txt").exists()
