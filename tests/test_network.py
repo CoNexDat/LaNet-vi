@@ -188,3 +188,19 @@ def test_from_layer_above_the_maximum_index_is_an_error(karate: nx.Graph):
     with pytest.raises(ValueError, match="from_layer=99 leaves no node.*maximum index is 4"):
         net.decompose()
     assert net.graph.number_of_nodes() == plain.number_of_nodes()  # untouched
+
+
+def test_decompose_twice_with_from_layer_starts_from_the_input_graph(karate: nx.Graph):
+    """A second decompose() does not shrink the already extracted layer again."""
+    plain = nx.Graph(karate.edges())
+    net = Network(plain, _config(from_layer=3))
+    first = net.decompose(DecompositionType.KCORES)
+    assert net.input_graph is plain
+
+    again = net.decompose(DecompositionType.KCORES)
+    assert again.node_indices == first.node_indices
+
+    dense = net.decompose(DecompositionType.KDENSES)
+    fresh = Network(plain, _config(decomp_type=DecompositionType.KDENSES, from_layer=3))
+    assert dense.node_indices == fresh.decompose().node_indices
+    assert set(net.graph.nodes()) == set(fresh.graph.nodes())

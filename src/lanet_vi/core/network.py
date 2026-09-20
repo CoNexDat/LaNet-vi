@@ -68,6 +68,8 @@ class Network:
     graph : nx.Graph
         The network graph; after ``decompose()`` with ``config.decomposition.from_layer``
         set, the subgraph induced by the nodes of index >= that layer
+    input_graph : nx.Graph
+        The graph as given, which every ``decompose()`` starts from
     config : LaNetConfig
         Configuration settings
     decomposition : Optional[DecompositionResult]
@@ -89,6 +91,9 @@ class Network:
     def __init__(self, graph: nx.Graph, config: LaNetConfig | None = None):
         """Initialize Network with graph and configuration."""
         self.graph = graph
+        # The graph as given; ``graph`` is swapped for a layer subgraph by ``decompose()``
+        # when ``from_layer`` is set, and every ``decompose()`` starts again from this one
+        self.input_graph = graph
         self.config = config if config else LaNetConfig()
         self.decomposition: DecompositionResult | None = None
         self.node_names: dict[int, str] = {}
@@ -184,6 +189,7 @@ class Network:
         logger.info(f"Starting {decomp_type.value} decomposition")
         start_time = time.time()
 
+        self.graph = self.input_graph  # undo the layer extraction of a previous call
         result = self._compute_indices(decomp_type)
 
         from_layer = self.config.decomposition.from_layer
@@ -235,7 +241,11 @@ class Network:
         raise ValueError(f"Unknown decomposition type: {decomp_type}")
 
     def _extract_layer(self, result: DecompositionResult, layer: int) -> nx.Graph:
-        """Subgraph induced by the nodes of index >= ``layer`` (C++ ``getLayer``).
+        """Subgraph induced by the nodes of index >= ``layer``.
+
+        The C++ ``getLayer`` (k-cores) and ``getDenseLayer`` (k-denses); d-cores, which
+        the C++ driver did not combine with ``-fromlayer``, use the same rule on the
+        ring index ``max(k_in, k_out)``.
 
         Raises
         ------
