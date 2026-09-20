@@ -19,7 +19,7 @@ src/lanet_vi/
   core/network.py        Network: load → decompose() → compute_layout() → visualize()
   decomposition/         kcores.py, kdenses.py, dcores.py → DecompositionResult
   visualization/         layout.py (ring layout), matplotlib_renderer.py, colors.py,
-                         spiral_layout.py, spatial_index.py, community_viz.py
+                         community_viz.py
   io/                    readers.py (edge lists, CAIDA), writers.py (CSV/JSON), config_loader.py (YAML)
   models/                config.py (Pydantic settings), graph.py (result/layout models)
   metrics/, community/, generators/   partition metrics, Louvain/greedy, random graphs

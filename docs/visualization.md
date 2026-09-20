@@ -263,7 +263,3 @@ config.visualization.background = "white"
 config.visualization.opacity = 0.6
 ```
 
-## Spiral Layout
-
-`config.layout.use_spiral_layout` and the `spiral_*` settings are accepted but not
-implemented (#18); the placement selected by `coord_distribution` is always used.

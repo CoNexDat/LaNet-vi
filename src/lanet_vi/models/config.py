@@ -313,16 +313,6 @@ class LayoutConfig(BaseModel):
         ``None`` is the C++ auto-adjustment (1 for k-cores, from the top cores for k-dense)
     min_component_size : int
         Minimum component size to visualize (filters small components for performance)
-    use_spatial_hashing : bool
-        Deprecated, ignored: the circle packing follows the C++ algorithm
-    use_spiral_layout : bool
-        Use spiral layout algorithm for node placement
-    spiral_k : float
-        Spiral scaling constant (only used if use_spiral_layout=True)
-    spiral_beta : float
-        Spiral tightness parameter (only used if use_spiral_layout=True)
-    spiral_separation : float
-        Target separation between consecutive nodes in spiral (only used if use_spiral_layout=True)
     """
 
     coord_distribution: CoordDistributionAlgorithm = CoordDistributionAlgorithm.CLASSIC
@@ -332,11 +322,6 @@ class LayoutConfig(BaseModel):
     seed: int = Field(default=0, ge=0)
     ratio_constant: float | None = Field(default=None, gt=0.0)
     min_component_size: int = Field(default=10, ge=1)  # Changed from 1 to 10 (CAIDA default)
-    use_spatial_hashing: bool = Field(default=True)
-    use_spiral_layout: bool = Field(default=False)
-    spiral_k: float = Field(default=10.0, gt=0.0)
-    spiral_beta: float = Field(default=1.5, gt=0.0)
-    spiral_separation: float = Field(default=1.0, gt=0.0)
 
 
 class LaNetConfig(BaseModel):

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- The inert spiral layout and spatial index: `visualization/spiral_layout.py` and
+  `visualization/spatial_index.py` (nothing called them; the C++ `espiral.cpp` was
+  never in a release), the `--use-spiral-layout`, `--spiral-K`, `--spiral-beta` and
+  `--spiral-separation` flags, and the `layout.use_spiral_layout`, `spiral_k`,
+  `spiral_beta`, `spiral_separation` and `use_spatial_hashing` settings. YAML files
+  that still contain those keys keep loading (unknown keys are ignored); the flags
+  are now an error. The placement is selected by `--coord-distribution` alone.
+
 ### Fixed
 
 - `write_graph_json(include_node_attrs=False)` wrote every node with `id: 0` (the id was
