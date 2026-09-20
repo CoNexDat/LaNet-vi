@@ -839,5 +839,6 @@ def test_dcore_table_flag_writes_the_table_and_needs_dcores(tmp_path: Path):
         ],
     )
     assert result.exit_code == 2
-    assert "needs --decomp dcores" in result.output
+    # Rich may wrap and color the option names, so check the message text instead
+    assert "directed graph" in result.output
     assert not (tmp_path / "no.txt").exists()
