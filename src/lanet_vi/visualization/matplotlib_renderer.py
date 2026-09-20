@@ -69,9 +69,9 @@ def render_network(
     output_path : Union[Path, str]
         Output file path (.png, .pdf, .svg)
     node_names : Optional[Dict[int, str]]
-        Node names for the labels (``config.show_node_labels``): with names, the named
-        nodes are labeled; without, every node is labeled with its number (the C++
-        ``-names`` with no file)
+        Node names for the labels (``config.show_node_labels``): a mapping labels the
+        nodes it names (an empty one labels nothing); ``None`` labels every node with
+        its number (the C++ ``-names`` with no file)
     custom_colors : bool
         Nodes were colored from a colors file: the color legend is not drawn (the C++
         hid it with ``-colorsFile``)
@@ -120,7 +120,11 @@ def render_network(
     _draw_nodes(ax, layout, config, px_per_unit)
 
     if config.show_node_labels:
-        labels = node_names if node_names else {node: str(node) for node in layout.node_positions}
+        labels = (
+            {node: str(node) for node in layout.node_positions}
+            if node_names is None
+            else node_names
+        )
         _draw_labels(ax, layout, labels, config, decomposition)
 
     if config.show_color_legend and not custom_colors:

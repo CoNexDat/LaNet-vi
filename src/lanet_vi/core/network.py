@@ -81,6 +81,9 @@ class Network:
         ``decompose()`` does when ``config.community.detect_communities`` is set)
     node_names : Dict[int, str]
         Node name mappings
+    custom_names : bool
+        A names file was loaded (even an empty one): only the nodes it names are
+        labeled, never the node numbers (the C++ ``-names FILE``)
     node_colors : Dict[int, Tuple[float, float, float]]
         Custom node colors
 
@@ -103,6 +106,7 @@ class Network:
         self.decomposition: DecompositionResult | None = None
         self.communities: CommunityResult | None = None
         self.node_names: dict[int, str] = {}
+        self.custom_names = False
         self.node_colors: dict[int, tuple[float, float, float]] = {}
         # A colors file was loaded (even an empty one): nodes take its colors or the
         # default, never the shell color, and the color legend is hidden (C++ -colorsFile)
@@ -155,6 +159,7 @@ class Network:
             Path to node names file
         """
         self.node_names = read_node_names(file_path)
+        self.custom_names = True
 
     def load_node_colors(self, file_path: Path | str) -> None:
         """
@@ -573,7 +578,8 @@ class Network:
             self.decomposition,
             self.config.visualization,
             output_path,
-            self.node_names if self.node_names else None,
+            # None (no names at all) labels every node with its number when labels are on
+            self.node_names if self.custom_names or self.node_names else None,
             custom_colors=self.custom_colors or bool(self.node_colors) or self.colors_by_community,
             measure=MeasureType(self.config.decomposition.measure),
             communities=self.communities,

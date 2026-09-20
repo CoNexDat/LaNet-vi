@@ -808,6 +808,15 @@ def test_labels_without_names_are_the_node_numbers(
     net.visualize(tmp_path / "named.png")
     assert drawn == ["three"]
 
+    # A names file that names nobody (empty, or all comments) labels nobody, not everybody
+    drawn.clear()
+    empty = tmp_path / "names.txt"
+    empty.write_text("# no names\n")
+    net.load_node_names(empty)
+    assert net.node_names == {} and net.custom_names
+    net.visualize(tmp_path / "empty.png")
+    assert drawn == []
+
     # Labels off: nothing, names or not
     drawn.clear()
     config.visualization.show_node_labels = False
