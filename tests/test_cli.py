@@ -1,5 +1,6 @@
 """Smoke tests for the Typer command-line interface."""
 
+import re
 from pathlib import Path
 
 import networkx as nx
@@ -844,6 +845,11 @@ def test_dcore_table_flag_writes_the_table_and_needs_dcores(tmp_path: Path):
     assert not (tmp_path / "no.txt").exists()
 
 
+def _plain(output: str) -> str:
+    """Strip the ANSI escapes Rich emits on a color terminal (CI runs with one)."""
+    return re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", output)
+
+
 def test_kconn_flag_reports_and_writes_the_kconnectivity(tmp_path: Path):
     """--kconn prints the summary; --kconn-file writes the C++ kconn.log table."""
     edges = tmp_path / "clique.txt"
@@ -874,7 +880,7 @@ def test_kconn_flag_reports_and_writes_the_kconnectivity(tmp_path: Path):
         ],
     )
     assert result.exit_code == 0, result.output
-    assert "K-connectivity (strict): 6 of 6 nodes are k-connected" in result.output
+    assert "K-connectivity (strict): 6 of 6 nodes are k-connected" in _plain(result.output)
     lines = kconn.read_text().splitlines()
     assert lines[0] == "# node shell_index k_connectivity"
     assert lines[1] == "5 1 1"
@@ -887,8 +893,7 @@ def test_kconn_usage_errors(small_edge_list: Path, tmp_path: Path):
     base = ["visualize", "--input", str(small_edge_list), "--output", str(tmp_path / "x.png")]
     result = runner.invoke(app, [*base, "--kconn-file", str(tmp_path / "k.txt"), "--quiet"])
     assert result.exit_code == 2, result.output
-    # Rich colors the flag names in a terminal, so match the plain words only
-    assert "needs" in result.output and "kconn" in result.output
+    assert "--kconn-file needs --kconn" in _plain(result.output)
 
     result = runner.invoke(app, [*base, "--kconn", "--decomp", "kdenses", "--quiet"])
     assert result.exit_code == 2, result.output
