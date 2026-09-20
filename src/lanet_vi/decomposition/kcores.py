@@ -18,6 +18,7 @@ def compute_kcores(
     graph: nx.Graph,
     config: DecompositionConfig | None = None,
     weighted: bool | None = None,
+    p_function: list[float] | None = None,
 ) -> DecompositionResult:
     """
     Compute k-core decomposition of a graph.
@@ -34,6 +35,10 @@ def compute_kcores(
     weighted : Optional[bool]
         Force the weighted (strength-based) or unweighted algorithm. ``None``
         (default) picks the weighted one if any edge has a ``weight`` attribute.
+    p_function : Optional[list[float]]
+        Strength interval boundaries to reuse instead of building them from this
+        graph (the C++ ``findCores(&pf)``, used when re-decomposing the subgraph of
+        ``from_layer``). Ignored for unweighted graphs.
 
     Returns
     -------
@@ -91,8 +96,11 @@ def compute_kcores(
         logger.info("Using weighted k-core algorithm (strength-based p-function)")
         # Weighted graph: bin strengths with the p-function, then peel
         strengths = _node_strengths(graph)
-        p_function = _build_p_function(strengths, max_degree, config)
-        logger.debug(f"Built p-function with {len(p_function)} intervals")
+        if p_function is None:
+            p_function = _build_p_function(strengths, max_degree, config)
+            logger.debug(f"Built p-function with {len(p_function)} intervals")
+        else:
+            logger.debug(f"Reusing a p-function with {len(p_function)} intervals")
 
         core_numbers = _compute_weighted_cores(graph, strengths, p_function)
 

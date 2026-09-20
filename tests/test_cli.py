@@ -673,3 +673,52 @@ def test_window_flag_and_yaml_round_trip(small_edge_list: Path, tmp_path: Path):
     data["visualization"]["window"] = [0.25, 0.75, 0.0, 1.0]
     cfg.write_text(yaml.safe_dump(data))
     assert load_config_from_yaml(cfg).visualization.window == (0.25, 0.75, 0.0, 1.0)
+
+
+def test_visualize_from_layer_draws_the_central_subgraph(small_edge_list: Path, tmp_path: Path):
+    """`--from-layer 2` keeps the two triangles (index 2) and drops the pendant node."""
+    output = tmp_path / "core.png"
+    cores = tmp_path / "cores.csv"
+    result = runner.invoke(
+        app,
+        [
+            "visualize",
+            "--input",
+            str(small_edge_list),
+            "--output",
+            str(output),
+            "--cores-file",
+            str(cores),
+            "--from-layer",
+            "2",
+            "--width",
+            "300",
+            "--height",
+            "300",
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert output.exists() and output.stat().st_size > 0
+    rows = [line.split(",") for line in cores.read_text().strip().splitlines()[1:]]
+    assert {int(node) for node, _ in rows} == {0, 1, 2, 3, 4, 5}  # node 6 is the pendant
+    assert {int(index) for _, index in rows} == {2}
+
+
+def test_visualize_from_layer_beyond_max_is_a_usage_error(small_edge_list: Path, tmp_path: Path):
+    """A layer above the maximum index exits with a usage error, not a traceback."""
+    result = runner.invoke(
+        app,
+        [
+            "visualize",
+            "--input",
+            str(small_edge_list),
+            "--output",
+            str(tmp_path / "x.png"),
+            "--from-layer",
+            "9",
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 2, result.output
+    assert "from_layer=9 leaves no node" in result.output

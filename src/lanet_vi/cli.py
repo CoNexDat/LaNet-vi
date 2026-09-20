@@ -240,7 +240,10 @@ def visualize(
         None, "--legend-fontsize", help="Legend font size (auto-scales if not set)"
     ),
     from_layer: int = typer.Option(
-        0, "--from-layer", help="Start from this layer (not implemented yet, #23)"
+        0,
+        "--from-layer",
+        help="Draw only the subgraph induced by the nodes of index >= this layer "
+        "(cores recomputed on it); 0 = the whole graph",
     ),
     granularity: int = typer.Option(
         -1, "--granularity", help="Groups in weighted graphs (-1: maximum degree)"

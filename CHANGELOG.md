@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--from-layer K` (`from_layer` in YAML) works: the C++ `-fromlayer` (#23). The
+  subgraph induced by the nodes of index ≥ K is decomposed again (weighted k-cores reuse
+  the strength intervals of the whole graph) and the layout, the picture, the legends
+  and `--cores-file` describe that subgraph. `compute_kcores` takes a `p_function` to
+  reuse. A layer above the maximum index is a usage error.
+
 ### Removed
 
 - The inert spiral layout and spatial index: `visualization/spiral_layout.py` and

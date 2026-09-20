@@ -66,7 +66,8 @@ class Network:
     Attributes
     ----------
     graph : nx.Graph
-        The network graph
+        The network graph; after ``decompose()`` with ``config.decomposition.from_layer``
+        set, the subgraph induced by the nodes of index >= that layer
     config : LaNetConfig
         Configuration settings
     decomposition : Optional[DecompositionResult]
@@ -183,28 +184,22 @@ class Network:
         logger.info(f"Starting {decomp_type.value} decomposition")
         start_time = time.time()
 
+        result = self._compute_indices(decomp_type)
+
+        from_layer = self.config.decomposition.from_layer
+        if from_layer > 0:
+            # C++ -fromlayer: keep the subgraph induced by the nodes of index >= layer,
+            # decompose it again (the strength intervals of the whole graph are reused,
+            # findCores(&pf)) and run the rest of the pipeline on it.
+            self.graph = self._extract_layer(result, from_layer)
+            result = self._compute_indices(decomp_type, p_function=result.p_function)
+
         if decomp_type == DecompositionType.KCORES:
-            # --weighted forces the strength path; otherwise keep autodetecting so a
-            # Network built from an already-weighted graph behaves as before
-            self.decomposition = compute_kcores(
-                self.graph,
-                self.config.decomposition,
-                weighted=True if self.config.graph.weighted else None,
-            )
-            self.decomposition = find_components_by_shell(self.graph, self.decomposition)
+            self.decomposition = find_components_by_shell(self.graph, result)
         elif decomp_type == DecompositionType.KDENSES:
-            self.decomposition = compute_kdenses(self.graph)
-            self.decomposition = find_components_by_dense(self.graph, self.decomposition)
-        elif decomp_type == DecompositionType.DCORES:
-            if not self.graph.is_directed():
-                raise ValueError(
-                    "D-core decomposition requires a directed graph. "
-                    "Use KCORES for undirected graphs."
-                )
-            self.decomposition = compute_dcores(self.graph, self.config.decomposition)
-            self.decomposition = find_components_by_dcore(self.graph, self.decomposition)
+            self.decomposition = find_components_by_dense(self.graph, result)
         else:
-            raise ValueError(f"Unknown decomposition type: {decomp_type}")
+            self.decomposition = find_components_by_dcore(self.graph, result)
 
         elapsed = time.time() - start_time
         logger.info(
@@ -214,6 +209,51 @@ class Network:
         )
 
         return self.decomposition
+
+    def _compute_indices(
+        self, decomp_type: DecompositionType, p_function: list[float] | None = None
+    ) -> DecompositionResult:
+        """Index every node of ``self.graph`` (no components yet)."""
+        if decomp_type == DecompositionType.KCORES:
+            # --weighted forces the strength path; otherwise keep autodetecting so a
+            # Network built from an already-weighted graph behaves as before
+            return compute_kcores(
+                self.graph,
+                self.config.decomposition,
+                weighted=True if self.config.graph.weighted else None,
+                p_function=p_function,
+            )
+        if decomp_type == DecompositionType.KDENSES:
+            return compute_kdenses(self.graph)
+        if decomp_type == DecompositionType.DCORES:
+            if not self.graph.is_directed():
+                raise ValueError(
+                    "D-core decomposition requires a directed graph. "
+                    "Use KCORES for undirected graphs."
+                )
+            return compute_dcores(self.graph, self.config.decomposition)
+        raise ValueError(f"Unknown decomposition type: {decomp_type}")
+
+    def _extract_layer(self, result: DecompositionResult, layer: int) -> nx.Graph:
+        """Subgraph induced by the nodes of index >= ``layer`` (C++ ``getLayer``).
+
+        Raises
+        ------
+        ValueError
+            If no node reaches ``layer``.
+        """
+        keep = [node for node, index in result.node_indices.items() if index >= layer]
+        if not keep:
+            raise ValueError(
+                f"from_layer={layer} leaves no node: the maximum index is {result.max_index}"
+            )
+        subgraph = self.graph.subgraph(keep).copy()
+        logger.info(
+            f"Extracting the layers from {layer} up: {subgraph.number_of_nodes()} of "
+            f"{self.graph.number_of_nodes()} nodes, {subgraph.number_of_edges()} of "
+            f"{self.graph.number_of_edges()} edges"
+        )
+        return subgraph
 
     def compute_layout(self) -> VisualizationLayout:
         """
