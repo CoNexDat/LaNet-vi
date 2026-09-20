@@ -102,6 +102,9 @@ compatibility and do nothing yet; their `--help` text names the tracking issue.
 | `--measure mcore\|kdense` | `mcore` | Numbering of the k-dense legend: `mcore` labels each k-dense as k − 2 (the m-core) and reads `--color-scale-max` in those units; `kdense` keeps k | `-measure` |
 | `--no-cliques` | off | Spread the top core uniformly instead of by cliques | `-nocliques` |
 | `--from-layer K` | 0 | Zoom into the center: keep the subgraph induced by the nodes of index ≥ K, recompute the decomposition on it and draw that (see [Zooming into the center](#zooming-into-the-center)) | `-fromlayer` |
+| `--kconn` | off | Compute the k-connectivity of the shells and paint the nodes that are not k-connected black on white / white on black, squares in `bw` and `bwi` (see [K-connectivity](#k-connectivity)); k-cores of a simple unweighted graph only | `-kconn` |
+| `--kconn-type wide\|strict` | `wide` | `wide` gives the clusters skipped by the walk another chance at every lower index; `strict` drops them | `-kconntype` |
+| `--kconn-file PATH` | | With `--kconn`: write `node shell_index k_connectivity` lines (0 = not k-connected) | `log/kconn.log` |
 | `--granularity N` | max degree | Weighted graphs: number of strength intervals | `-granularity` |
 | `--strength-intervals equalIntervalSize\|equalNodesPerInterval\|equalLogIntervalSize\|custom` | `equalIntervalSize` | Weighted graphs: how the intervals are built ([concepts.md](concepts.md#weighted-k-cores)) | `-strengthsIntervals` |
 | `--maximum-strength S` | data | Weighted graphs: top of the strength scale, to compare pictures of different networks | `-maximumStrength` |
@@ -222,6 +225,22 @@ file). Details:
   hold edges that were not in the K-dense; some nodes may end up below `K`.
 - For d-cores `K` applies to `max(k_in, k_out)`, the index the rings are drawn by.
 - `K` above the maximum index is a usage error.
+
+### K-connectivity
+
+`--kconn` runs the k-connectivity analysis of Beiró, Alvarez-Hamelin & Busch (NJP 2008)
+on the k-core picture: a walk from the top shell down that grows a *k-connected set*
+cluster by cluster (see [Concepts](concepts.md#k-connectivity)). Nodes that never join
+it are painted black on a white background, white on a black one, and drawn as squares
+in the grayscale schemes, exactly as the C++ did; the color legend is unchanged.
+`--kconn-file` writes every node's value (the C++ `log/kconn.log`); `--kconn-type strict`
+selects the stricter variant. Both need the k-core decomposition of an undirected,
+unweighted, simple graph. In Python, `Network.compute_kconnectivity()` returns the
+mapping and `Network.kconnectivity` keeps it for `compute_layout()`.
+
+```bash
+lanet-vi visualize --input network.txt --output kconn.png --kconn --kconn-file kconn.txt
+```
 
 ### Input format
 

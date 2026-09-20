@@ -10,6 +10,7 @@ from lanet_vi.visualization.lanet_layout import (
     LayoutParameters,
     build_component_tree,
     circular_average,
+    component_tree,
     compute_lanet_layout,
     node_radius,
     place_in_circular_sector,
@@ -119,6 +120,18 @@ def test_layout_is_deterministic_per_seed():
     other = compute_lanet_layout(G, core, LayoutParameters(), seed=8).positions
     assert first == again
     assert first != other
+
+
+def test_a_prebuilt_tree_gives_the_same_picture():
+    """A tree from component_tree() handed as ``tree`` places the nodes as the seed does."""
+    G = nx.Graph(nx.karate_club_graph().edges())
+    core = nx.core_number(G)
+    for params in (LayoutParameters(), LayoutParameters(coord_distribution="pow")):
+        direct = compute_lanet_layout(G, core, params, seed=7).positions
+        tree = component_tree(G, core, seed=7)
+        assert isinstance(tree[1], np.random.Generator)
+        via_tree = compute_lanet_layout(G, core, params, seed=7, tree=tree).positions
+        assert via_tree == direct
 
 
 def test_top_core_cliques_share_the_disc():

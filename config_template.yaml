@@ -54,6 +54,13 @@ decomposition:
   # Whether to omit cliques in central core
   no_cliques: false
 
+  # Compute the k-connectivity of the shells (k-cores of a simple unweighted graph
+  # only); nodes that are not k-connected are drawn black on white / white on black
+  kconn: false
+
+  # "wide" (clusters skipped by the walk get another chance at lower indices) or "strict"
+  kconn_type: "wide"
+
 # ==============================================================================
 # VISUALIZATION CONFIGURATION
 # ==============================================================================

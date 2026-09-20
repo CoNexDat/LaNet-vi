@@ -15,7 +15,7 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-from matplotlib.collections import EllipseCollection, LineCollection
+from matplotlib.collections import EllipseCollection, LineCollection, PolyCollection
 
 from lanet_vi.community.base import CommunityResult
 from lanet_vi.decomposition.kdenses import MIN_DENSE_INDEX
@@ -273,13 +273,35 @@ def _draw_nodes(
     def radius_of(node: int) -> float:
         return max(layout.node_sizes.get(node, 0.0), min_radius)
 
+    # Squares (the C++ addBlock: the nodes that are not k-connected in the grayscale
+    # schemes), side 2r like the C++ rect, drawn with the circles' z-order
+    squares = [node for node in layout.node_positions if node in layout.square_nodes]
+    if squares:
+        vertices = []
+        for node in squares:
+            x, y = layout.node_positions[node]
+            r = radius_of(node)
+            vertices.append([(x - r, y - r), (x + r, y - r), (x + r, y + r), (x - r, y + r)])
+        ax.add_collection(
+            PolyCollection(
+                vertices,
+                facecolors=[layout.node_colors.get(node, (0.7, 0.7, 0.7)) for node in squares],
+                edgecolors=edge_color,
+                linewidths=0.3,
+                zorder=2,
+            )
+        )
+    circles = {
+        node: pos for node, pos in layout.node_positions.items() if node not in layout.square_nodes
+    }
+
     # For large graphs, one collection instead of individual patches (much faster).
     # EllipseCollection with units="xy" keeps the radii in data units, like the patches.
-    if len(layout.node_positions) > 1000:
+    if len(circles) > 1000:
         offsets = []
         colors = []
         diameters = []
-        for node, (x, y) in layout.node_positions.items():
+        for node, (x, y) in circles.items():
             offsets.append((x, y))
             colors.append(layout.node_colors.get(node, (0.7, 0.7, 0.7)))
             diameters.append(2.0 * radius_of(node))
@@ -298,7 +320,7 @@ def _draw_nodes(
         ax.add_collection(collection)
     else:
         # For small graphs, use individual patches for better quality
-        for node, (x, y) in layout.node_positions.items():
+        for node, (x, y) in circles.items():
             color = layout.node_colors.get(node, (0.7, 0.7, 0.7))
 
             circle = mpatches.Circle(

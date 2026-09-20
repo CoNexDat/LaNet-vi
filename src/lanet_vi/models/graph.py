@@ -164,6 +164,9 @@ class VisualizationLayout(BaseModel):
     radius_law : RadiusLaw, optional
         The node radius law of the picture (mode, ``ratioConstant``), so the degree legend
         draws its samples with the radii the nodes have
+    square_nodes : Set[int]
+        Nodes drawn as squares instead of circles: the nodes that are not k-connected in
+        the grayscale schemes (the C++ ``addBlock``)
     """
 
     node_positions: dict[int, tuple[float, float]]
@@ -179,6 +182,7 @@ class VisualizationLayout(BaseModel):
     frame: float = Field(default=0.0, ge=0.0)
     weighted: bool = False
     radius_law: RadiusLaw | None = None
+    square_nodes: set[int] = Field(default_factory=set)
 
     model_config = ConfigDict(frozen=False, arbitrary_types_allowed=True)
 

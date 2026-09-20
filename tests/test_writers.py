@@ -167,3 +167,17 @@ def test_write_dcore_table_is_the_cpp_dcores_list(tmp_path: Path):
     path = tmp_path / "dcores_list.txt"
     write_dcore_table({1: {3: 0, 1: 2}, 0: {1: 2, 3: 1}}, path)
     assert path.read_text().splitlines() == ["# node k l", "1 2 0", "3 1 0", "1 2 1", "3 0 1"]
+
+
+def test_write_kconnectivity_lists_nodes_by_shell(tmp_path: Path):
+    """The k-connectivity file has a header and one line per node, by shell then node."""
+    from lanet_vi.io.writers import write_kconnectivity
+
+    path = tmp_path / "kconn.txt"
+    write_kconnectivity({3: 0, 1: 2, 2: 2}, {1: 2, 2: 3, 3: 1}, path)
+    assert path.read_text().splitlines() == [
+        "# node shell_index k_connectivity",
+        "3 1 0",
+        "1 2 2",
+        "2 3 2",
+    ]

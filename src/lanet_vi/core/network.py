@@ -1,12 +1,17 @@
 """Main Network class for LaNet-vi."""
 
+import copy
 import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import networkx as nx
+import numpy as np
 
 from lanet_vi.community import CommunityResult, detect_communities
 from lanet_vi.decomposition.dcores import compute_dcores, find_components_by_dcore
+from lanet_vi.decomposition.kconnectivity import compute_kconnectivity
 from lanet_vi.decomposition.kcores import compute_kcores, find_components_by_shell
 from lanet_vi.decomposition.kdenses import (
     MIN_DENSE_INDEX,
@@ -18,6 +23,7 @@ from lanet_vi.logging_config import get_logger
 from lanet_vi.models.config import (
     ColorScheme,
     DecompositionType,
+    KConnectivityType,
     LaNetConfig,
     MeasureType,
 )
@@ -25,8 +31,11 @@ from lanet_vi.models.graph import Component, DecompositionResult, VisualizationL
 from lanet_vi.visualization.colors import compute_shell_color, default_node_color, scale_color
 from lanet_vi.visualization.community_viz import assign_node_colors_by_community
 from lanet_vi.visualization.lanet_layout import (
+    LayoutComponent,
     LayoutParameters,
     RadiusLaw,
+    clusters_by_index,
+    component_tree,
     compute_lanet_layout,
 )
 from lanet_vi.visualization.matplotlib_renderer import render_network, select_visible_edges
@@ -79,6 +88,10 @@ class Network:
     communities : Optional[CommunityResult]
         Communities of ``graph`` (None until ``detect_communities()`` runs, which
         ``decompose()`` does when ``config.community.detect_communities`` is set)
+    kconnectivity : Optional[Dict[int, int]]
+        K-connectivity of every node, 0 for the nodes that are not k-connected (None
+        until ``compute_kconnectivity()`` runs, which ``decompose()`` does when
+        ``config.decomposition.kconn`` is set)
     node_names : Dict[int, str]
         Node name mappings
     custom_names : bool
@@ -105,6 +118,11 @@ class Network:
         self.config = config if config else LaNetConfig()
         self.decomposition: DecompositionResult | None = None
         self.communities: CommunityResult | None = None
+        self.kconnectivity: dict[int, int] | None = None
+        # The component tree of the current decomposition and seed (the k-connectivity
+        # and the layout share it): (decomposition, seed, root, generator state)
+        self._tree_cache: tuple[DecompositionResult, int, LayoutComponent, dict[str, Any]] | None
+        self._tree_cache = None
         self.node_names: dict[int, str] = {}
         self.custom_names = False
         self.node_colors: dict[int, tuple[float, float, float]] = {}
@@ -232,6 +250,11 @@ class Network:
         if self.config.community.detect_communities:
             self.detect_communities()
 
+        # The k-connectivity is built on the clusters of this decomposition
+        self.kconnectivity = None
+        if self.config.decomposition.kconn:
+            self.compute_kconnectivity()
+
         return self.decomposition
 
     def detect_communities(self) -> CommunityResult:
@@ -266,6 +289,95 @@ class Network:
             f"modularity {self.communities.modularity:.4f}"
         )
         return self.communities
+
+    def compute_kconnectivity(self) -> dict[int, int]:
+        """
+        Compute the k-connectivity of the shells (the C++ ``-kconn``).
+
+        ``decompose()`` calls this when ``config.decomposition.kconn`` is set; calling it
+        directly computes it regardless of that flag, with ``config.decomposition.kconn_type``
+        (``wide`` or ``strict``). The result is kept in ``kconnectivity`` and, from then
+        on, ``compute_layout()`` paints the nodes that are not k-connected black on white
+        / white on black (squares in the grayscale schemes), as the C++ did.
+
+        The clusters are those of the component tree the layout draws, in the same order
+        (the tree depends on ``config.layout.seed``), so the walk sees what the picture
+        shows.
+
+        Returns
+        -------
+        Dict[int, int]
+            K-connectivity of every node, 0 when not k-connected
+
+        Raises
+        ------
+        ValueError
+            If ``decompose()`` has not run, the decomposition is not the k-cores, or the
+            graph is directed, a multigraph or weighted (the C++ refused those too)
+
+        Examples
+        --------
+        >>> net.decompose()
+        >>> kconn = net.compute_kconnectivity()
+        >>> net.visualize("kconn.png")
+        """
+        decomposition = self.decomposition
+        if decomposition is None:
+            raise ValueError("Must call decompose() before compute_kconnectivity()")
+        if decomposition.decomp_type != "kcores":
+            raise ValueError("The k-connectivity needs the k-core decomposition")
+        if self.graph.is_directed():
+            raise ValueError("The k-connectivity is not available for directed graphs")
+        if self.graph.is_multigraph():
+            raise ValueError("The k-connectivity is not available for multigraphs")
+        if self.config.graph.weighted or decomposition.p_function is not None:
+            raise ValueError("The k-connectivity is not available for weighted graphs")
+
+        start_time = time.time()
+        # The same tree, in the same cluster order, as the layout draws
+        root, _ = self._component_tree(self._edge_index())
+        kind = KConnectivityType(self.config.decomposition.kconn_type).value
+        self.kconnectivity = compute_kconnectivity(self.graph, clusters_by_index(root), kind)
+        logger.info(f"K-connectivity complete in {time.time() - start_time:.2f}s")
+        return self.kconnectivity
+
+    def _edge_index(self) -> Callable[[int, int], int]:
+        """Return the edge index of the component tree.
+
+        For k-dense the edge's own index (metadata), else the minimum of the endpoints'
+        indices.
+        """
+        assert self.decomposition is not None
+        edge_indices = self.decomposition.metadata.get("edge_indices")
+        node_index = self.decomposition.node_indices
+
+        def edge_index(u: int, v: int) -> int:
+            if edge_indices is not None:
+                return int(edge_indices.get((u, v) if u < v else (v, u), MIN_DENSE_INDEX))
+            return min(node_index[u], node_index[v])
+
+        return edge_index
+
+    def _component_tree(
+        self, edge_index: Callable[[int, int], int]
+    ) -> tuple[LayoutComponent, np.random.Generator]:
+        """Return the component tree of the current decomposition and seed, built once.
+
+        Returns a fresh copy of the root (the placement modifies it in place) and a
+        generator in the state the tree left it, as ``component_tree`` gives them.
+        """
+        assert self.decomposition is not None
+        seed = self.config.layout.seed
+        cache = self._tree_cache
+        if cache is None or cache[0] is not self.decomposition or cache[1] != seed:
+            root, built = component_tree(
+                self.graph, self.decomposition.node_indices, edge_index, seed
+            )
+            cache = (self.decomposition, seed, root, dict(built.bit_generator.state))
+            self._tree_cache = cache
+        rng = np.random.default_rng(seed)
+        rng.bit_generator.state = cache[3]
+        return copy.deepcopy(cache[2]), rng
 
     @property
     def colors_by_community(self) -> bool:
@@ -355,14 +467,8 @@ class Network:
         # present: --weighted, or weights autodetected) or the graph is declared weighted
         weighted = bool(self.config.graph.weighted) or decomposition.p_function is not None
 
-        # Edge index: for k-dense the edge's own index (metadata), else min of the endpoints
-        edge_indices = decomposition.metadata.get("edge_indices")
         node_index = decomposition.node_indices
-
-        def edge_index(u: int, v: int) -> int:
-            if edge_indices is not None:
-                return int(edge_indices.get((u, v) if u < v else (v, u), MIN_DENSE_INDEX))
-            return min(node_index[u], node_index[v])
+        edge_index = self._edge_index()
 
         is_dense = decomposition.decomp_type == "kdenses"
         lay = self.config.layout
@@ -380,7 +486,12 @@ class Network:
             ratio_constant=lay.ratio_constant,
         )
         lanet = compute_lanet_layout(
-            self.graph, node_index, params, seed=self.config.layout.seed, edge_index=edge_index
+            self.graph,
+            node_index,
+            params,
+            seed=self.config.layout.seed,
+            edge_index=edge_index,
+            tree=self._component_tree(edge_index),
         )
         node_positions = lanet.positions
 
@@ -441,6 +552,17 @@ class Network:
                     background=vis.background,
                     dense=is_dense,
                 )
+
+        # -kconn (generateNetworkFile): the nodes that are not k-connected are black on
+        # white / white on black whatever colored the others, and blocks instead of
+        # spheres in the grayscale schemes (addCluster); the edges follow the colors
+        square_nodes: set[int] = set()
+        if self.kconnectivity is not None:
+            not_connected = [v for v in self.graph.nodes() if not self.kconnectivity.get(v, 0)]
+            for node in not_connected:
+                node_colors[node] = default_node_color(vis.background)
+            if vis.color_scheme != ColorScheme.COLOR:
+                square_nodes = set(not_connected)
 
         # Node radii in layout units, as the C++ computeHostRatio (scaled by node_size_scale)
         degrees = dict(self.graph.degree())
@@ -545,6 +667,7 @@ class Network:
             frame=frame,
             weighted=weighted and not self.graph.is_multigraph(),
             radius_law=radius_law,
+            square_nodes=square_nodes,
         )
 
     def visualize(

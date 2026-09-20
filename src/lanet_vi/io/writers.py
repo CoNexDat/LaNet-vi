@@ -73,6 +73,37 @@ def write_dcore_table(table: dict[int, dict[int, int]], file_path: Path | str) -
     logger.info(f"Wrote the (k, l)-core table ({len(table)} rows of l) to {file_path}")
 
 
+def write_kconnectivity(
+    kconnectivity: dict[int, int], node_indices: dict[int, int], file_path: Path | str
+) -> None:
+    """
+    Write the k-connectivity of every node as the C++ ``log/kconn.log``.
+
+    One ``node shell_index k_connectivity`` line per node after a
+    ``# node shell_index k_connectivity`` header, sorted by shell index then node, as
+    the C++ walked its cores list; 0 marks a node that is not k-connected.
+
+    Parameters
+    ----------
+    kconnectivity : Dict[int, int]
+        ``{node: k_connectivity}`` from ``compute_kconnectivity``
+    node_indices : Dict[int, int]
+        Shell index of every node (``DecompositionResult.node_indices``)
+    file_path : Union[Path, str]
+        Output path
+
+    Examples
+    --------
+    >>> write_kconnectivity(net.kconnectivity, net.decomposition.node_indices, "kconn.txt")
+    """
+    file_path = Path(file_path)
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write("# node shell_index k_connectivity\n")
+        for node in sorted(kconnectivity, key=lambda v: (node_indices.get(v, 0), v)):
+            f.write(f"{node} {node_indices.get(node, 0)} {kconnectivity[node]}\n")
+    logger.info(f"Wrote the k-connectivity of {len(kconnectivity)} nodes to {file_path}")
+
+
 def write_decomposition_json(
     result: DecompositionResult,
     output_path: Path | str,

@@ -283,6 +283,27 @@ def build_component_tree(
     return root
 
 
+def clusters_by_index(root: LayoutComponent) -> dict[int, list[list[int]]]:
+    """Collect the clusters of every index in tree-walk order (``buildClustersMap``).
+
+    Parameters
+    ----------
+    root : LayoutComponent
+        The component tree of :func:`build_component_tree`
+
+    Returns
+    -------
+    Dict[int, List[List[int]]]
+        Clusters keyed by their component's index, parents' clusters before children's;
+        indices without clusters are absent
+    """
+    out: dict[int, list[list[int]]] = {}
+    for comp in root.walk():
+        if comp.clusters:
+            out.setdefault(comp.index, []).extend(comp.clusters)
+    return out
+
+
 def _greedy_cliques(cluster: list[int], graph: nx.Graph) -> list[list[int]]:
     """Partition a top-core cluster into cliques (``Clique::buildCliques``).
 
@@ -661,12 +682,65 @@ class _Placer:
             hosts_sum += len(clique)
 
 
+def _simple_undirected(graph: nx.Graph) -> nx.Graph:
+    """Return the graph the placement walks: undirected, parallel edges merged."""
+    if graph.is_directed():
+        graph = graph.to_undirected(as_view=True)
+    if graph.is_multigraph():
+        graph = _merge_parallel_edges(graph)
+    return graph
+
+
+def _kcore_edge_index(node_index: dict[int, int]) -> Callable[[int, int], int]:
+    """Return the default edge index: the minimum of the endpoints' indices (k-cores)."""
+
+    def edge_index(u: int, v: int) -> int:
+        return min(node_index[u], node_index[v])
+
+    return edge_index
+
+
+def component_tree(
+    graph: nx.Graph,
+    node_index: dict[int, int],
+    edge_index: Callable[[int, int], int] | None = None,
+    seed: int = 0,
+) -> tuple[LayoutComponent, np.random.Generator]:
+    """
+    Build the component tree exactly as :func:`compute_lanet_layout` starts.
+
+    Parameters
+    ----------
+    graph : nx.Graph
+        The network
+    node_index : Dict[int, int]
+        Shell / dense index of every node
+    edge_index : Callable[[int, int], int], optional
+        Index of an edge; defaults to the minimum of its endpoints' indices (k-cores)
+    seed : int
+        Seed of the random generator (the C++ ``-seed``)
+
+    Returns
+    -------
+    Tuple[LayoutComponent, numpy.random.Generator]
+        The root and the generator after the tree's draws, to hand both to
+        :func:`compute_lanet_layout` as ``tree`` so the placement (which keeps drawing
+        from it) is the one the seed gives
+    """
+    graph = _simple_undirected(graph)
+    if edge_index is None:
+        edge_index = _kcore_edge_index(node_index)
+    rng = np.random.default_rng(seed)
+    return build_component_tree(graph, node_index, edge_index, rng), rng
+
+
 def compute_lanet_layout(
     graph: nx.Graph,
     node_index: dict[int, int],
     params: LayoutParameters,
     seed: int = 0,
     edge_index: Callable[[int, int], int] | None = None,
+    tree: tuple[LayoutComponent, np.random.Generator] | None = None,
 ) -> LanetLayout:
     """
     Place every node with the LaNet-vi algorithm.
@@ -683,6 +757,10 @@ def compute_lanet_layout(
         Seed of the random generator (the C++ ``-seed``)
     edge_index : Callable[[int, int], int], optional
         Index of an edge; defaults to the minimum of its endpoints' indices (k-cores)
+    tree : Tuple[LayoutComponent, numpy.random.Generator], optional
+        A tree already built by :func:`component_tree` for this graph, indices and
+        seed, with its generator; the placement continues from it instead of building
+        the tree again. The root is modified in place.
 
     Returns
     -------
@@ -691,17 +769,15 @@ def compute_lanet_layout(
     """
     # Degrees as the C++ getDegree(): neighbors with multiplicity (in + out when directed)
     degrees = dict(graph.degree())
-    if graph.is_directed():
-        graph = graph.to_undirected(as_view=True)
-    if graph.is_multigraph():
-        graph = _merge_parallel_edges(graph)
+    graph = _simple_undirected(graph)
     if edge_index is None:
+        edge_index = _kcore_edge_index(node_index)
 
-        def edge_index(u: int, v: int) -> int:
-            return min(node_index[u], node_index[v])
-
-    rng = np.random.default_rng(seed)
-    root = build_component_tree(graph, node_index, edge_index, rng)
+    if tree is None:
+        rng = np.random.default_rng(seed)
+        root = build_component_tree(graph, node_index, edge_index, rng)
+    else:
+        root, rng = tree
     root.u = params.u
     placer = _Placer(graph, node_index, params, rng, degrees, seed=seed)
     if graph.number_of_nodes():
