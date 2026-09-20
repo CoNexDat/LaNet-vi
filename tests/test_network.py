@@ -363,3 +363,36 @@ def test_kconnectivity_refuses_what_the_cpp_refused(karate: nx.Graph):
                 decomposition=DecompositionConfig(kconn=True),
             )
     assert DecompositionConfig(kconn=True).kconn_type == KConnectivityType.WIDE
+
+
+def test_the_component_tree_is_shared_and_the_picture_does_not_change(karate: nx.Graph):
+    """The k-connectivity reuses the layout's tree and the positions never change.
+
+    Identical with and without it, across repeated layouts, and rebuilt after a new
+    decomposition or seed.
+    """
+    from lanet_vi.visualization.lanet_layout import LayoutParameters, compute_lanet_layout
+
+    plain = nx.Graph(karate.edges())
+    net = Network(plain, _config())
+    net.decompose()
+    reference = compute_lanet_layout(
+        plain, net.decomposition.node_indices, LayoutParameters(), seed=net.config.layout.seed
+    ).positions
+    first = net.compute_layout().node_positions
+    assert first == reference
+    assert net._tree_cache is not None
+    cached = net._tree_cache
+
+    net.config.decomposition.kconn = True
+    net.decompose()
+    assert net._tree_cache is not cached  # a new decomposition, a new tree
+    cached = net._tree_cache
+    assert net.compute_layout().node_positions == reference
+    assert net.compute_layout().node_positions == reference  # the cached root is copied
+    assert net._tree_cache is cached
+
+    net.config.layout.seed = 3
+    other = net.compute_layout().node_positions
+    assert other != reference
+    assert net._tree_cache[1] == 3

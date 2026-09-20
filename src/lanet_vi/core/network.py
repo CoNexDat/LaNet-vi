@@ -1,7 +1,10 @@
 """Main Network class for LaNet-vi."""
 
+import copy
 import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import networkx as nx
 import numpy as np
@@ -28,10 +31,11 @@ from lanet_vi.models.graph import Component, DecompositionResult, VisualizationL
 from lanet_vi.visualization.colors import compute_shell_color, default_node_color, scale_color
 from lanet_vi.visualization.community_viz import assign_node_colors_by_community
 from lanet_vi.visualization.lanet_layout import (
+    LayoutComponent,
     LayoutParameters,
     RadiusLaw,
-    build_component_tree,
     clusters_by_index,
+    component_tree,
     compute_lanet_layout,
 )
 from lanet_vi.visualization.matplotlib_renderer import render_network, select_visible_edges
@@ -115,6 +119,10 @@ class Network:
         self.decomposition: DecompositionResult | None = None
         self.communities: CommunityResult | None = None
         self.kconnectivity: dict[int, int] | None = None
+        # The component tree of the current decomposition and seed (the k-connectivity
+        # and the layout share it): (decomposition, seed, root, generator state)
+        self._tree_cache: tuple[DecompositionResult, int, LayoutComponent, dict[str, Any]] | None
+        self._tree_cache = None
         self.node_names: dict[int, str] = {}
         self.custom_names = False
         self.node_colors: dict[int, tuple[float, float, float]] = {}
@@ -326,18 +334,50 @@ class Network:
             raise ValueError("The k-connectivity is not available for weighted graphs")
 
         start_time = time.time()
-        node_index = decomposition.node_indices
-
-        def edge_index(u: int, v: int) -> int:
-            return min(node_index[u], node_index[v])
-
-        # The same tree, in the same cluster order, as compute_lanet_layout builds
-        rng = np.random.default_rng(self.config.layout.seed)
-        root = build_component_tree(self.graph, node_index, edge_index, rng)
+        # The same tree, in the same cluster order, as the layout draws
+        root, _ = self._component_tree(self._edge_index())
         kind = KConnectivityType(self.config.decomposition.kconn_type).value
         self.kconnectivity = compute_kconnectivity(self.graph, clusters_by_index(root), kind)
         logger.info(f"K-connectivity complete in {time.time() - start_time:.2f}s")
         return self.kconnectivity
+
+    def _edge_index(self) -> Callable[[int, int], int]:
+        """Return the edge index of the component tree.
+
+        For k-dense the edge's own index (metadata), else the minimum of the endpoints'
+        indices.
+        """
+        assert self.decomposition is not None
+        edge_indices = self.decomposition.metadata.get("edge_indices")
+        node_index = self.decomposition.node_indices
+
+        def edge_index(u: int, v: int) -> int:
+            if edge_indices is not None:
+                return int(edge_indices.get((u, v) if u < v else (v, u), MIN_DENSE_INDEX))
+            return min(node_index[u], node_index[v])
+
+        return edge_index
+
+    def _component_tree(
+        self, edge_index: Callable[[int, int], int]
+    ) -> tuple[LayoutComponent, np.random.Generator]:
+        """Return the component tree of the current decomposition and seed, built once.
+
+        Returns a fresh copy of the root (the placement modifies it in place) and a
+        generator in the state the tree left it, as ``component_tree`` gives them.
+        """
+        assert self.decomposition is not None
+        seed = self.config.layout.seed
+        cache = self._tree_cache
+        if cache is None or cache[0] is not self.decomposition or cache[1] != seed:
+            root, built = component_tree(
+                self.graph, self.decomposition.node_indices, edge_index, seed
+            )
+            cache = (self.decomposition, seed, root, dict(built.bit_generator.state))
+            self._tree_cache = cache
+        rng = np.random.default_rng(seed)
+        rng.bit_generator.state = cache[3]
+        return copy.deepcopy(cache[2]), rng
 
     @property
     def colors_by_community(self) -> bool:
@@ -427,14 +467,8 @@ class Network:
         # present: --weighted, or weights autodetected) or the graph is declared weighted
         weighted = bool(self.config.graph.weighted) or decomposition.p_function is not None
 
-        # Edge index: for k-dense the edge's own index (metadata), else min of the endpoints
-        edge_indices = decomposition.metadata.get("edge_indices")
         node_index = decomposition.node_indices
-
-        def edge_index(u: int, v: int) -> int:
-            if edge_indices is not None:
-                return int(edge_indices.get((u, v) if u < v else (v, u), MIN_DENSE_INDEX))
-            return min(node_index[u], node_index[v])
+        edge_index = self._edge_index()
 
         is_dense = decomposition.decomp_type == "kdenses"
         lay = self.config.layout
@@ -452,7 +486,12 @@ class Network:
             ratio_constant=lay.ratio_constant,
         )
         lanet = compute_lanet_layout(
-            self.graph, node_index, params, seed=self.config.layout.seed, edge_index=edge_index
+            self.graph,
+            node_index,
+            params,
+            seed=self.config.layout.seed,
+            edge_index=edge_index,
+            tree=self._component_tree(edge_index),
         )
         node_positions = lanet.positions
 
