@@ -17,8 +17,8 @@ authors:
     given-names: Mariano G.
   - family-names: Alvarez-Hamelin
     given-names: J. Ignacio
-version: 5.1.0
-date-released: 2026-09-18
+version: 5.2.0
+date-released: 2026-09-20
 license: MIT
 repository-code: "https://github.com/CoNexDat/LaNet-vi"
 url: "https://github.com/CoNexDat/LaNet-vi"

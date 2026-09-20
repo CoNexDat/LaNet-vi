@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.2.0] - 2026-09-20
+
+Every item of the September 2026 C++ comparison is now closed except the features listed
+under #25 (k-connectivity, Gomory-Hu connectivity, POV-Ray): the community flags,
+`--from-layer`, `--window` and the C++ `-names` forms work, the dead options are gone,
+the d-core table of the 4.0.0 tool is available, the tests cover 95 % of the package and
+the documentation site is live.
+
 ### Added
 
 - `--dcore-table FILE` and `compute_dcore_table` (#21): the (k, l)-core table of
@@ -35,10 +43,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the strength intervals of the whole graph) and the layout, the picture, the legends
   and `--cores-file` describe that subgraph. `compute_kcores` takes a `p_function` to
   reuse. A layer above the maximum index is a usage error.
-
 - `--node-labels` without `--names` labels every node with its number, the C++ `-names`
   with no file (`-names 0`) (#23). With a names file only the named nodes are labeled,
   as before.
+- `--window HSTART HEND VSTART VEND` (`window` in YAML), the C++ `-window`: render only
+  that fraction of the frame, measured from the top-left corner, at the full pixel size
+  (#25). PDF and SVG output (by the `--output` extension) already worked and is now
+  documented.
 
 ### Removed
 
@@ -85,8 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Coverage gate raised from 60 % to 80 % (#11) now that `metrics/`, `generators/`,
   `community/`, `visualization/community_viz.py`, `io/writers.py` and
-  `logging_config.py` have tests (the suite covers 90 %; the remainder is the unused
-  `spatial_index.py` and `spiral_layout.py`).
+  `logging_config.py` have tests (the suite covers 95 %).
 
 ### Documentation
 
@@ -103,13 +113,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/concepts.md` cites the actual papers (NIPS 2005, NJP 2008, D-cores, k-truss).
   Every shell block in the docs is now a command that runs as written (the multi-line
   ones had `\\` continuations that broke when pasted).
-
-### Added
-
-- `--window HSTART HEND VSTART VEND` (`window` in YAML), the C++ `-window`: render only
-  that fraction of the frame, measured from the top-left corner, at the full pixel size
-  (#25). PDF and SVG output (by the `--output` extension) already worked and is now
-  documented.
 
 ## [5.1.0] - 2026-09-18
 
@@ -458,25 +461,25 @@ LaNet-vi 5.x is a complete Python rewrite of the C++ version. Parity was oversta
 - **CLI**: Single-hyphen → Double-hyphen flags (Unix/GNU standard)
 - **Dependencies**: No external renderers, pure Python stack
 
-**Feature Parity (as of 5.1.0):**
+**Feature Parity (as of 5.2.0):**
 - ✅ K-core decomposition, including the weighted peeling
 - ✅ K-dense (m-core) decomposition (triangle-pair peeling)
-- ✅ D-core decomposition (directed graphs)
+- ✅ D-core decomposition (directed graphs), with the (k, l)-core table of the 4.0.0 tool
 - ✅ The LaNet-vi placement: `classic`, `pow` and `log` coordinate distributions
-- ✅ Color scale, grayscale, legends, edge sampling
-- ⚠️ Spiral/semicircular layout: option accepted but inert; never in a C++ release (#18)
-- ⚠️ Community detection: NetworkX Louvain / greedy modularity, a replacement, not a
-  port; the CLI flags are not wired into rendering yet (#23, #26)
+- ✅ Color scale, grayscale, legends, edge sampling, `-window`, `-fromlayer`, `-names`
+- ✅ SVG and PDF output (matplotlib, by the `--output` extension; not the C++ SVG writer)
+- ⚠️ Community detection: NetworkX Louvain / greedy modularity drawn on the picture; a
+  5.x addition, the C++ had no community rendering (#26)
 - ⚠️ Random graph generation: NetworkX wrappers (#26)
-- ❌ Not ported: k-connectivity, Gomory-Hu connectivity, SVG/PDF/POV-Ray output,
-  `-window` cropping (#25)
+- ❌ Not ported: k-connectivity, Gomory-Hu connectivity, POV-Ray scenes (#25). The
+  spiral layout of the development tree was never in a C++ release and was removed.
 - ➕ Enhanced JSON exports
 - ➕ Information theory metrics
-- ➕ Spatial indexing
 - ➕ Type-safe configuration
 
 ---
 
-[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.1.0...HEAD
+[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.2.0...HEAD
+[5.2.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.1.0...v5.2.0
 [5.1.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.0.0...v5.1.0
 [5.0.0]: https://github.com/CoNexDat/LaNet-vi/releases/tag/v5.0.0
