@@ -48,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `draw_community_boundaries` printed Qhull's full diagnostic for a community whose
   nodes are collinear or share positions; collinear communities now get a sliver hull
   (Qhull's joggle) and communities with fewer than three distinct positions are skipped.
+- Community detection on a graph without edges (isolated nodes) raised a
+  `ZeroDivisionError` from NetworkX's modularity; the modularity is now 0.
 - `write_graph_json(include_node_attrs=False)` wrote every node with `id: 0` (the id was
   read after the attributes were cleared); the real ids are kept now.
 - `write_graph_json` always writes the edges under `"links"`: NetworkX 3.6 changes the

@@ -13,6 +13,13 @@ from lanet_vi.logging_config import get_logger
 logger = get_logger(__name__)
 
 
+def _modularity(graph: nx.Graph, communities: list[set[int]], weight: str | None) -> float:
+    """Modularity of the partition; 0 for an edgeless graph (NetworkX divides by zero)."""
+    if graph.number_of_edges() == 0:
+        return 0.0
+    return float(nx_community.modularity(graph, communities, weight=weight))
+
+
 def detect_communities_louvain(
     graph: nx.Graph,
     weight: str | None = "weight",
@@ -104,8 +111,7 @@ def detect_communities_louvain(
         for node in nodes_list:
             node_to_community[node] = comm_id
 
-    # Calculate modularity
-    modularity = nx_community.modularity(graph, communities_sets, weight=weight)
+    modularity = _modularity(graph, communities_sets, weight)
 
     logger.info(
         f"Louvain detection complete: {len(communities)} communities, modularity={modularity:.4f}"
@@ -182,8 +188,7 @@ def detect_communities_greedy_modularity(
         for node in nodes_list:
             node_to_community[node] = comm_id
 
-    # Calculate modularity
-    modularity = nx_community.modularity(graph, communities_sets, weight=weight)
+    modularity = _modularity(graph, communities_sets, weight)
 
     logger.info(
         f"Greedy modularity detection complete: {len(communities)} communities, "

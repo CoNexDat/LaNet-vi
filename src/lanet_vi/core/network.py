@@ -467,12 +467,21 @@ class Network:
         edge_widths: dict[tuple[int, int], float] = {}
         if vis.gradient_edges:
             shade = _edge_shade(vis.color_scheme, dense=is_dense)
-            if is_dense:
-                # K-dense: one color for the whole edge, its own dense index, and a
-                # constant width (the C++ cylinder radius is 0.2 host radii of degree 1).
-                # The 3.0.1 release painted edges between different clusters a flat 0.9
-                # gray; the 3.0.2 and 4.0.0 drivers dropped that override, as does this.
-                dense_width = 2 * 0.2 * scale * radius_law(1, weighted=False)
+            # K-dense: a constant width (the C++ cylinder radius is 0.2 host radii of
+            # degree 1); k-cores / d-cores: the C++ cylinder radius is 0.1 host radii of
+            # the smaller endpoint degree (unweighted formula, whatever the graph), so
+            # the width is twice that
+            dense_width = 2 * 0.2 * scale * radius_law(1, weighted=False)
+
+            def width_of(u: int, v: int) -> float:
+                if is_dense:
+                    return dense_width
+                return 2 * 0.10 * scale * radius_law(min(degrees[u], degrees[v]), weighted=False)
+
+            if is_dense and not self.colors_by_community:
+                # K-dense: one color for the whole edge, its own dense index. The 3.0.1
+                # release painted edges between different clusters a flat 0.9 gray; the
+                # 3.0.2 and 4.0.0 drivers dropped that override, as does this.
                 for u, v in visible_edges:
                     color = compute_shell_color(
                         edge_index(u, v),
@@ -483,19 +492,16 @@ class Network:
                         dense=True,
                     )
                     edge_colors[(u, v)] = (scale_color(color, shade), scale_color(color, shade))
-                    edge_widths[(u, v)] = dense_width
+                    edge_widths[(u, v)] = width_of(u, v)
             else:
-                # K-cores / d-cores: the half next to u takes v's color and vice versa;
-                # the C++ cylinder radius is 0.1 host radii of the smaller endpoint degree
-                # (unweighted formula, whatever the graph), so the width is twice that
+                # K-cores / d-cores, and every decomposition with community colors: the
+                # half next to u takes v's color and vice versa
                 for u, v in visible_edges:
                     edge_colors[(u, v)] = (
                         scale_color(node_colors[v], shade),
                         scale_color(node_colors[u], shade),
                     )
-                    edge_widths[(u, v)] = (
-                        2 * 0.10 * scale * radius_law(min(degrees[u], degrees[v]), weighted=False)
-                    )
+                    edge_widths[(u, v)] = width_of(u, v)
 
         # Bounds: the C++ viewport (svg.cpp addHeaders) is 1.6 x 1.2 times 2 * gamma * u * R
         # around the origin, i.e. half-extents of 1.6 and 1.2 times the network radius, so

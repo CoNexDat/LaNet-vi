@@ -734,3 +734,41 @@ def test_colors_file_wins_over_community_colors(karate: nx.Graph, caplog: pytest
     assert layout.node_colors[0] == (0.1, 0.2, 0.3)
     assert layout.node_colors[1] == (1.0, 1.0, 1.0)
     assert "colors file wins" in caplog.text
+
+
+def test_kdense_edges_follow_the_community_colors(karate: nx.Graph):
+    """With community colors the k-dense edges take the endpoint colors, dense shade and width."""
+    from lanet_vi.models.config import DecompositionConfig
+    from lanet_vi.visualization.colors import scale_color
+
+    config = _community_config()
+    config.decomposition = DecompositionConfig(decomp_type=DecompositionType.KDENSES)
+    config.visualization.edges_percent = 1.0
+    net = Network(karate, config)
+    net.decompose()
+    layout = net.compute_layout()
+    plain = LaNetConfig(
+        decomposition=DecompositionConfig(decomp_type=DecompositionType.KDENSES),
+        visualization=VisualizationConfig(width=300, height=300, edges_percent=1.0),
+    )
+    reference = Network(karate, plain)
+    reference.decompose()
+    reference_layout = reference.compute_layout()
+    for u, v in layout.visible_edges:
+        assert layout.edge_colors[(u, v)] == (
+            scale_color(layout.node_colors[v], 0.5),
+            scale_color(layout.node_colors[u], 0.5),
+        )
+        assert layout.edge_widths[(u, v)] == reference_layout.edge_widths[(u, v)]
+
+
+def test_edgeless_graph_renders_with_communities(tmp_path: Path):
+    """--detect-communities on a graph without edges draws a picture, no traceback."""
+    graph = nx.Graph()
+    graph.add_nodes_from([0, 1, 2])
+    net = Network(graph, _community_config())
+    net.decompose()
+    assert net.communities is not None
+    assert net.communities.num_communities == 3
+    net.visualize(tmp_path / "isolated.png")
+    assert (tmp_path / "isolated.png").exists()

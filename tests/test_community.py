@@ -260,3 +260,16 @@ def test_draw_community_circles_enclose_their_nodes():
                 assert np.linalg.norm(np.array(positions[node]) - center) <= circle.radius + 1e-9
     finally:
         plt.close(fig)
+
+
+def test_edgeless_graphs_have_zero_modularity():
+    """An edgeless graph (isolated nodes) is a valid input: one community per node, Q = 0."""
+    graph = nx.Graph()
+    graph.add_nodes_from([1, 2, 3])
+    for detect in (detect_communities_louvain, detect_communities_greedy_modularity):
+        result = detect(graph)
+        assert set(result.node_to_community) == {1, 2, 3}
+        assert result.modularity == 0.0
+    single = nx.Graph()
+    single.add_node(0)
+    assert detect_communities_louvain(single).num_communities == 1
