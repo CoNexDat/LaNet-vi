@@ -52,6 +52,11 @@ lanet-vi visualize --input big.txt --output big.png \
 ```
 
 ```bash
+# Only the nodes of k-core index 5 and up, drawn as a network of their own
+lanet-vi visualize --input network.txt --output core5.png --from-layer 5
+```
+
+```bash
 # The central half of the picture at full pixel size: a 2x zoom on the core
 # (give --width/--height the window's aspect ratio, 4:3 here, for an exact crop)
 lanet-vi visualize --input network.txt --output core.png \
@@ -95,7 +100,7 @@ compatibility and do nothing yet; their `--help` text names the tracking issue.
 | `--decomp`, `-d kcores\|kdenses\|dcores` | `kcores` | Which decomposition | `-decomp` |
 | `--measure mcore\|kdense` | `mcore` | Numbering of the k-dense legend: `mcore` labels each k-dense as k − 2 (the m-core) and reads `--color-scale-max` in those units; `kdense` keeps k | `-measure` |
 | `--no-cliques` | off | Spread the top core uniformly instead of by cliques | `-nocliques` |
-| `--from-layer K` | 0 | *inert* (#23): induced subgraph of index ≥ K | `-fromlayer` |
+| `--from-layer K` | 0 | Zoom into the center: keep the subgraph induced by the nodes of index ≥ K, recompute the decomposition on it and draw that (see [Zooming into the center](#zooming-into-the-center)) | `-fromlayer` |
 | `--granularity N` | max degree | Weighted graphs: number of strength intervals | `-granularity` |
 | `--strength-intervals equalIntervalSize\|equalNodesPerInterval\|equalLogIntervalSize\|custom` | `equalIntervalSize` | Weighted graphs: how the intervals are built ([concepts.md](concepts.md#weighted-k-cores)) | `-strengthsIntervals` |
 | `--maximum-strength S` | data | Weighted graphs: top of the strength scale, to compare pictures of different networks | `-maximumStrength` |
@@ -182,6 +187,24 @@ visualization:
 layout:
   seed: 0
 ```
+
+### Zooming into the center
+
+`--window` crops the picture; `--from-layer K` changes the network instead: it keeps the
+subgraph induced by the nodes of index ≥ K, computes the decomposition of that subgraph
+and runs the usual pipeline on it, as the C++ `-fromlayer` did. The outer layers
+disappear, the remaining ones get the whole frame, and the legends and `--cores-file`
+describe the subgraph (`lanet-vi info` has no such option and always reports the whole
+file). Details:
+
+- For k-cores the indices of the kept nodes do not change (the K-core of a graph
+  contains all its higher cores). Weighted graphs reuse the strength intervals of the
+  whole graph, so the layer numbers keep their meaning.
+- For k-denses `K` is the k-dense index (the value in `--cores-file`, not the m-core
+  label of the legend) and the indices are recomputed on the induced subgraph, which can
+  hold edges that were not in the K-dense; some nodes may end up below `K`.
+- For d-cores `K` applies to `max(k_in, k_out)`, the index the rings are drawn by.
+- `K` above the maximum index is a usage error.
 
 ### Input format
 

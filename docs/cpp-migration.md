@@ -40,7 +40,7 @@ What is different by design:
 | `-strengthsIntervalsFile FILE` (4.0) | `--strength-intervals-file FILE` | |
 | `-maximumStrength S` | `--maximum-strength S` | |
 | `-granularity N` | `--granularity N` | default: maximum degree, as the C++ (no cap at 100) |
-| `-fromlayer K` | `--from-layer K` | accepted, not implemented yet (#23) |
+| `-fromlayer K` | `--from-layer K` | same semantics; the C++ also dumped the subgraph to `temp.txt`, use `--cores-file` for the indices instead |
 | `-bckgnd white\|black` | `--background white\|black` | black by default in both |
 | `-color col\|bw\|bwi` | `--color-scheme col\|bw\|bwi` | |
 | `-colorScaleMaxValue K` | `--color-scale-max K` | |

@@ -1,5 +1,6 @@
 """Tests for Network class."""
 
+import itertools
 import tempfile
 from pathlib import Path
 
@@ -7,7 +8,12 @@ import networkx as nx
 import pytest
 
 from lanet_vi.core.network import Network
-from lanet_vi.models.config import DecompositionType
+from lanet_vi.models.config import (
+    DecompositionConfig,
+    DecompositionType,
+    GraphConfig,
+    LaNetConfig,
+)
 
 
 def test_network_initialization():
@@ -95,3 +101,106 @@ def test_network_get_metadata():
     assert metadata["num_edges"] == 78
     assert metadata["max_degree"] > 0
     assert metadata["avg_degree"] > 0
+
+
+def _config(**decomposition) -> LaNetConfig:
+    return LaNetConfig(decomposition=DecompositionConfig(**decomposition))
+
+
+def test_from_layer_keeps_the_induced_subgraph_and_the_kcore_indices(karate: nx.Graph):
+    """k-cores: the nodes of index >= K keep their indices; the pipeline runs on them."""
+    plain = nx.Graph(karate.edges())
+    full = Network(plain).decompose()
+    expected_nodes = {node for node, index in full.node_indices.items() if index >= 3}
+    assert 0 < len(expected_nodes) < plain.number_of_nodes()
+
+    net = Network(plain, _config(from_layer=3))
+    result = net.decompose()
+
+    assert set(net.graph.nodes()) == expected_nodes
+    assert set(net.graph.edges()) == set(plain.subgraph(expected_nodes).edges())
+    assert result.node_indices == {node: full.node_indices[node] for node in expected_nodes}
+    assert result.min_index == 3
+    assert {node for component in result.components for node in component.nodes} == expected_nodes
+    layout = net.compute_layout()
+    assert set(layout.node_positions) == expected_nodes
+    assert net.get_metadata()["num_nodes"] == len(expected_nodes)
+
+
+def test_from_layer_weighted_reuses_the_strength_intervals(karate: nx.Graph):
+    """Weighted k-cores re-peel with the whole graph's p-function; indices are kept."""
+    config = LaNetConfig(
+        graph=GraphConfig(weighted=True),
+        decomposition=DecompositionConfig(granularity=5),
+    )
+    full = Network(karate, config).decompose()
+    assert full.p_function is not None
+    layer = full.max_index - 1
+    expected_nodes = {node for node, index in full.node_indices.items() if index >= layer}
+
+    config.decomposition.from_layer = layer
+    net = Network(karate, config)
+    result = net.decompose()
+
+    assert set(net.graph.nodes()) == expected_nodes
+    assert result.p_function == full.p_function
+    assert result.node_indices == {node: full.node_indices[node] for node in expected_nodes}
+
+
+def test_from_layer_kdenses_recomputes_on_the_induced_subgraph(karate: nx.Graph):
+    """k-denses: indices are recomputed on the induced subgraph (never above the old)."""
+    plain = nx.Graph(karate.edges())
+    full = Network(plain, _config(decomp_type=DecompositionType.KDENSES)).decompose()
+    layer = 4
+    expected_nodes = {node for node, index in full.node_indices.items() if index >= layer}
+    assert 0 < len(expected_nodes) < plain.number_of_nodes()
+
+    net = Network(plain, _config(decomp_type=DecompositionType.KDENSES, from_layer=layer))
+    result = net.decompose()
+
+    assert set(net.graph.nodes()) == expected_nodes
+    assert set(result.node_indices) == expected_nodes
+    assert all(result.node_indices[node] <= full.node_indices[node] for node in expected_nodes)
+    assert set(result.metadata["edge_indices"]) == {
+        (min(u, v), max(u, v)) for u, v in net.graph.edges()
+    }
+
+
+def test_from_layer_dcores_uses_the_ring_index():
+    """d-cores: K applies to max(k_in, k_out), the index the rings are drawn by."""
+    digraph = nx.DiGraph()
+    digraph.add_edges_from(itertools.permutations(range(4), 2))  # a 4-clique both ways
+    digraph.add_edges_from([(4, 0), (5, 1), (4, 5)])  # a fringe of index 1
+    full = Network(digraph, _config(decomp_type=DecompositionType.DCORES)).decompose()
+    assert full.max_index == 3
+
+    net = Network(digraph, _config(decomp_type=DecompositionType.DCORES, from_layer=2))
+    result = net.decompose()
+
+    assert set(net.graph.nodes()) == {0, 1, 2, 3}
+    assert set(result.node_indices.values()) == {3}
+
+
+def test_from_layer_above_the_maximum_index_is_an_error(karate: nx.Graph):
+    """A layer nobody reaches leaves an empty graph: refused with a clear message."""
+    plain = nx.Graph(karate.edges())
+    net = Network(plain, _config(from_layer=99))
+    with pytest.raises(ValueError, match="from_layer=99 leaves no node.*maximum index is 4"):
+        net.decompose()
+    assert net.graph.number_of_nodes() == plain.number_of_nodes()  # untouched
+
+
+def test_decompose_twice_with_from_layer_starts_from_the_input_graph(karate: nx.Graph):
+    """A second decompose() does not shrink the already extracted layer again."""
+    plain = nx.Graph(karate.edges())
+    net = Network(plain, _config(from_layer=3))
+    first = net.decompose(DecompositionType.KCORES)
+    assert net.input_graph is plain
+
+    again = net.decompose(DecompositionType.KCORES)
+    assert again.node_indices == first.node_indices
+
+    dense = net.decompose(DecompositionType.KDENSES)
+    fresh = Network(plain, _config(decomp_type=DecompositionType.KDENSES, from_layer=3))
+    assert dense.node_indices == fresh.decompose().node_indices
+    assert set(net.graph.nodes()) == set(fresh.graph.nodes())
