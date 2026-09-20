@@ -251,11 +251,10 @@ def draw_community_circles(
         circle = plt.Circle(
             center,
             radius,
-            color=color,
-            alpha=alpha,
-            fill=True,
-            linewidth=linewidth,
+            facecolor=color,
             edgecolor=color,
+            alpha=alpha,
+            linewidth=linewidth,
             zorder=0,  # Draw behind nodes
         )
         ax.add_patch(circle)

@@ -203,14 +203,19 @@ def write_graph_json(
         f"({graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges)"
     )
 
-    # Convert to node-link format
-    data = nx.node_link_data(graph)
+    # Convert to node-link format. The edge list is written under "links" on every
+    # NetworkX version: 3.4 added the keyword and 3.6 changes its default to "edges".
+    try:
+        data = nx.node_link_data(graph, edges="links")
+    except TypeError:  # NetworkX < 3.4: "links" is the only format
+        data = nx.node_link_data(graph)
 
     # Optionally strip attributes
     if not include_node_attrs:
         for node in data["nodes"]:
+            node_id = node["id"]
             node.clear()
-            node["id"] = node.get("id", 0)
+            node["id"] = node_id
 
     if not include_edge_attrs:
         for edge in data["links"]:

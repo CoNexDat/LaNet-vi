@@ -1,10 +1,24 @@
-"""Tests for community detection data models and coloring."""
+"""Tests for community detection, its data models and the community overlays."""
 
+import logging
+
+import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
+import pytest
+from networkx.algorithms import community as nx_community
 
 from lanet_vi.community.base import Community, CommunityResult
-from lanet_vi.community.louvain import detect_communities_louvain
-from lanet_vi.visualization.community_viz import get_community_colors
+from lanet_vi.community.louvain import (
+    detect_communities_greedy_modularity,
+    detect_communities_louvain,
+)
+from lanet_vi.visualization.community_viz import (
+    assign_node_colors_by_community,
+    draw_community_boundaries,
+    draw_community_circles,
+    get_community_colors,
+)
 
 
 def test_community_result_lookup_helpers():
@@ -38,3 +52,140 @@ def test_get_community_colors_are_rgb_triples():
         for color in colors:
             assert len(color) == 3
             assert all(0.0 <= c <= 1.0 for c in color)
+
+
+def test_louvain_result_is_consistent_and_reproducible(karate: nx.Graph):
+    """Communities partition the nodes, sizes match, modularity is NetworkX's, seed fixes it."""
+    result = detect_communities_louvain(karate, seed=1)
+    assert result.algorithm == "louvain"
+    nodes = [node for community in result.communities for node in community.nodes]
+    assert sorted(nodes) == sorted(karate.nodes())
+    assert all(community.size == len(community.nodes) for community in result.communities)
+    assert result.num_communities == len(result.communities)
+    assert all(
+        result.node_to_community[node] == community.id
+        for community in result.communities
+        for node in community.nodes
+    )
+    expected = nx_community.modularity(
+        karate, [set(c.nodes) for c in result.communities], weight="weight"
+    )
+    assert result.modularity == pytest.approx(expected)
+    assert 0.3 < result.modularity < 0.5  # the karate club's well-known range
+    again = detect_communities_louvain(karate, seed=1)
+    assert again.node_to_community == result.node_to_community
+
+
+def test_louvain_falls_back_to_unweighted_when_no_weights(karate: nx.Graph):
+    """Without a weight attribute the modularity is the unweighted one."""
+    plain = nx.Graph(karate.edges())
+    result = detect_communities_louvain(plain, seed=1)
+    expected = nx_community.modularity(plain, [set(c.nodes) for c in result.communities])
+    assert result.modularity == pytest.approx(expected)
+
+
+def test_louvain_converts_directed_graphs():
+    """A DiGraph is analyzed as its undirected version."""
+    digraph = nx.DiGraph([(0, 1), (1, 2), (2, 0), (3, 4), (4, 5), (5, 3), (2, 3)])
+    result = detect_communities_louvain(digraph, seed=0)
+    assert set(result.node_to_community) == set(digraph.nodes())
+    assert result.num_communities == 2
+
+
+def test_greedy_modularity_on_two_triangles():
+    """Greedy modularity separates two triangles joined by one edge."""
+    graph = nx.Graph([(0, 1), (1, 2), (2, 0), (3, 4), (4, 5), (5, 3), (2, 3)])
+    result = detect_communities_greedy_modularity(graph)
+    assert result.algorithm == "greedy_modularity"
+    assert result.num_communities == 2
+    assert result.get_node_community(0) == result.get_node_community(1)
+    assert result.get_node_community(0) != result.get_node_community(4)
+    assert result.modularity == pytest.approx(
+        nx_community.modularity(graph, [set(c.nodes) for c in result.communities])
+    )
+    assert set(result.node_to_community) == set(
+        detect_communities_greedy_modularity(graph.to_directed()).node_to_community
+    )
+
+
+def _two_triangles_result() -> tuple[CommunityResult, dict[int, tuple[float, float]]]:
+    """Two three-node communities plus a lone node, with hand-placed positions."""
+    result = CommunityResult(
+        algorithm="test",
+        communities=[
+            Community(id=0, nodes=[0, 1, 2]),
+            Community(id=1, nodes=[3, 4, 5]),
+            Community(id=2, nodes=[6]),
+        ],
+        node_to_community={0: 0, 1: 0, 2: 0, 3: 1, 4: 1, 5: 1, 6: 2},
+    )
+    positions = {
+        0: (0.0, 0.0),
+        1: (1.0, 0.0),
+        2: (0.0, 1.0),
+        3: (5.0, 5.0),
+        4: (6.0, 5.0),
+        5: (5.0, 6.0),
+        6: (9.0, 9.0),
+    }
+    return result, positions
+
+
+def test_assign_node_colors_by_community_uses_palette_and_gray_fallback():
+    """Nodes of one community share a color; a node without a community is gray."""
+    result, positions = _two_triangles_result()
+    positions[7] = (0.0, 9.0)  # positioned but in no community
+    colors = assign_node_colors_by_community(result, positions)
+    assert set(colors) == set(positions)
+    palette = get_community_colors(result.num_communities)
+    assert colors[0] == colors[1] == colors[2] == palette[0]
+    assert colors[3] == palette[1]
+    assert colors[0] != colors[3]
+    assert colors[7] == (0.7, 0.7, 0.7)
+
+
+def test_draw_community_boundaries_adds_one_hull_per_large_community():
+    """Convex hulls are drawn for communities with at least three placed nodes only."""
+    result, positions = _two_triangles_result()
+    fig, ax = plt.subplots()
+    try:
+        draw_community_boundaries(ax, result, positions)
+        assert len(ax.collections) == 1
+        assert len(ax.collections[0].get_paths()) == 2  # the singleton is skipped
+    finally:
+        plt.close(fig)
+
+
+def test_draw_community_boundaries_skips_degenerate_hulls(caplog: pytest.LogCaptureFixture):
+    """Collinear points have no convex hull: a warning, and nothing is drawn."""
+    result = CommunityResult(
+        algorithm="test",
+        communities=[Community(id=0, nodes=[0, 1, 2])],
+        node_to_community={0: 0, 1: 0, 2: 0},
+    )
+    positions = {0: (0.0, 0.0), 1: (1.0, 1.0), 2: (2.0, 2.0)}
+    fig, ax = plt.subplots()
+    try:
+        with caplog.at_level(logging.WARNING, logger="lanet_vi"):
+            draw_community_boundaries(ax, result, positions)
+        assert len(ax.collections) == 0
+        assert "Could not compute convex hull" in caplog.text
+    finally:
+        plt.close(fig)
+
+
+def test_draw_community_circles_enclose_their_nodes():
+    """One circle per community with placed nodes, each containing its nodes."""
+    result, positions = _two_triangles_result()
+    del positions[6]  # community 2 has no placed node and gets no circle
+    fig, ax = plt.subplots()
+    try:
+        draw_community_circles(ax, result, positions, padding=0.5)
+        circles = [patch for patch in ax.patches if isinstance(patch, plt.Circle)]
+        assert len(circles) == 2
+        for community, circle in zip(result.communities[:2], circles, strict=True):
+            center = np.array(circle.center)
+            for node in community.nodes:
+                assert np.linalg.norm(np.array(positions[node]) - center) <= circle.radius + 1e-9
+    finally:
+        plt.close(fig)

@@ -31,6 +31,8 @@ def setup_logging(
     # Root logger configuration
     root_logger = logging.getLogger("lanet_vi")
     root_logger.setLevel(level)
+    for handler in root_logger.handlers:  # a previous call may have opened a file
+        handler.close()
     root_logger.handlers.clear()
 
     # Formatter with timestamp, logger name, level, and message
@@ -73,4 +75,7 @@ def get_logger(name: str) -> logging.Logger:
     >>> logger = get_logger(__name__)
     >>> logger.info("Processing started")
     """
+    # Module names already start with the package name; anything else is nested under it.
+    if name == "lanet_vi" or name.startswith("lanet_vi."):
+        return logging.getLogger(name)
     return logging.getLogger(f"lanet_vi.{name}")
