@@ -165,6 +165,36 @@ layout:
   min_component_size: 50
 
 # ==============================================================================
+# COMMUNITY DETECTION (a NetworkX-based addition, not part of the C++ tool)
+# ==============================================================================
+community:
+  # Detect communities and show them in the picture (--detect-communities)
+  detect_communities: false
+
+  # "louvain" or "greedy_modularity"
+  algorithm: "louvain"
+
+  # Modularity resolution: higher gives more, smaller communities
+  resolution: 1.0
+
+  # Color the nodes (and the edges) by community instead of by index; the index color
+  # legend is then not drawn. A colors file takes precedence.
+  color_by_community: true
+
+  # Draw a translucent convex hull under each community of three or more nodes
+  draw_boundaries: true
+
+  # Draw a translucent circle around each community (works better for small ones)
+  draw_circles: false
+
+  # Opacity of the hulls and circles
+  boundary_alpha: 0.2
+
+  # Matplotlib colormap of the community colors: a qualitative one ("tab20", "tab10",
+  # "Set3") is used entry by entry, a continuous one ("viridis", "hsv") is sampled evenly
+  colormap: "tab20"
+
+# ==============================================================================
 # RENDERER
 # ==============================================================================
 # Rendering engine: "matplotlib", "networkx", or "plotly"

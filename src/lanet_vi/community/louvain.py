@@ -123,6 +123,7 @@ def detect_communities_louvain(
 def detect_communities_greedy_modularity(
     graph: nx.Graph,
     weight: str | None = "weight",
+    resolution: float = 1.0,
 ) -> CommunityResult:
     """Detect communities using greedy modularity maximization.
 
@@ -135,6 +136,9 @@ def detect_communities_greedy_modularity(
         Input graph (undirected)
     weight : Optional[str]
         Edge attribute to use as weight (default: "weight")
+    resolution : float
+        Resolution parameter for modularity (default: 1.0). Higher values lead
+        to more communities.
 
     Returns
     -------
@@ -151,13 +155,15 @@ def detect_communities_greedy_modularity(
 
     logger.info(
         f"Running greedy modularity community detection on graph with "
-        f"{graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges"
+        f"{graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges "
+        f"(resolution={resolution})"
     )
 
     # Run greedy modularity algorithm
     communities_sets = nx_community.greedy_modularity_communities(
         graph,
         weight=weight,
+        resolution=resolution,
     )
 
     # Convert to Community objects

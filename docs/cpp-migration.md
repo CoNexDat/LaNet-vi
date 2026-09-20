@@ -68,7 +68,8 @@ What is different by design:
 
 New in 5.x, without a C++ equivalent: `--config`, `--node-size-scale`,
 `--node-edge-color`, `--gradient-edges`, `--legend-fontsize`, `--show-color-legend`,
-`--node-labels`, `lanet-vi info`, `lanet-vi generate`, and the Python API.
+`--node-labels`, `--detect-communities` and the other `--community-*` flags,
+`lanet-vi info`, `lanet-vi generate`, and the Python API.
 
 ## What is not there
 

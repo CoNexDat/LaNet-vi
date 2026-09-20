@@ -17,10 +17,20 @@ import networkx as nx
 import numpy as np
 from matplotlib.collections import EllipseCollection, LineCollection
 
+from lanet_vi.community.base import CommunityResult
 from lanet_vi.decomposition.kdenses import MIN_DENSE_INDEX
-from lanet_vi.models.config import BackgroundColor, MeasureType, VisualizationConfig
+from lanet_vi.models.config import (
+    BackgroundColor,
+    CommunityConfig,
+    MeasureType,
+    VisualizationConfig,
+)
 from lanet_vi.models.graph import DecompositionResult, VisualizationLayout
 from lanet_vi.visualization.colors import compute_shell_color
+from lanet_vi.visualization.community_viz import (
+    draw_community_boundaries,
+    draw_community_circles,
+)
 from lanet_vi.visualization.lanet_layout import RadiusLaw, strength_radii
 
 #: Legend title per decomposition type (``m-core`` for k-dense with ``-measure mcore``)
@@ -40,6 +50,8 @@ def render_network(
     *,
     custom_colors: bool = False,
     measure: MeasureType = MeasureType.MCORE,
+    communities: CommunityResult | None = None,
+    community_config: CommunityConfig | None = None,
 ) -> None:
     """
     Render network visualization using matplotlib.
@@ -63,6 +75,12 @@ def render_network(
         hid it with ``-colorsFile``)
     measure : MeasureType
         Labels of the k-dense legend: ``mcore`` prints ``k - 2``, ``kdense`` prints ``k``
+    communities : Optional[CommunityResult]
+        Communities to outline under the network: a translucent convex hull
+        (``community_config.draw_boundaries``) and/or circle (``draw_circles``) per
+        community, in the community's color
+    community_config : Optional[CommunityConfig]
+        Which overlays to draw and how (defaults when None)
 
     Examples
     --------
@@ -92,6 +110,9 @@ def render_network(
 
     if config.draw_circles:
         _draw_component_circles(ax, layout, config)
+
+    if communities is not None:
+        _draw_communities(ax, layout, communities, community_config or CommunityConfig())
 
     _draw_edges(ax, layout, config, decomposition, px_per_unit)
     _draw_nodes(ax, layout, config, px_per_unit)
@@ -128,6 +149,32 @@ def _draw_component_circles(
                 alpha=0.3,
             )
             ax.add_patch(circle)
+
+
+def _draw_communities(
+    ax: plt.Axes,
+    layout: VisualizationLayout,
+    communities: CommunityResult,
+    config: CommunityConfig,
+) -> None:
+    """Outline the communities under the edges: convex hulls and/or bounding circles."""
+    if config.draw_boundaries:
+        draw_community_boundaries(
+            ax,
+            communities,
+            layout.node_positions,
+            alpha=config.boundary_alpha,
+            colormap=config.colormap,
+            zorder=0,
+        )
+    if config.draw_circles:
+        draw_community_circles(
+            ax,
+            communities,
+            layout.node_positions,
+            alpha=config.boundary_alpha,
+            colormap=config.colormap,
+        )
 
 
 def _draw_edges(

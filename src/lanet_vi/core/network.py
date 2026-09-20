@@ -5,6 +5,7 @@ from pathlib import Path
 
 import networkx as nx
 
+from lanet_vi.community import CommunityResult, detect_communities
 from lanet_vi.decomposition.dcores import compute_dcores, find_components_by_dcore
 from lanet_vi.decomposition.kcores import compute_kcores, find_components_by_shell
 from lanet_vi.decomposition.kdenses import (
@@ -22,6 +23,7 @@ from lanet_vi.models.config import (
 )
 from lanet_vi.models.graph import Component, DecompositionResult, VisualizationLayout
 from lanet_vi.visualization.colors import compute_shell_color, default_node_color, scale_color
+from lanet_vi.visualization.community_viz import assign_node_colors_by_community
 from lanet_vi.visualization.lanet_layout import (
     LayoutParameters,
     RadiusLaw,
@@ -74,6 +76,9 @@ class Network:
         Configuration settings
     decomposition : Optional[DecompositionResult]
         Decomposition results (None until decompose() is called)
+    communities : Optional[CommunityResult]
+        Communities of ``graph`` (None until ``detect_communities()`` runs, which
+        ``decompose()`` does when ``config.community.detect_communities`` is set)
     node_names : Dict[int, str]
         Node name mappings
     node_colors : Dict[int, Tuple[float, float, float]]
@@ -96,6 +101,7 @@ class Network:
         self.input_graph = graph
         self.config = config if config else LaNetConfig()
         self.decomposition: DecompositionResult | None = None
+        self.communities: CommunityResult | None = None
         self.node_names: dict[int, str] = {}
         self.node_colors: dict[int, tuple[float, float, float]] = {}
         # A colors file was loaded (even an empty one): nodes take its colors or the
@@ -214,7 +220,60 @@ class Network:
             f"{len(self.decomposition.components)} components"
         )
 
+        # Communities are found on the graph that is drawn (the layer subgraph with
+        # from_layer), so they describe the picture; a previous result never survives
+        # a new decomposition
+        self.communities = None
+        if self.config.community.detect_communities:
+            self.detect_communities()
+
         return self.decomposition
+
+    def detect_communities(self) -> CommunityResult:
+        """
+        Detect the communities of the graph with ``config.community``.
+
+        ``decompose()`` calls this when ``config.community.detect_communities`` is set;
+        calling it directly detects them regardless of that flag. The result is kept in
+        ``communities`` and, from then on, ``compute_layout()`` colors the nodes by
+        community (``config.community.color_by_community``) and ``visualize()`` draws the
+        community boundaries or circles (``draw_boundaries`` / ``draw_circles``).
+
+        Returns
+        -------
+        CommunityResult
+            Communities of ``graph``, with the modularity of the partition
+
+        Examples
+        --------
+        >>> net.decompose()
+        >>> communities = net.detect_communities()
+        >>> net.visualize("communities.png")
+        """
+        start_time = time.time()
+        self.communities = detect_communities(
+            self.graph, self.config.community, seed=self.config.layout.seed
+        )
+        elapsed = time.time() - start_time
+        logger.info(
+            f"Community detection complete in {elapsed:.2f}s: "
+            f"{self.communities.num_communities} communities, "
+            f"modularity {self.communities.modularity:.4f}"
+        )
+        return self.communities
+
+    @property
+    def colors_by_community(self) -> bool:
+        """True when the nodes take their community's color instead of the shell color.
+
+        Communities were detected and ``config.community.color_by_community`` is set; a
+        colors file (``load_node_colors``) takes precedence, as it names each node's color.
+        """
+        return (
+            self.communities is not None
+            and bool(self.config.community.color_by_community)
+            and not (self.custom_colors or bool(self.node_colors))
+        )
 
     def _compute_indices(
         self, decomp_type: DecompositionType, p_function: list[float] | None = None
@@ -349,7 +408,23 @@ class Network:
             color_scale_max += 2
         custom_colors = self.custom_colors or bool(self.node_colors)
         node_colors: dict[int, RGB] = {}
+        if self.colors_by_community and self.communities is not None:
+            # Community colors (the edges follow them below, as they follow the shell
+            # colors); nodes of no community are gray
+            node_colors = assign_node_colors_by_community(
+                self.communities, node_positions, colormap=self.config.community.colormap
+            )
+        elif (
+            self.communities is not None
+            and custom_colors
+            and self.config.community.color_by_community
+        ):
+            logger.warning(
+                "Both a colors file and color_by_community are set: the colors file wins"
+            )
         for node in self.graph.nodes():
+            if node in node_colors:
+                continue
             if custom_colors:
                 node_colors[node] = self.node_colors.get(node, default_node_color(vis.background))
             else:
@@ -493,8 +568,10 @@ class Network:
             self.config.visualization,
             output_path,
             self.node_names if self.node_names else None,
-            custom_colors=self.custom_colors or bool(self.node_colors),
+            custom_colors=self.custom_colors or bool(self.node_colors) or self.colors_by_community,
             measure=MeasureType(self.config.decomposition.measure),
+            communities=self.communities,
+            community_config=self.config.community,
         )
 
     def get_metadata(self) -> dict:

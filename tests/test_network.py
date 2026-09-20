@@ -204,3 +204,65 @@ def test_decompose_twice_with_from_layer_starts_from_the_input_graph(karate: nx.
     fresh = Network(plain, _config(decomp_type=DecompositionType.KDENSES, from_layer=3))
     assert dense.node_indices == fresh.decompose().node_indices
     assert set(net.graph.nodes()) == set(fresh.graph.nodes())
+
+
+def test_detect_communities_runs_on_the_drawn_graph_and_resets_on_decompose(karate: nx.Graph):
+    """Communities are those of the layer subgraph, seeded, and cleared by a new decompose()."""
+    from lanet_vi.community import detect_communities_louvain
+    from lanet_vi.models.config import CommunityConfig
+
+    plain = nx.Graph(karate.edges())
+    config = _config(from_layer=3)
+    config.community = CommunityConfig(detect_communities=True)
+    net = Network(plain, config)
+    net.decompose()
+    assert net.communities is not None
+    assert set(net.communities.node_to_community) == set(net.graph.nodes()) != set(plain)
+    expected = detect_communities_louvain(net.graph, seed=config.layout.seed)
+    assert net.communities.node_to_community == expected.node_to_community
+
+    # Explicit detection works without the flag; a new decompose() drops the result
+    config.community.detect_communities = False
+    net.decompose()
+    assert net.communities is None
+    again = net.detect_communities()
+    assert again is net.communities
+    assert again.node_to_community == expected.node_to_community
+    net.decompose()
+    assert net.communities is None
+
+
+def test_detect_communities_on_directed_and_weighted_graphs():
+    """d-core (directed) and weighted graphs are accepted by the detection."""
+    from lanet_vi.models.config import CommunityConfig
+
+    digraph = nx.DiGraph([(0, 1), (1, 2), (2, 0), (3, 4), (4, 5), (5, 3), (2, 3)])
+    config = _config(decomp_type=DecompositionType.DCORES)
+    config.graph.directed = True
+    config.community = CommunityConfig(detect_communities=True)
+    net = Network(digraph, config)
+    net.decompose()
+    assert net.communities is not None
+    assert net.communities.num_communities == 2
+    layout = net.compute_layout()
+    assert layout.node_colors[0] == layout.node_colors[1] != layout.node_colors[4]
+
+    from networkx.algorithms import community as nx_community
+
+    weighted = nx.Graph()
+    weighted.add_weighted_edges_from(
+        [(0, 1, 5.0), (1, 2, 5.0), (2, 0, 5.0), (2, 3, 0.1), (3, 4, 5.0), (4, 5, 5.0), (5, 3, 5.0)]
+    )
+    config = _config()
+    config.graph.weighted = True
+    config.community = CommunityConfig(detect_communities=True, algorithm="greedy_modularity")
+    net = Network(weighted, config)
+    net.decompose()
+    assert net.communities is not None
+    assert net.communities.num_communities == 2
+    assert net.communities.get_node_community(3) != net.communities.get_node_community(0)
+    # The weights are used: the modularity is the weighted one
+    parts = [set(c.nodes) for c in net.communities.communities]
+    assert net.communities.modularity == pytest.approx(
+        nx_community.modularity(weighted, parts, weight="weight")
+    )

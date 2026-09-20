@@ -296,27 +296,27 @@ def visualize(
     detect_communities: bool = typer.Option(
         False,
         "--detect-communities",
-        help="Detect and visualize communities (not wired into rendering yet, #23)",
+        help="Detect communities (Louvain by default) and show them in the picture",
     ),
     community_algorithm: str = typer.Option(
         "louvain",
         "--community-algorithm",
-        help="Community detection algorithm: louvain or greedy_modularity (not wired yet, #23)",
+        help="Community detection algorithm: louvain or greedy_modularity",
     ),
     community_resolution: float = typer.Option(
         1.0,
         "--community-resolution",
-        help="Resolution parameter for Louvain (not wired yet, #23)",
+        help="Modularity resolution (higher: more, smaller communities)",
     ),
     color_by_community: bool = typer.Option(
         True,
         "--color-by-community/--no-color-by-community",
-        help="Color nodes by community instead of k-core (not wired into rendering yet, #23)",
+        help="Color the nodes by community instead of by index (hides the color legend)",
     ),
     draw_community_boundaries: bool = typer.Option(
         True,
         "--draw-community-boundaries/--no-draw-community-boundaries",
-        help="Draw boundaries around communities (not wired into rendering yet, #23)",
+        help="Draw a translucent convex hull under each community",
     ),
     # Logging options
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
@@ -387,6 +387,12 @@ def visualize(
             f"{result.min_index} - {result.max_index}, "
             f"{len(result.components)} components"
         )
+        if network.communities is not None:
+            console.print(
+                f"[green]✓[/green] Communities ({network.communities.algorithm}): "
+                f"{network.communities.num_communities}, "
+                f"modularity {network.communities.modularity:.3f}"
+            )
 
         # Export decomposition if requested
         if cores_file:

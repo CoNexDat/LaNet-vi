@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Community detection is wired into the picture (#23): `--detect-communities` (and the
+  `community` YAML section) detects the communities of the drawn graph with Louvain or
+  greedy modularity (`--community-algorithm`, `--community-resolution`, seeded by
+  `--seed`), colors the nodes and the gradient edges by community
+  (`--color-by-community`, which hides the index color legend; a colors file takes
+  precedence) and draws a translucent convex hull under each community
+  (`--draw-community-boundaries`); `draw_circles`, `boundary_alpha` and `colormap` are
+  YAML-only. The CLI prints the number of communities and the modularity. In the API:
+  `Network.detect_communities()`, `Network.communities`, `Network.colors_by_community`,
+  `lanet_vi.community.detect_communities(graph, config, seed)`, a `resolution` for
+  `detect_communities_greedy_modularity`, and `render_network(communities=,
+  community_config=)`. The community flags are no longer marked inert.
 - `--from-layer K` (`from_layer` in YAML) works: the C++ `-fromlayer` (#23). The
   subgraph induced by the nodes of index ≥ K is decomposed again (weighted k-cores reuse
   the strength intervals of the whole graph) and the layout, the picture, the legends
@@ -27,6 +39,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `get_community_colors` ignored its `colormap` argument and, for 21-40 communities,
+  sampled `tab20b` at fractions that repeat colors. A qualitative colormap is now used
+  entry by entry (up to 10 communities take the `tab10` shades instead of `tab20`'s
+  dark/light pairs), a continuous one is sampled evenly, and beyond the entries of a
+  qualitative map the colors are spread over `hsv`. Community colors follow the
+  community id rather than its position in the list.
+- `draw_community_boundaries` printed Qhull's full diagnostic for a community whose
+  nodes are collinear or share positions; collinear communities now get a sliver hull
+  (Qhull's joggle) and communities with fewer than three distinct positions are skipped.
 - `write_graph_json(include_node_attrs=False)` wrote every node with `id: 0` (the id was
   read after the attributes were cleared); the real ids are kept now.
 - `write_graph_json` always writes the edges under `"links"`: NetworkX 3.6 changes the

@@ -722,3 +722,67 @@ def test_visualize_from_layer_beyond_max_is_a_usage_error(small_edge_list: Path,
     )
     assert result.exit_code == 2, result.output
     assert "from_layer=9 leaves no node" in result.output
+
+
+def test_visualize_detect_communities_reports_and_draws_them(
+    small_edge_list: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """`--detect-communities` runs the detection, reports it and reaches the renderer."""
+    from lanet_vi.visualization import matplotlib_renderer as mr
+
+    calls: list[str] = []
+    monkeypatch.setattr(mr, "draw_community_boundaries", lambda *a, **k: calls.append("hull"))
+    output = tmp_path / "communities.png"
+    result = runner.invoke(
+        app,
+        [
+            "visualize",
+            "--input",
+            str(small_edge_list),
+            "--output",
+            str(output),
+            "--detect-communities",
+            "--community-algorithm",
+            "greedy_modularity",
+            "--width",
+            "300",
+            "--height",
+            "300",
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert output.exists() and output.stat().st_size > 0
+    assert "Communities (greedy_modularity): 2" in result.output
+    assert calls == ["hull"]
+
+    # --no-draw-community-boundaries keeps the detection but drops the hulls
+    calls.clear()
+    result = runner.invoke(
+        app,
+        [
+            "visualize",
+            "--input",
+            str(small_edge_list),
+            "--output",
+            str(output),
+            "--detect-communities",
+            "--no-draw-community-boundaries",
+            "--width",
+            "300",
+            "--height",
+            "300",
+            "--quiet",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "Communities (louvain)" in result.output
+    assert calls == []
+
+    # Without the flag nothing is detected or reported
+    result = runner.invoke(
+        app,
+        ["visualize", "--input", str(small_edge_list), "--output", str(output), "--quiet"],
+    )
+    assert result.exit_code == 0, result.output
+    assert "Communities" not in result.output

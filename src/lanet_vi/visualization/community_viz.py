@@ -9,13 +9,19 @@ This module provides functions for visualizing network communities, including:
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.collections import PatchCollection
+from matplotlib.colors import ListedColormap
 from matplotlib.patches import Polygon
-from scipy.spatial import ConvexHull
+from scipy.spatial import ConvexHull, QhullError
 
 from lanet_vi.community.base import CommunityResult
 from lanet_vi.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+#: Colormaps with at most this many entries are qualitative: their entries are used one
+#: by one instead of sampling the [0, 1] range
+_QUALITATIVE_MAX_ENTRIES = 40
 
 
 def get_community_colors(
@@ -29,32 +35,53 @@ def get_community_colors(
     num_communities : int
         Number of communities to generate colors for
     colormap : str
-        Matplotlib colormap name (default: "tab20" for up to 20 distinct colors)
+        Matplotlib colormap name (default: "tab20", 20 distinct colors)
 
     Returns
     -------
     List[Tuple[float, float, float]]
-        List of RGB color tuples
+        List of RGB color tuples, one per community id (0-based)
 
     Notes
     -----
-    For more than 20 communities, consider using "hsv" or "rainbow" colormaps.
+    A qualitative colormap (``tab10``, ``tab20``, ``Set3``, ...) is used entry by entry,
+    so up to its size no two communities share a color; with more communities than
+    entries the colors are spread evenly over ``hsv`` instead. A continuous colormap
+    (``viridis``, ``hsv``, ...) is sampled evenly over its range. The default ``tab20``
+    alternates a dark and a light shade of each hue, so up to 10 communities take the
+    dark shades (``tab10``) and stay telling apart.
     """
-    if num_communities <= 20:
-        cmap = plt.get_cmap("tab20")
-    elif num_communities <= 40:
-        # Combine tab20 with tab20b/tab20c
-        cmap = plt.get_cmap("tab20b")
+    if num_communities <= 0:
+        return []
+
+    if colormap == "tab20" and num_communities <= 10:
+        colormap = "tab10"
+    cmap = plt.get_cmap(colormap)
+    if isinstance(cmap, ListedColormap) and cmap.N <= _QUALITATIVE_MAX_ENTRIES:
+        if num_communities <= cmap.N:
+            samples = [cmap(i) for i in range(num_communities)]
+        else:
+            logger.debug(
+                f"{num_communities} communities exceed the {cmap.N} colors of {colormap!r}; "
+                "spreading them over 'hsv'"
+            )
+            hsv = plt.get_cmap("hsv")
+            samples = [hsv(i / num_communities) for i in range(num_communities)]
     else:
-        # Use continuous colormap for many communities
-        cmap = plt.get_cmap("hsv")
+        samples = [cmap(i / num_communities) for i in range(num_communities)]
 
-    colors: list[tuple[float, float, float]] = []
-    for i in range(num_communities):
-        r, g, b, _alpha = cmap(i / max(num_communities, 1))
-        colors.append((float(r), float(g), float(b)))
+    return [(float(r), float(g), float(b)) for r, g, b, _alpha in samples]
 
-    return colors
+
+def _colors_by_community_id(
+    community_result: CommunityResult, colormap: str
+) -> dict[int, tuple[float, float, float]]:
+    """One color per community, keyed by community id (ids need not be 0..n-1)."""
+    palette = get_community_colors(len(community_result.communities), colormap=colormap)
+    return {
+        community.id: color
+        for community, color in zip(community_result.communities, palette, strict=True)
+    }
 
 
 def assign_node_colors_by_community(
@@ -92,23 +119,35 @@ def assign_node_colors_by_community(
         f"{community_result.num_communities} communities"
     )
 
-    # Get color palette
-    community_colors = get_community_colors(
-        community_result.num_communities,
-        colormap=colormap,
-    )
+    community_colors = _colors_by_community_id(community_result, colormap)
 
     # Assign colors to nodes
     node_colors = {}
     for node in node_positions:
         comm_id = community_result.get_node_community(node)
-        if comm_id is not None:
-            node_colors[node] = community_colors[comm_id][:3]  # RGB only
+        if comm_id is not None and comm_id in community_colors:
+            node_colors[node] = community_colors[comm_id]
         else:
             # Default gray for nodes not in any community
             node_colors[node] = (0.7, 0.7, 0.7)
 
     return node_colors
+
+
+def _convex_hull(points: np.ndarray) -> np.ndarray | None:
+    """Vertices of the convex hull of ``points`` (n x 2), or None if Qhull cannot build one.
+
+    Collinear points have no hull in the strict sense; Qhull's joggle option perturbs
+    them into a sliver polygon so the community still shows.
+    """
+    for options in ("", "QJ"):
+        try:
+            hull = ConvexHull(points, qhull_options=options)
+        except QhullError:
+            continue
+        vertices: np.ndarray = points[hull.vertices]
+        return vertices
+    return None
 
 
 def draw_community_boundaries(
@@ -118,6 +157,7 @@ def draw_community_boundaries(
     alpha: float = 0.2,
     linewidth: float = 2.0,
     colormap: str = "tab20",
+    zorder: float = 0.0,
 ) -> None:
     """Draw convex hull boundaries around communities.
 
@@ -135,6 +175,8 @@ def draw_community_boundaries(
         Width of the boundary line (default: 2.0)
     colormap : str
         Matplotlib colormap name
+    zorder : float
+        Drawing order of the hulls (default 0: behind the edges and nodes)
 
     Notes
     -----
@@ -142,41 +184,26 @@ def draw_community_boundaries(
     """
     logger.debug(f"Drawing boundaries for {community_result.num_communities} communities")
 
-    # Get color palette
-    community_colors = get_community_colors(
-        community_result.num_communities,
-        colormap=colormap,
-    )
+    community_colors = _colors_by_community_id(community_result, colormap)
 
     patches = []
     colors = []
 
     for community in community_result.communities:
-        # Get positions of nodes in this community
-        points = []
-        for node in community.nodes:
-            if node in node_positions:
-                points.append(node_positions[node])
-
-        # Need at least 3 points for convex hull
+        # Distinct positions of the community's nodes (nodes of one cluster can share a
+        # position; a hull needs three distinct points)
+        points = sorted(
+            {node_positions[node] for node in community.nodes if node in node_positions}
+        )
         if len(points) < 3:
             continue
 
-        # Compute convex hull
-        try:
-            points_array = np.array(points)
-            hull = ConvexHull(points_array)
-
-            # Create polygon from hull vertices
-            hull_points = points_array[hull.vertices]
-            polygon = Polygon(hull_points, closed=True)
-
-            patches.append(polygon)
-            colors.append(community_colors[community.id])
-
-        except Exception as e:
-            logger.warning(f"Could not compute convex hull for community {community.id}: {e}")
+        hull_points = _convex_hull(np.array(points))
+        if hull_points is None:
+            logger.warning(f"Could not compute the convex hull of community {community.id}")
             continue
+        patches.append(Polygon(hull_points, closed=True))
+        colors.append(community_colors[community.id])
 
     # Draw all patches
     if patches:
@@ -186,6 +213,7 @@ def draw_community_boundaries(
             alpha=alpha,
             edgecolors=colors,
             linewidths=linewidth,
+            zorder=zorder,
         )
         ax.add_collection(collection)
         logger.debug(f"Drew {len(patches)} community boundaries")
@@ -223,11 +251,7 @@ def draw_community_circles(
     """
     logger.debug(f"Drawing circles for {community_result.num_communities} communities")
 
-    # Get color palette
-    community_colors = get_community_colors(
-        community_result.num_communities,
-        colormap=colormap,
-    )
+    community_colors = _colors_by_community_id(community_result, colormap)
 
     for community in community_result.communities:
         # Get positions of nodes in this community

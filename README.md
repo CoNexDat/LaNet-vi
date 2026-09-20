@@ -98,6 +98,7 @@ net.visualize("internet.png")
 - `--window 0.25 0.75 0.25 0.75` — zoom: the central half of the picture at full size
 - `--coord-distribution pow` — circle packing of disconnected cores (default: `classic` rings)
 - `--seed 42` — reproducible layout and edge sample
+- `--detect-communities` — Louvain communities colored and outlined on the picture (a 5.x addition)
 - `--cores-file cores.csv` — also write the decomposition (CSV, or JSON by extension)
 - `--config settings.yaml` — settings from a file; explicit flags override it
 
