@@ -6,11 +6,12 @@ incoming and outgoing edges separately.
 
 Each direction is peeled independently: ``k_in`` is the largest k such that the node
 belongs to the subgraph where every node has in-degree >= k, and ``k_out`` likewise for
-out-degree. (The original C++ tool also had a variant that, for each out-degree threshold
-l, computed the in-degree core number within the (0, l)-out-core; that per-l table is not
-implemented here.)
+out-degree. ``compute_dcore_table`` gives the full (k, l)-core table of Giatsidis et al.
+(for every out-degree threshold l, the largest k with the node in the (k, l)-core), the
+``dcores_list.txt`` of the C++ 4.0.0 driver.
 """
 
+import heapq
 from collections import defaultdict
 
 import networkx as nx
@@ -174,6 +175,124 @@ def _compute_directional_cores(
         G.remove_nodes_from(to_remove)
 
     return core_numbers
+
+
+def compute_dcore_table(graph: nx.DiGraph) -> dict[int, dict[int, int]]:
+    """
+    Compute the (k, l)-core table of a directed graph.
+
+    The (k, l)-core (Giatsidis, Thilikos & Vazirgiannis, 2011) is the largest subgraph
+    in which every node has in-degree >= k and out-degree >= l. For every l from 0 up to
+    the last non-empty (0, l)-core, the table gives each node of that core the largest k
+    such that the node belongs to the (k, l)-core. Row 0 is the in-core number
+    (``k_in`` of ``compute_dcores``); a node absent from a row is not in the (0, l)-core.
+
+    Parameters
+    ----------
+    graph : nx.DiGraph
+        Directed input graph
+
+    Returns
+    -------
+    Dict[int, Dict[int, int]]
+        ``{l: {node: k}}``
+
+    Raises
+    ------
+    ValueError
+        If the graph is not directed
+
+    Examples
+    --------
+    >>> G = nx.DiGraph([(0, 1), (1, 2), (2, 0), (2, 3)])
+    >>> table = compute_dcore_table(G)
+    >>> sorted(table[0].items())  # in-core numbers
+    [(0, 1), (1, 1), (2, 1), (3, 1)]
+    >>> sorted(table[1].items())  # node 3 has out-degree 0: not in the (0, 1)-core
+    [(0, 1), (1, 1), (2, 1)]
+
+    Notes
+    -----
+    This is what the C++ 4.0.0 driver computed for a directed graph (``-directed``): it
+    wrote the table to ``dcores_list.txt`` as ``node k l`` lines and drew nothing. That
+    code kept a node in the in-degree peeling after its out-degree had dropped below l,
+    so it reported a larger k than the definition for such nodes; this implementation
+    follows the definition (a node leaves the (k, l)-core as soon as either degree
+    fails), which is checked against a brute-force one in the tests.
+    """
+    if not graph.is_directed():
+        raise ValueError("The (k, l)-core table requires a directed graph")
+
+    table: dict[int, dict[int, int]] = {}
+    # Nodes of the (0, l)-core; the cores are nested, so the set only shrinks with l
+    alive = set(graph.nodes())
+    out_degree = {v: sum(1 for w in graph.successors(v) if w != v) for v in alive}
+    in_degree = {v: sum(1 for u in graph.predecessors(v) if u != v) for v in alive}
+    out_min = 0
+    while True:
+        # Prune to the (0, l)-core: drop every node whose out-degree fell below l
+        pending = [v for v in alive if out_degree[v] < out_min]
+        while pending:
+            v = pending.pop()
+            if v not in alive:
+                continue
+            alive.remove(v)
+            for u in graph.predecessors(v):
+                if u in alive and u != v:
+                    out_degree[u] -= 1
+                    if out_degree[u] < out_min:
+                        pending.append(u)
+            for w in graph.successors(v):
+                if w in alive and w != v:
+                    in_degree[w] -= 1
+        if not alive:
+            break
+        table[out_min] = _peel_in_degree(graph, alive, dict(in_degree), dict(out_degree), out_min)
+        out_min += 1
+    return table
+
+
+def _peel_in_degree(
+    graph: nx.DiGraph,
+    core: set[int],
+    in_degree: dict[int, int],
+    out_degree: dict[int, int],
+    out_min: int,
+) -> dict[int, int]:
+    """Largest k with each node of ``core`` (the (0, l)-core) in the (k, l)-core.
+
+    Batagelj-Zaversnik peeling by in-degree, where a node whose out-degree drops below
+    ``out_min`` (the l) is removed at once with the current k (it is in the (k, l)-core,
+    not in the (k + 1, l)-core). The degree dictionaries are the degrees within ``core``.
+    """
+    remaining = set(core)
+    heap = [(in_degree[v], v) for v in remaining]
+    heapq.heapify(heap)
+    forced: list[int] = []
+    result: dict[int, int] = {}
+    k = 0
+    while remaining:
+        if forced:
+            v = forced.pop()
+            if v not in remaining:
+                continue
+        else:
+            degree, v = heapq.heappop(heap)
+            if v not in remaining or degree != in_degree[v]:
+                continue  # stale heap entry
+            k = max(k, degree)
+        result[v] = k
+        remaining.remove(v)
+        for w in graph.successors(v):
+            if w in remaining and w != v:
+                in_degree[w] -= 1
+                heapq.heappush(heap, (in_degree[w], w))
+        for u in graph.predecessors(v):
+            if u in remaining and u != v:
+                out_degree[u] -= 1
+                if out_degree[u] < out_min:
+                    forced.append(u)
+    return result
 
 
 def find_components_by_dcore(

@@ -127,6 +127,14 @@ For directed networks (`--directed --decomp dcores`), LaNet-vi computes **d-core
   for the out-degree
 - Every node gets the pair `(k_in, k_out)` (exported in the JSON output and kept in
   `result.metadata["d_cores"]`); the picture places it by `max(k_in, k_out)`
+- The full **(k, l)-core table** of the paper is available with `--dcore-table FILE`
+  (`compute_dcore_table` in Python): the (k, l)-core is the largest subgraph in which
+  every node has in-degree ≥ k *and* out-degree ≥ l, and the table gives, for every l,
+  the largest k such that each node of the (0, l)-core is in the (k, l)-core. Row 0 is
+  `k_in`. This is what the C++ 4.0.0 tool computed for a directed graph (its
+  `dcores_list.txt`); that code kept a node in the in-degree peeling after its
+  out-degree had dropped below l and so reported a larger k for such nodes, while
+  LaNet-vi 5 follows the definition
 - Useful for citation networks, web graphs and follower networks, where being cited and
   citing are different roles
 

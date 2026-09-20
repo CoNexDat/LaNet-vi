@@ -3,7 +3,7 @@
 import networkx as nx
 import pytest
 
-from lanet_vi.decomposition.dcores import compute_dcores
+from lanet_vi.decomposition.dcores import compute_dcore_table, compute_dcores
 
 
 def test_dcores_directed_triangle():
@@ -93,3 +93,74 @@ def test_network_decompose_dcores_end_to_end():
     assert result.components
     assert set(result.metadata["d_cores"]) == set(G.nodes())
     assert sum(c.size for c in result.components) == G.number_of_nodes()
+
+
+def _kl_core(graph: nx.DiGraph, k: int, out_min: int) -> set[int]:
+    """Compute the (k, l)-core by repeated removal, straight from the definition."""
+    core = graph.copy()
+    while True:
+        drop = [v for v in core if core.in_degree(v) < k or core.out_degree(v) < out_min]
+        if not drop:
+            return set(core)
+        core.remove_nodes_from(drop)
+
+
+def _brute_force_table(graph: nx.DiGraph) -> dict[int, dict[int, int]]:
+    """Compute {l: {node: max k with node in the (k, l)-core}} by testing every (k, l)."""
+    table = {}
+    for out_min in range(max((d for _, d in graph.out_degree()), default=0) + 2):
+        members = _kl_core(graph, 0, out_min)
+        if not members:
+            break
+        row = {}
+        for node in members:
+            k = 0
+            while node in _kl_core(graph, k + 1, out_min):
+                k += 1
+            row[node] = k
+        table[out_min] = row
+    return table
+
+
+def test_dcore_table_matches_the_definition_on_random_digraphs():
+    """The peeling agrees with the brute-force (k, l)-core table, self-loops included."""
+    import random
+
+    for seed in range(40):
+        rng = random.Random(seed)
+        n, p = rng.randint(2, 12), rng.uniform(0.05, 0.6)
+        graph = nx.gnp_random_graph(n, p, seed=seed, directed=True)
+        if seed % 5 == 0:
+            graph.add_edge(0, 0)  # a self-loop counts for neither degree
+        graph_no_loops = nx.DiGraph(graph)
+        graph_no_loops.remove_edges_from(nx.selfloop_edges(graph_no_loops))
+        assert compute_dcore_table(graph) == _brute_force_table(graph_no_loops), seed
+
+
+def test_dcore_table_row_zero_is_the_in_core_and_rows_are_nested():
+    """Row 0 equals k_in of compute_dcores; the (0, l)-cores shrink with l."""
+    graph = nx.gnp_random_graph(30, 0.15, seed=3, directed=True)
+    table = compute_dcore_table(graph)
+    pairs = compute_dcores(graph).metadata["d_cores"]
+    assert table[0] == {node: k_in for node, (k_in, _) in pairs.items()}
+    max_out = max(k_out for _, k_out in pairs.values())
+    assert sorted(table) == list(range(max_out + 1))
+    for out_min in range(1, max_out + 1):
+        assert set(table[out_min]) <= set(table[out_min - 1])
+        # k can only drop when l grows (more constraints)
+        assert all(table[out_min][v] <= table[out_min - 1][v] for v in table[out_min])
+
+
+def test_dcore_table_edge_cases():
+    """Undirected graphs are refused; empty and edgeless graphs give the trivial tables."""
+    with pytest.raises(ValueError, match="directed"):
+        compute_dcore_table(nx.Graph([(0, 1)]))
+    assert compute_dcore_table(nx.DiGraph()) == {}
+    edgeless = nx.DiGraph()
+    edgeless.add_nodes_from([1, 2])
+    assert compute_dcore_table(edgeless) == {0: {1: 0, 2: 0}}
+    # A directed cycle: every node has in-degree 1 and out-degree 1
+    assert compute_dcore_table(nx.DiGraph([(0, 1), (1, 2), (2, 0)])) == {
+        0: {0: 1, 1: 1, 2: 1},
+        1: {0: 1, 1: 1, 2: 1},
+    }
