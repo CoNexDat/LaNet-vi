@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- Issue #25 is closed as won't-fix for the Gomory-Hu connectivity report and the POV-Ray
+  scenes; k-connectivity (`-kconn`) moves to #47. `docs/cpp-migration.md` and the parity
+  checklist below say so.
+
 ## [5.2.0] - 2026-09-20
 
 Every item of the September 2026 C++ comparison is now closed except the features listed
@@ -471,8 +477,9 @@ LaNet-vi 5.x is a complete Python rewrite of the C++ version. Parity was oversta
 - ⚠️ Community detection: NetworkX Louvain / greedy modularity drawn on the picture; a
   5.x addition, the C++ had no community rendering (#26)
 - ⚠️ Random graph generation: NetworkX wrappers (#26)
-- ❌ Not ported: k-connectivity, Gomory-Hu connectivity, POV-Ray scenes (#25). The
-  spiral layout of the development tree was never in a C++ release and was removed.
+- ❌ Not ported: k-connectivity (planned, #47); Gomory-Hu connectivity and POV-Ray
+  scenes (won't-fix, #25). The spiral layout of the development tree was never in a C++
+  release and was removed.
 - ➕ Enhanced JSON exports
 - ➕ Information theory metrics
 - ➕ Type-safe configuration

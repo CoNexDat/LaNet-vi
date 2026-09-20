@@ -64,8 +64,8 @@ What is different by design:
 | `-render povray\|svg` | — | matplotlib; see `--output` |
 | `-java`, `-onlygraphic`, `-nographic`, `-net` | — | not applicable |
 | `-logfile`, `-logstdout` | `--log-file FILE`, `--verbose` | |
-| `-kconn`, `-kconntype strict\|wide` | — | not ported (#25) |
-| `-connectivity`, `-innerConnectivity` | — | not ported (#25) |
+| `-kconn`, `-kconntype strict\|wide` | — | not ported yet (#47) |
+| `-connectivity`, `-innerConnectivity` | — | not ported; won't be (#25) |
 
 New in 5.x, without a C++ equivalent: `--config`, `--node-size-scale`,
 `--node-edge-color`, `--gradient-edges`, `--legend-fontsize`, `--show-color-legend`,
@@ -74,8 +74,10 @@ New in 5.x, without a C++ equivalent: `--config`, `--node-size-scale`,
 
 ## What is not there
 
-Tracked in [issue #25](https://github.com/CoNexDat/LaNet-vi/issues/25): k-connectivity
-(`-kconn`), Gomory-Hu connectivity (`-connectivity`), POV-Ray scenes. The community
+k-connectivity (`-kconn`) is the one C++ feature still planned
+([issue #47](https://github.com/CoNexDat/LaNet-vi/issues/47)). The Gomory-Hu connectivity
+report (`-connectivity`) and the POV-Ray scenes will not be ported
+([issue #25](https://github.com/CoNexDat/LaNet-vi/issues/25), closed as won't-fix). The community
 detection and random graph generators of the Python package are NetworkX-based
 replacements, not ports of the authors' research code (#26). The spiral layout of the
 development tree (`espiral.cpp`) was never part of a C++ release and has no Python
