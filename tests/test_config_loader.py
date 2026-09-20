@@ -2,7 +2,11 @@
 
 from pathlib import Path
 
+import pytest
+from pydantic import ValidationError
+
 from lanet_vi.io.config_loader import load_config_from_yaml
+from lanet_vi.models.config import CommunityConfig
 
 
 def test_removed_settings_in_old_yaml_are_ignored(tmp_path: Path):
@@ -18,3 +22,10 @@ def test_removed_settings_in_old_yaml_are_ignored(tmp_path: Path):
     config = load_config_from_yaml(path)
     assert config.layout.seed == 7
     assert not hasattr(config.layout, "use_spiral_layout")
+
+
+def test_community_colormap_must_be_a_matplotlib_colormap():
+    """A typo in community.colormap is a short validation error, not matplotlib's list."""
+    assert CommunityConfig(colormap="Set3").colormap == "Set3"
+    with pytest.raises(ValidationError, match="not a matplotlib colormap name"):
+        CommunityConfig(colormap="tabl20")

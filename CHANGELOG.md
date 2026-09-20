@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Network.detect_communities()`, `Network.communities`, `Network.colors_by_community`,
   `lanet_vi.community.detect_communities(graph, config, seed)`, a `resolution` for
   `detect_communities_greedy_modularity`, and `render_network(communities=,
-  community_config=)`. The community flags are no longer marked inert.
+  community_config=)`. `community.colormap` must name a matplotlib colormap (a short
+  validation error otherwise). The community flags are no longer marked inert.
 - `--from-layer K` (`from_layer` in YAML) works: the C++ `-fromlayer` (#23). The
   subgraph induced by the nodes of index ≥ K is decomposed again (weighted k-cores reuse
   the strength intervals of the whole graph) and the layout, the picture, the legends

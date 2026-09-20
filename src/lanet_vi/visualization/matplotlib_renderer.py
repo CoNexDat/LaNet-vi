@@ -174,6 +174,7 @@ def _draw_communities(
             layout.node_positions,
             alpha=config.boundary_alpha,
             colormap=config.colormap,
+            zorder=0,
         )
 
 

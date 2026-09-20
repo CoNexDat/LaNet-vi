@@ -94,6 +94,16 @@ class CommunityConfig(BaseModel):
     boundary_alpha: float = Field(default=0.2, ge=0.0, le=1.0)
     colormap: str = Field(default="tab20")
 
+    @field_validator("colormap")
+    @classmethod
+    def colormap_is_known(cls, value: str) -> str:
+        """Require a matplotlib colormap name (a short error, not the list of all names)."""
+        from matplotlib import colormaps
+
+        if value not in colormaps:
+            raise ValueError(f"{value!r} is not a matplotlib colormap name (try 'tab20')")
+        return value
+
 
 #: Deprecated ``VisualizationConfig`` fields and the field each one folds into
 DEPRECATED_ALIASES = {"show_size_legend": "show_degree_scale", "edge_alpha": "opacity"}

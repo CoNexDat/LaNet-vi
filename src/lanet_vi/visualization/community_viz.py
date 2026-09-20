@@ -227,6 +227,7 @@ def draw_community_circles(
     alpha: float = 0.15,
     linewidth: float = 2.0,
     colormap: str = "tab20",
+    zorder: float = 0.0,
 ) -> None:
     """Draw circles around communities based on their bounding box.
 
@@ -248,6 +249,8 @@ def draw_community_circles(
         Width of the circle line (default: 2.0)
     colormap : str
         Matplotlib colormap name
+    zorder : float
+        Drawing order of the circles (default 0: behind the edges and nodes)
     """
     logger.debug(f"Drawing circles for {community_result.num_communities} communities")
 
@@ -279,7 +282,7 @@ def draw_community_circles(
             edgecolor=color,
             alpha=alpha,
             linewidth=linewidth,
-            zorder=0,  # Draw behind nodes
+            zorder=zorder,
         )
         ax.add_patch(circle)
 
