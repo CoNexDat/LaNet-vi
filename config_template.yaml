@@ -164,9 +164,6 @@ layout:
   # Minimum component size to visualize (filters small components for performance)
   min_component_size: 50
 
-  # Deprecated and ignored (the circle packing follows the C++ algorithm)
-  use_spatial_hashing: true
-
 # ==============================================================================
 # RENDERER
 # ==============================================================================
