@@ -76,4 +76,5 @@ Tracked in [issue #25](https://github.com/CoNexDat/LaNet-vi/issues/25): k-connec
 (`-kconn`), Gomory-Hu connectivity (`-connectivity`), POV-Ray scenes. The community
 detection and random graph generators of the Python package are NetworkX-based
 replacements, not ports of the authors' research code (#26). The spiral layout of the
-development tree was never part of a C++ release and is inert here (#18).
+development tree (`espiral.cpp`) was never part of a C++ release and has no Python
+counterpart.

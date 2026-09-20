@@ -112,7 +112,6 @@ compatibility and do nothing yet; their `--help` text names the tracking issue.
 | `--alpha A`, `--beta B` | 0.3, 1.0 | Constant and exponent of the disc area law of the packing (`pow` / `log`) | `-alpha`, `-beta` |
 | `--ratio-constant C` | auto | Node radius factor of `pow` / `log` | `-ratioConstant` |
 | `--seed N` | 0 | Random seed: cluster order, ties, angle frames, the packing and the edge sample | `-seed` |
-| `--use-spiral-layout`, `--spiral-K`, `--spiral-beta`, `--spiral-separation` | off | *inert* (#18) | |
 
 **Picture**
 

@@ -72,10 +72,6 @@ _CLI_TO_CONFIG: dict[str, tuple[str, str]] = {
     "beta": ("layout", "beta"),
     "ratio_constant": ("layout", "ratio_constant"),
     "seed": ("layout", "seed"),
-    "use_spiral_layout": ("layout", "use_spiral_layout"),
-    "spiral_k": ("layout", "spiral_k"),
-    "spiral_beta": ("layout", "spiral_beta"),
-    "spiral_separation": ("layout", "spiral_separation"),
     "detect_communities": ("community", "detect_communities"),
     "community_algorithm": ("community", "algorithm"),
     "community_resolution": ("community", "resolution"),
@@ -318,19 +314,6 @@ def visualize(
         True,
         "--draw-community-boundaries/--no-draw-community-boundaries",
         help="Draw boundaries around communities (not wired into rendering yet, #23)",
-    ),
-    # Spiral layout options
-    use_spiral_layout: bool = typer.Option(
-        False, "--use-spiral-layout", help="Use spiral layout algorithm (not implemented, #18)"
-    ),
-    spiral_k: float = typer.Option(
-        10.0, "--spiral-K", help="Spiral scaling constant (not implemented, #18)"
-    ),
-    spiral_beta: float = typer.Option(
-        1.5, "--spiral-beta", help="Spiral tightness parameter (not implemented, #18)"
-    ),
-    spiral_separation: float = typer.Option(
-        1.0, "--spiral-separation", help="Target separation in spiral (not implemented, #18)"
     ),
     # Logging options
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
