@@ -34,6 +34,8 @@ def compute_dcores(
     - k_in: maximum k such that node has in-degree >= k in the k-in-core
     - k_out: maximum k such that node has out-degree >= k in the k-out-core
 
+    Self-loops are ignored (they count for neither degree).
+
     Parameters
     ----------
     graph : nx.DiGraph
@@ -78,6 +80,12 @@ def compute_dcores(
         f"Computing d-core decomposition for directed graph with {graph.number_of_nodes()} nodes, "
         f"{graph.number_of_edges()} edges"
     )
+
+    # Self-loops count for neither degree (the edge-list reader drops them; a node is
+    # not its own neighbor), as in compute_dcore_table
+    if nx.number_of_selfloops(graph):
+        graph = graph.copy()
+        graph.remove_edges_from(nx.selfloop_edges(graph))
 
     # Compute in-degree and out-degree cores separately
     logger.debug("Computing in-degree cores")

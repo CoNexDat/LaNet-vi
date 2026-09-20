@@ -138,8 +138,9 @@ def test_dcore_table_matches_the_definition_on_random_digraphs():
 
 
 def test_dcore_table_row_zero_is_the_in_core_and_rows_are_nested():
-    """Row 0 equals k_in of compute_dcores; the (0, l)-cores shrink with l."""
+    """Row 0 equals k_in of compute_dcores (self-loops included); the (0, l)-cores shrink."""
     graph = nx.gnp_random_graph(30, 0.15, seed=3, directed=True)
+    graph.add_edges_from([(0, 0), (7, 7)])
     table = compute_dcore_table(graph)
     pairs = compute_dcores(graph).metadata["d_cores"]
     assert table[0] == {node: k_in for node, (k_in, _) in pairs.items()}
@@ -164,3 +165,11 @@ def test_dcore_table_edge_cases():
         0: {0: 1, 1: 1, 2: 1},
         1: {0: 1, 1: 1, 2: 1},
     }
+
+
+def test_dcores_ignore_self_loops():
+    """A self-loop is not an in- or out-neighbor: a lone looped node is a (0, 0) node."""
+    graph = nx.DiGraph([(0, 0)])
+    assert compute_dcores(graph).metadata["d_cores"] == {0: (0, 0)}
+    cycle = nx.DiGraph([(0, 1), (1, 2), (2, 0), (1, 1)])
+    assert compute_dcores(cycle).metadata["d_cores"] == {0: (1, 1), 1: (1, 1), 2: (1, 1)}

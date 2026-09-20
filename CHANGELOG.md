@@ -56,6 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `compute_dcores` counted a self-loop toward both the in- and the out-degree, so a node
+  with only a self-loop was a (1, 1) node; self-loops are ignored now, as the edge-list
+  reader, the k-core path and the (k, l)-core table already do.
 - `get_community_colors` ignored its `colormap` argument and, for 21-40 communities,
   sampled `tab20b` at fractions that repeat colors. A qualitative colormap is now used
   entry by entry (up to 10 communities take the `tab10` shades instead of `tab20`'s
