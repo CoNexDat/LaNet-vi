@@ -887,7 +887,8 @@ def test_kconn_usage_errors(small_edge_list: Path, tmp_path: Path):
     base = ["visualize", "--input", str(small_edge_list), "--output", str(tmp_path / "x.png")]
     result = runner.invoke(app, [*base, "--kconn-file", str(tmp_path / "k.txt"), "--quiet"])
     assert result.exit_code == 2, result.output
-    assert "--kconn-file needs --kconn" in result.output
+    # Rich colors the flag names in a terminal, so match the plain words only
+    assert "needs" in result.output and "kconn" in result.output
 
     result = runner.invoke(app, [*base, "--kconn", "--decomp", "kdenses", "--quiet"])
     assert result.exit_code == 2, result.output
