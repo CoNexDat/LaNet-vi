@@ -1,6 +1,6 @@
 [project]
 name = "lanet-vi"
-version = "5.2.0"
+version = "5.3.0"
 description = "Large scale network visualization using k-core, k-dense, and d-core decomposition with community detection"
 readme = "README.md"
 authors = [
