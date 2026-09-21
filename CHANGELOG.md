@@ -27,6 +27,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   crash on a shell without clusters and the `shell == 77` debugging escape of the strict
   seed.
 
+### Changed
+
+- The component tree of the layout (`build_component_tree`) is built by one union-find
+  pass over the edges grouped by index instead of a fresh traversal of every component,
+  which walked the top of a deep hierarchy once per level: on the CAIDA AS graph (78 370
+  nodes, 149 shells) it takes 1.7 s instead of 25 s and the whole picture 34 s instead of
+  a minute. The tree is the same (the tests check it against a per-level
+  connected-components construction); only the arbitrary order of sibling components and
+  of the clusters inside a shell changed (now by their first node in graph order), so a
+  picture drawn with a given `--seed` is not identical to the one 5.2.0 drew. An edge
+  index above one of its endpoints is now a `ValueError`.
+
 ### Documentation
 
 - Issue #25 is closed as won't-fix for the Gomory-Hu connectivity report and the POV-Ray

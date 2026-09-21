@@ -205,6 +205,30 @@ def _random_order(items: Sequence[int], rng: np.random.Generator) -> list[int]:
     return list(out)
 
 
+class _UnionFind:
+    """Disjoint sets over ``0 .. n - 1`` with path halving and union by size."""
+
+    def __init__(self, n: int) -> None:
+        self.parent = list(range(n))
+        self.size = [1] * n
+
+    def find(self, i: int) -> int:
+        parent = self.parent
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def union(self, i: int, j: int) -> None:
+        i, j = self.find(i), self.find(j)
+        if i == j:
+            return
+        if self.size[i] < self.size[j]:
+            i, j = j, i
+        self.parent[j] = i
+        self.size[i] += self.size[j]
+
+
 def build_component_tree(
     graph: nx.Graph,
     node_index: dict[int, int],
@@ -213,6 +237,16 @@ def build_component_tree(
 ) -> LayoutComponent:
     """Nested components and clusters of a decomposition (``computeComponents``).
 
+    The component of index ``k`` that contains a node is the connected piece of the
+    subgraph of index ``> k - 1`` it belongs to (edges of index ``>= k``, hence nodes of
+    index ``>= k``); its clusters are the pieces of its nodes of index exactly ``k``
+    connected through edges of index ``k``. The C++ found them by a fresh traversal of
+    every component, so the top of a deep hierarchy was walked once per level; here the
+    same tree comes out of one union-find pass over the edges grouped by index, from the
+    top index down, linear in the size of the graph. Children and clusters are listed in
+    the order of their first node in ``graph.nodes()`` (the clusters are then shuffled
+    as the C++ did) and a cluster lists its nodes in that order too.
+
     Parameters
     ----------
     graph : nx.Graph
@@ -220,8 +254,8 @@ def build_component_tree(
     node_index : Dict[int, int]
         Shell / dense index of every node
     edge_index : Callable[[int, int], int]
-        Index of an edge: the component of index ``k`` is connected through edges of
-        index ``> k`` and its clusters through edges of index ``== k``
+        Index of an edge, at most the index of either endpoint (the minimum of the two
+        for k-cores and d-cores, the edge's own dense index for k-dense)
     rng : numpy.random.Generator
         Source of the random cluster order
 
@@ -229,57 +263,92 @@ def build_component_tree(
     -------
     LayoutComponent
         The root (index 0, all nodes)
+
+    Raises
+    ------
+    ValueError
+        If an edge has a larger index than one of its endpoints
     """
     root = LayoutComponent(index=0)
-    pending: list[tuple[LayoutComponent, list[int]]] = [(root, list(graph.nodes()))]
-    while pending:
-        comp, vertices = pending.pop()
-        comp.size = len(vertices)
-        seen: set[int] = set()
-        shell_nodes: list[int] = []
-        for v in vertices:
-            if v in seen:
-                continue
-            if node_index[v] > comp.index:
-                # A connected piece of the inner core becomes a child component
-                child = LayoutComponent(index=comp.index + 1, parent=comp)
-                members = [v]
-                seen.add(v)
-                queue = deque([v])
-                while queue:
-                    current = queue.popleft()
-                    for w in graph.neighbors(current):
-                        if w not in seen and edge_index(current, w) > comp.index:
-                            seen.add(w)
-                            members.append(w)
-                            queue.append(w)
-                comp.children.append(child)
-                pending.append((child, members))
-            else:
-                shell_nodes.append(v)
+    nodes = list(graph.nodes())
+    root.size = len(nodes)
+    if not nodes:
+        return root
+    position = {v: i for i, v in enumerate(nodes)}
 
-        comp.shell_cardinal = len(shell_nodes)
-        clustered: set[int] = set()
-        clusters: list[list[int]] = []
-        for v in shell_nodes:
-            if v in clustered:
-                continue
-            cluster = [v]
-            clustered.add(v)
-            stack = [v]
-            while stack:
-                current = stack.pop()
-                for w in graph.neighbors(current):
-                    if (
-                        w not in clustered
-                        and node_index[w] == comp.index
-                        and edge_index(current, w) == comp.index
-                    ):
-                        clustered.add(w)
-                        cluster.append(w)
-                        stack.append(w)
-            clusters.append(cluster)
+    # Nodes and edges bucketed by index, both in the order of the graph
+    nodes_of: dict[int, list[int]] = {}
+    for v in nodes:
+        nodes_of.setdefault(node_index[v], []).append(v)
+    edges_of: dict[int, list[tuple[int, int]]] = {}
+    for u, v in graph.edges():
+        if u == v:
+            continue
+        k = edge_index(u, v)
+        if k > node_index[u] or k > node_index[v]:
+            raise ValueError(
+                f"edge ({u}, {v}) has index {k}, above one of its endpoints "
+                f"({node_index[u]}, {node_index[v]})"
+            )
+        edges_of.setdefault(k, []).append((u, v))
+
+    def clusters_of(shell: list[int], k: int) -> list[list[int]]:
+        """Split the nodes of index ``k`` into the pieces connected by edges of index ``k``."""
+        if len(shell) <= 1:
+            return [list(shell)]
+        local = {v: i for i, v in enumerate(shell)}
+        parts = _UnionFind(len(shell))
+        for u, v in edges_of.get(k, ()):
+            if u in local and v in local:
+                parts.union(local[u], local[v])
+        clusters: dict[int, list[int]] = {}
+        for v in shell:
+            clusters.setdefault(parts.find(local[v]), []).append(v)
+        return list(clusters.values())
+
+    def finish(comp: LayoutComponent, shell: list[int]) -> None:
+        comp.shell_cardinal = len(shell)
+        clusters = clusters_of(shell, comp.index) if shell else []
         comp.clusters = [clusters[i] for i in _random_order(range(len(clusters)), rng)]
+
+    # From the top index down: the components of index k merge those of index k + 1 with
+    # the nodes of index k through the edges of index k
+    sets = _UnionFind(len(nodes))
+    level: list[tuple[int, LayoutComponent]] = []  # (first position, component) of index k + 1
+    for k in range(max(nodes_of), 0, -1):
+        for u, v in edges_of.get(k, ()):
+            sets.union(position[u], position[v])
+        groups: dict[int, tuple[list[LayoutComponent], list[int], int]] = {}
+        for first, child in level:  # already in order of their first position
+            group = sets.find(first)
+            entry = groups.get(group)
+            if entry is None:
+                groups[group] = ([child], [], first)
+            else:
+                entry[0].append(child)
+        for v in nodes_of.get(k, ()):
+            pos = position[v]
+            group = sets.find(pos)
+            entry = groups.get(group)
+            if entry is None:
+                groups[group] = ([], [v], pos)
+            else:
+                entry[1].append(v)
+                if pos < entry[2]:
+                    groups[group] = (entry[0], entry[1], pos)
+        level = []
+        for children, shell, first in sorted(groups.values(), key=lambda entry: entry[2]):
+            comp = LayoutComponent(index=k, children=children)
+            comp.size = sum(child.size for child in children) + len(shell)
+            for child in children:
+                child.parent = comp
+            finish(comp, shell)
+            level.append((first, comp))
+
+    root.children = [comp for _, comp in level]
+    for child in root.children:
+        child.parent = root
+    finish(root, nodes_of.get(0, []))
     return root
 
 
