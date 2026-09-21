@@ -6,6 +6,7 @@ import networkx as nx
 import numpy as np
 import pytest
 
+from lanet_vi.decomposition.kdenses import MIN_DENSE_INDEX, compute_kdenses
 from lanet_vi.visualization.lanet_layout import (
     LayoutParameters,
     build_component_tree,
@@ -19,6 +20,10 @@ from lanet_vi.visualization.lanet_layout import (
 
 def _min_core(core: dict[int, int]):  # noqa: ANN202
     return lambda u, v: min(core[u], core[v])
+
+
+def _dense_edge_index(edge_indices: dict):  # noqa: ANN202
+    return lambda u, v: int(edge_indices.get((u, v) if u < v else (v, u), MIN_DENSE_INDEX))
 
 
 def _two_k4_bridged() -> nx.Graph:
@@ -102,7 +107,11 @@ def _describe(comp) -> tuple:  # noqa: ANN001
 
 
 def test_component_tree_matches_its_definition_on_random_graphs():
-    """The union-find tree equals a per-level connected-components construction."""
+    """The union-find tree equals a per-level connected-components construction.
+
+    With the k-core edge index (the minimum of the endpoints) and the k-dense one (the
+    edge's own index, below its endpoints' when they close no triangle together).
+    """
     rng = np.random.default_rng(5)
     for trial in range(60):
         n = int(rng.integers(0, 40))
@@ -113,10 +122,13 @@ def test_component_tree_matches_its_definition_on_random_graphs():
         simple = nx.Graph(G)
         simple.remove_edges_from(nx.selfloop_edges(simple))
         core = nx.core_number(simple)
-        root = build_component_tree(G, core, _min_core(core), np.random.default_rng(0))
-        assert _describe(root) == _brute_force_tree(G, core, _min_core(core))
-        for comp in root.walk():
-            assert all(child.parent is comp for child in comp.children)
+        dense = compute_kdenses(simple)
+        dense_index = _dense_edge_index(dense.metadata["edge_indices"])
+        for index, edge_index in ((core, _min_core(core)), (dense.node_indices, dense_index)):
+            root = build_component_tree(G, index, edge_index, np.random.default_rng(0))
+            assert _describe(root) == _brute_force_tree(G, index, edge_index)
+            for comp in root.walk():
+                assert all(child.parent is comp for child in comp.children)
 
 
 def test_children_and_clusters_follow_the_graph_order():

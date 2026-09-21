@@ -244,9 +244,9 @@ def build_component_tree(
     every component, so the top of a deep hierarchy was walked once per level; here the
     same tree comes out of one union-find pass over the edges grouped by index, from the
     top index down, linear in the size of the graph plus the range of the indices.
-    Children and clusters are listed in
-    the order of their first node in ``graph.nodes()`` (the clusters are then shuffled
-    as the C++ did) and a cluster lists its nodes in that order too.
+    Children and clusters are listed in the order of their first node in
+    ``graph.nodes()`` (the clusters are then shuffled as the C++ did) and a cluster lists
+    its nodes in that order too.
 
     Parameters
     ----------
