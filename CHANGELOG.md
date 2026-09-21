@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.3.0] - 2026-09-21
+
+The last planned port of the C++ tool, the k-connectivity analysis of the shells
+(`--kconn`), and a performance pass on large graphs: the CAIDA AS graph (78 370 nodes,
+489 407 edges) renders in about 26 s instead of a minute, with the same decomposition
+and the same pictures up to the random arrangement of a shell (and, with `--kconn`, the
+marker of a few nodes; see *Changed*).
+
 ### Added
 
 - `--kconn`, `--kconn-type wide|strict` and `--kconn-file FILE` (`kconn`, `kconn_type`
@@ -511,7 +519,7 @@ LaNet-vi 5.x is a complete Python rewrite of the C++ version. Parity was oversta
 - **CLI**: Single-hyphen → Double-hyphen flags (Unix/GNU standard)
 - **Dependencies**: No external renderers, pure Python stack
 
-**Feature Parity (as of 5.2.0):**
+**Feature Parity (as of 5.3.0):**
 - ✅ K-core decomposition, including the weighted peeling
 - ✅ K-dense (m-core) decomposition (triangle-pair peeling)
 - ✅ D-core decomposition (directed graphs), with the (k, l)-core table of the 4.0.0 tool
@@ -530,7 +538,8 @@ LaNet-vi 5.x is a complete Python rewrite of the C++ version. Parity was oversta
 
 ---
 
-[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.2.0...HEAD
+[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.3.0...HEAD
+[5.3.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.2.0...v5.3.0
 [5.2.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.1.0...v5.2.0
 [5.1.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.0.0...v5.1.0
 [5.0.0]: https://github.com/CoNexDat/LaNet-vi/releases/tag/v5.0.0
