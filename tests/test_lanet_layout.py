@@ -6,6 +6,7 @@ import networkx as nx
 import numpy as np
 import pytest
 
+from lanet_vi.decomposition.kdenses import MIN_DENSE_INDEX, compute_kdenses
 from lanet_vi.visualization.lanet_layout import (
     LayoutParameters,
     build_component_tree,
@@ -19,6 +20,10 @@ from lanet_vi.visualization.lanet_layout import (
 
 def _min_core(core: dict[int, int]):  # noqa: ANN202
     return lambda u, v: min(core[u], core[v])
+
+
+def _dense_edge_index(edge_indices: dict):  # noqa: ANN202
+    return lambda u, v: int(edge_indices.get((u, v) if u < v else (v, u), MIN_DENSE_INDEX))
 
 
 def _two_k4_bridged() -> nx.Graph:
@@ -60,6 +65,99 @@ def test_clusters_are_connected_within_the_shell():
     (one,) = root.children
     assert sorted(sorted(c) for c in one.clusters) == [[3], [4]]
     assert one.shell_cardinal == 2
+
+
+def _brute_force_tree(G: nx.Graph, index: dict, edge_index) -> tuple:  # noqa: ANN001, ANN202
+    """Build the tree by its definition, order-free.
+
+    Components of index k are the connected pieces of the edges of index >= k; clusters
+    the pieces of the index-k nodes joined by index-k edges.
+    """
+
+    def describe(nodes: set, k: int) -> tuple:
+        inner = nx.Graph()
+        inner.add_nodes_from(v for v in nodes if index[v] > k)
+        inner.add_edges_from(
+            (u, v) for u, v in G.subgraph(nodes).edges() if u != v and edge_index(u, v) > k
+        )
+        shell = nx.Graph()
+        shell.add_nodes_from(v for v in nodes if index[v] == k)
+        shell.add_edges_from(
+            (u, v) for u, v in G.subgraph(shell.nodes()).edges() if u != v and edge_index(u, v) == k
+        )
+        return (
+            k,
+            len(nodes),
+            shell.number_of_nodes(),
+            frozenset(frozenset(c) for c in nx.connected_components(shell)),
+            frozenset(describe(set(c), k + 1) for c in nx.connected_components(inner)),
+        )
+
+    return describe(set(G.nodes()), 0)
+
+
+def _describe(comp) -> tuple:  # noqa: ANN001
+    return (
+        comp.index,
+        comp.size,
+        comp.shell_cardinal,
+        frozenset(frozenset(c) for c in comp.clusters),
+        frozenset(_describe(child) for child in comp.children),
+    )
+
+
+def test_component_tree_matches_its_definition_on_random_graphs():
+    """The union-find tree equals a per-level connected-components construction.
+
+    With the k-core edge index (the minimum of the endpoints) and the k-dense one (the
+    edge's own index, below its endpoints' when they close no triangle together).
+    """
+    rng = np.random.default_rng(5)
+    for trial in range(60):
+        n = int(rng.integers(0, 40))
+        G = nx.gnp_random_graph(n, float(rng.choice([0.05, 0.15, 0.4])), seed=int(trial))
+        if n and trial % 3 == 0:  # a clique for depth and self-loops to ignore
+            G.add_edges_from(nx.complete_graph(list(range(min(n, 6)))).edges())
+            G.add_edge(0, 0)
+        simple = nx.Graph(G)
+        simple.remove_edges_from(nx.selfloop_edges(simple))
+        core = nx.core_number(simple)
+        dense = compute_kdenses(simple)
+        dense_index = _dense_edge_index(dense.metadata["edge_indices"])
+        for index, edge_index in ((core, _min_core(core)), (dense.node_indices, dense_index)):
+            root = build_component_tree(G, index, edge_index, np.random.default_rng(0))
+            assert _describe(root) == _brute_force_tree(G, index, edge_index)
+            for comp in root.walk():
+                assert all(child.parent is comp for child in comp.children)
+
+
+def test_children_and_clusters_follow_the_graph_order():
+    """Siblings and clusters are listed by their first node in graph order."""
+    G = nx.Graph()
+    G.add_nodes_from([20, 21, 22, 23, 10, 11, 12, 13, 30, 31])  # the second K4 comes first
+    G.add_edges_from(nx.complete_graph([10, 11, 12, 13]).edges())
+    G.add_edges_from(nx.complete_graph([20, 21, 22, 23]).edges())
+    G.add_edges_from([(13, 30), (30, 23), (31, 12)])  # 30 bridges (2-shell), 31 pendant
+    core = nx.core_number(G)
+    root = build_component_tree(G, core, _min_core(core), np.random.default_rng(0))
+    (one,) = root.children
+    assert one.clusters == [[31]]
+    (two,) = one.children
+    assert two.clusters == [[30]]
+    assert [sorted(c for cl in child.clusters for c in cl) for child in two.children] == [
+        [20, 21, 22, 23],
+        [10, 11, 12, 13],
+    ]
+    assert two.children[0].clusters == [[20, 21, 22, 23]]  # members in graph order too
+
+
+def test_component_tree_rejects_an_edge_above_its_endpoints_and_negative_indices():
+    """An edge index above an endpoint's index breaks the nesting; so does a negative index."""
+    G = nx.Graph([(0, 1)])
+    with pytest.raises(ValueError, match="above one of its endpoints"):
+        build_component_tree(G, {0: 1, 1: 1}, lambda u, v: 2, np.random.default_rng(0))
+    with pytest.raises(ValueError, match="negative index"):
+        build_component_tree(G, {0: -1, 1: 0}, lambda u, v: -1, np.random.default_rng(0))
 
 
 def test_every_node_is_placed_and_shells_are_concentric_rings():
