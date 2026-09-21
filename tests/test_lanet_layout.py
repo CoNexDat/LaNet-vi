@@ -139,11 +139,13 @@ def test_children_and_clusters_follow_the_graph_order():
     assert two.children[0].clusters == [[20, 21, 22, 23]]  # members in graph order too
 
 
-def test_component_tree_rejects_an_edge_above_its_endpoints():
-    """An edge index above an endpoint's index breaks the nesting and is refused."""
+def test_component_tree_rejects_an_edge_above_its_endpoints_and_negative_indices():
+    """An edge index above an endpoint's index breaks the nesting; so does a negative index."""
     G = nx.Graph([(0, 1)])
     with pytest.raises(ValueError, match="above one of its endpoints"):
         build_component_tree(G, {0: 1, 1: 1}, lambda u, v: 2, np.random.default_rng(0))
+    with pytest.raises(ValueError, match="negative index"):
+        build_component_tree(G, {0: -1, 1: 0}, lambda u, v: -1, np.random.default_rng(0))
 
 
 def test_every_node_is_placed_and_shells_are_concentric_rings():

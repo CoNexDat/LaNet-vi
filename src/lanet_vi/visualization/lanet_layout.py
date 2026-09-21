@@ -243,7 +243,8 @@ def build_component_tree(
     connected through edges of index ``k``. The C++ found them by a fresh traversal of
     every component, so the top of a deep hierarchy was walked once per level; here the
     same tree comes out of one union-find pass over the edges grouped by index, from the
-    top index down, linear in the size of the graph. Children and clusters are listed in
+    top index down, linear in the size of the graph plus the range of the indices.
+    Children and clusters are listed in
     the order of their first node in ``graph.nodes()`` (the clusters are then shuffled
     as the C++ did) and a cluster lists its nodes in that order too.
 
@@ -252,7 +253,7 @@ def build_component_tree(
     graph : nx.Graph
         The network
     node_index : Dict[int, int]
-        Shell / dense index of every node
+        Shell / dense index of every node, ``>= 0``
     edge_index : Callable[[int, int], int]
         Index of an edge, at most the index of either endpoint (the minimum of the two
         for k-cores and d-cores, the edge's own dense index for k-dense)
@@ -267,7 +268,8 @@ def build_component_tree(
     Raises
     ------
     ValueError
-        If an edge has a larger index than one of its endpoints
+        If a node has a negative index or an edge a larger index than one of its
+        endpoints
     """
     root = LayoutComponent(index=0)
     nodes = list(graph.nodes())
@@ -279,6 +281,8 @@ def build_component_tree(
     # Nodes and edges bucketed by index, both in the order of the graph
     nodes_of: dict[int, list[int]] = {}
     for v in nodes:
+        if node_index[v] < 0:
+            raise ValueError(f"node {v} has a negative index ({node_index[v]})")
         nodes_of.setdefault(node_index[v], []).append(v)
     edges_of: dict[int, list[tuple[int, int]]] = {}
     for u, v in graph.edges():
@@ -294,7 +298,9 @@ def build_component_tree(
 
     def clusters_of(shell: list[int], k: int) -> list[list[int]]:
         """Split the nodes of index ``k`` into the pieces connected by edges of index ``k``."""
-        if len(shell) <= 1:
+        if not shell:
+            return []
+        if len(shell) == 1:
             return [list(shell)]
         local = {v: i for i, v in enumerate(shell)}
         parts = _UnionFind(len(shell))
@@ -308,7 +314,7 @@ def build_component_tree(
 
     def finish(comp: LayoutComponent, shell: list[int]) -> None:
         comp.shell_cardinal = len(shell)
-        clusters = clusters_of(shell, comp.index) if shell else []
+        clusters = clusters_of(shell, comp.index)
         comp.clusters = [clusters[i] for i in _random_order(range(len(clusters)), rng)]
 
     # From the top index down: the components of index k merge those of index k + 1 with

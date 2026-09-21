@@ -36,8 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a minute. The tree is the same (the tests check it against a per-level
   connected-components construction); only the arbitrary order of sibling components and
   of the clusters inside a shell changed (now by their first node in graph order), so a
-  picture drawn with a given `--seed` is not identical to the one 5.2.0 drew. An edge
-  index above one of its endpoints is now a `ValueError`.
+  picture drawn with a given `--seed` is not identical to the one 5.2.0 drew, and since
+  the k-connectivity walk examines the clusters in that order, `--kconn` can assign
+  another value to a few nodes for the same seed. A negative node index or an edge index
+  above one of its endpoints is now a `ValueError`.
 
 ### Documentation
 
