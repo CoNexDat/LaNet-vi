@@ -12,7 +12,8 @@ incident edges.
 
 import networkx as nx
 
-from lanet_vi.models.graph import Component, DecompositionResult
+from lanet_vi.decomposition.components import components_by_index
+from lanet_vi.models.graph import DecompositionResult
 
 #: k-dense index of an isolated vertex or an edge that lies in no triangle.
 MIN_DENSE_INDEX = 2
@@ -178,32 +179,5 @@ def find_components_by_dense(
     DecompositionResult
         Updated result with component information
     """
-    components = []
-    component_id = 0
-
-    # Group nodes by dense index
-    denses: dict[int, list[int]] = {}
-    for node, dense_idx in decomposition.node_indices.items():
-        if dense_idx not in denses:
-            denses[dense_idx] = []
-        denses[dense_idx].append(node)
-
-    # Find components within each dense level
-    for dense_idx in sorted(denses.keys(), reverse=True):
-        dense_nodes = denses[dense_idx]
-        subgraph = graph.subgraph(dense_nodes)
-
-        # Find connected components
-        for comp_nodes in nx.connected_components(subgraph):
-            components.append(
-                Component(
-                    component_id=component_id,
-                    nodes=list(comp_nodes),
-                    dense_index=dense_idx,
-                    size=len(comp_nodes),
-                )
-            )
-            component_id += 1
-
-    decomposition.components = components
+    decomposition.components = components_by_index(graph, decomposition.node_indices, dense=True)
     return decomposition

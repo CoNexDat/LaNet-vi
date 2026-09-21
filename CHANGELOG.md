@@ -41,6 +41,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   another value to a few nodes for the same seed. A negative node index or an edge index
   above one of its endpoints is now a `ValueError`.
 
+- The rest of the pipeline is faster on large graphs too: the k-core numbers come from
+  a bucket peeling (`nx.core_number` deletes neighbors from lists; on CAIDA 1.8 s instead
+  of 7.3 s for the whole decomposition), the connected pieces of every level are found in
+  one pass over the edges (`lanet_vi.decomposition.components.components_by_index`,
+  shared by k-cores, k-denses and d-cores) instead of one induced subgraph per level, and
+  the picture is rasterized once (`plt.savefig` redrew the whole figure after saving).
+  The CAIDA AS graph renders in about 26 s, down from a minute in 5.2.0. The pieces of a
+  level are listed by their first node in graph order, each with its nodes in that order
+  (the JSON export changes only in that order).
+
 ### Documentation
 
 - Issue #25 is closed as won't-fix for the Gomory-Hu connectivity report and the POV-Ray

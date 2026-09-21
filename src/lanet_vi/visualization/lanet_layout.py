@@ -47,6 +47,7 @@ from dataclasses import dataclass, field
 import networkx as nx
 import numpy as np
 
+from lanet_vi.union_find import UnionFind
 from lanet_vi.visualization.layout import distribute_components
 
 TWO_PI = 2.0 * math.pi
@@ -205,30 +206,6 @@ def _random_order(items: Sequence[int], rng: np.random.Generator) -> list[int]:
     return list(out)
 
 
-class _UnionFind:
-    """Disjoint sets over ``0 .. n - 1`` with path halving and union by size."""
-
-    def __init__(self, n: int) -> None:
-        self.parent = list(range(n))
-        self.size = [1] * n
-
-    def find(self, i: int) -> int:
-        parent = self.parent
-        while parent[i] != i:
-            parent[i] = parent[parent[i]]
-            i = parent[i]
-        return i
-
-    def union(self, i: int, j: int) -> None:
-        i, j = self.find(i), self.find(j)
-        if i == j:
-            return
-        if self.size[i] < self.size[j]:
-            i, j = j, i
-        self.parent[j] = i
-        self.size[i] += self.size[j]
-
-
 def build_component_tree(
     graph: nx.Graph,
     node_index: dict[int, int],
@@ -304,7 +281,7 @@ def build_component_tree(
         """
         shell = nodes_of.get(k, [])
         local = {v: i for i, v in enumerate(shell)}
-        parts = _UnionFind(len(shell))
+        parts = UnionFind(len(shell))
         for u, v in edges_of.get(k, ()):
             if u in local and v in local:
                 parts.union(local[u], local[v])
@@ -319,7 +296,7 @@ def build_component_tree(
 
     # From the top index down: the components of index k merge those of index k + 1 with
     # the clusters of index k through the edges of index k
-    sets = _UnionFind(len(nodes))
+    sets = UnionFind(len(nodes))
     level: list[tuple[int, LayoutComponent]] = []  # (first position, component) of index k + 1
     for k in range(max(nodes_of), 0, -1):
         for u, v in edges_of.get(k, ()):

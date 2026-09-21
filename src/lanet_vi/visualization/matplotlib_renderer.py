@@ -133,7 +133,8 @@ def render_network(
     if config.show_degree_scale:
         _draw_size_legend(ax, graph, config, layout, px_per_unit)
 
-    plt.savefig(output_path, dpi=_DPI, facecolor=background)
+    # fig.savefig, not plt.savefig: the pyplot one redraws the whole figure afterwards
+    fig.savefig(output_path, dpi=_DPI, facecolor=background)
     plt.close(fig)
 
 
