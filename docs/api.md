@@ -33,6 +33,8 @@ from the top-level `lanet_vi` package; everything else is imported from its modu
 
 ::: lanet_vi.decomposition.components
 
+::: lanet_vi.union_find
+
 ## Layout
 
 ::: lanet_vi.visualization.lanet_layout
