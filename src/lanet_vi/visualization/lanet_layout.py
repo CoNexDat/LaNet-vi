@@ -296,12 +296,13 @@ def build_component_tree(
             )
         edges_of.setdefault(k, []).append((u, v))
 
-    def clusters_of(shell: list[int], k: int) -> list[list[int]]:
-        """Split the nodes of index ``k`` into the pieces connected by edges of index ``k``."""
-        if not shell:
-            return []
-        if len(shell) == 1:
-            return [list(shell)]
+    def clusters_at(k: int) -> list[list[int]]:
+        """Split the nodes of index ``k`` into the pieces connected by edges of index ``k``.
+
+        One pass for the whole level: the clusters of every component of index ``k`` at
+        once, in the order of their first node, each listing its nodes in graph order.
+        """
+        shell = nodes_of.get(k, [])
         local = {v: i for i, v in enumerate(shell)}
         parts = _UnionFind(len(shell))
         for u, v in edges_of.get(k, ()):
@@ -312,19 +313,18 @@ def build_component_tree(
             clusters.setdefault(parts.find(local[v]), []).append(v)
         return list(clusters.values())
 
-    def finish(comp: LayoutComponent, shell: list[int]) -> None:
-        comp.shell_cardinal = len(shell)
-        clusters = clusters_of(shell, comp.index)
+    def finish(comp: LayoutComponent, clusters: list[list[int]]) -> None:
+        comp.shell_cardinal = sum(len(cluster) for cluster in clusters)
         comp.clusters = [clusters[i] for i in _random_order(range(len(clusters)), rng)]
 
     # From the top index down: the components of index k merge those of index k + 1 with
-    # the nodes of index k through the edges of index k
+    # the clusters of index k through the edges of index k
     sets = _UnionFind(len(nodes))
     level: list[tuple[int, LayoutComponent]] = []  # (first position, component) of index k + 1
     for k in range(max(nodes_of), 0, -1):
         for u, v in edges_of.get(k, ()):
             sets.union(position[u], position[v])
-        groups: dict[int, tuple[list[LayoutComponent], list[int], int]] = {}
+        groups: dict[int, tuple[list[LayoutComponent], list[list[int]], int]] = {}
         for first, child in level:  # already in order of their first position
             group = sets.find(first)
             entry = groups.get(group)
@@ -332,29 +332,29 @@ def build_component_tree(
                 groups[group] = ([child], [], first)
             else:
                 entry[0].append(child)
-        for v in nodes_of.get(k, ()):
-            pos = position[v]
+        for cluster in clusters_at(k):  # also in order of their first position
+            pos = position[cluster[0]]
             group = sets.find(pos)
             entry = groups.get(group)
             if entry is None:
-                groups[group] = ([], [v], pos)
+                groups[group] = ([], [cluster], pos)
             else:
-                entry[1].append(v)
+                entry[1].append(cluster)
                 if pos < entry[2]:
                     groups[group] = (entry[0], entry[1], pos)
         level = []
-        for children, shell, first in sorted(groups.values(), key=lambda entry: entry[2]):
+        for children, clusters, first in sorted(groups.values(), key=lambda entry: entry[2]):
             comp = LayoutComponent(index=k, children=children)
-            comp.size = sum(child.size for child in children) + len(shell)
             for child in children:
                 child.parent = comp
-            finish(comp, shell)
+            finish(comp, clusters)
+            comp.size = sum(child.size for child in children) + comp.shell_cardinal
             level.append((first, comp))
 
     root.children = [comp for _, comp in level]
     for child in root.children:
         child.parent = root
-    finish(root, nodes_of.get(0, []))
+    finish(root, clusters_at(0))
     return root
 
 
