@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 The last planned port of the C++ tool, the k-connectivity analysis of the shells
 (`--kconn`), and a performance pass on large graphs: the CAIDA AS graph (78 370 nodes,
 489 407 edges) renders in about 26 s instead of a minute, with the same decomposition
-and the same pictures up to the random arrangement of a shell.
+and the same pictures up to the random arrangement of a shell (and, with `--kconn`, the
+marker of a few nodes; see *Changed*).
 
 ### Added
 
