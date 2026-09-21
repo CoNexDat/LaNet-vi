@@ -7,9 +7,10 @@ from pathlib import Path
 import networkx as nx
 import numpy as np
 
+from lanet_vi.decomposition.components import components_by_index
 from lanet_vi.logging_config import get_logger
 from lanet_vi.models.config import DecompositionConfig, StrengthIntervalMethod
-from lanet_vi.models.graph import Component, DecompositionResult
+from lanet_vi.models.graph import DecompositionResult
 
 logger = get_logger(__name__)
 
@@ -77,8 +78,7 @@ def compute_kcores(
             graph = _as_weighted_simple_graph(graph)
 
     if not is_weighted:
-        logger.info("Using unweighted k-core algorithm (NetworkX core_number)")
-        # Use NetworkX's k-core number computation
+        logger.info("Using unweighted k-core algorithm")
         core_numbers = _core_number(graph)
 
         max_core = max(core_numbers.values()) if core_numbers else 0
@@ -154,34 +154,27 @@ def _as_weighted_simple_graph(graph: nx.Graph) -> nx.Graph:
 
 
 def _core_number(graph: nx.Graph) -> dict[int, int]:
-    """Core numbers where parallel edges count towards the degree.
+    """Core numbers by bucket peeling (Batagelj & Zaversnik), parallel edges counted.
 
-    Delegates to ``nx.core_number`` for simple graphs and runs the same
-    Batagelj-Zaversnik peeling on multigraphs, as the C++ ``-multigraph``
-    mode did.
+    Every edge counts towards the degree of both endpoints: parallel edges of a
+    multigraph, as the C++ ``-multigraph`` mode did, and both arcs of a mutual pair in a
+    directed graph, as ``nx.core_number`` does. Gives the same numbers as
+    ``nx.core_number`` on simple graphs in a fraction of its time on large ones (it
+    deletes neighbors from lists).
     """
-    if not graph.is_multigraph():
-        return dict(nx.core_number(graph))
+    adjacency: dict[int, dict[int, int]] = {node: {} for node in graph.nodes()}
+    for u, v in graph.edges():
+        adjacency[u][v] = adjacency[u].get(v, 0) + 1
+        adjacency[v][u] = adjacency[v].get(u, 0) + 1
+    core = {node: sum(counts.values()) for node, counts in adjacency.items()}
 
-    degrees = dict(graph.degree())  # in + out for directed graphs, multiplicity counted
-    core = dict(degrees)
-    directed = graph.is_directed()
-
-    def incident(node: int) -> dict[int, int]:
-        """Neighbors of ``node`` with the number of edges shared in either direction."""
-        counts: dict[int, int] = {}
-        for nb in graph.successors(node) if directed else graph.neighbors(node):
-            counts[nb] = counts.get(nb, 0) + graph.number_of_edges(node, nb)
-        if directed:
-            for nb in graph.predecessors(node):
-                counts[nb] = counts.get(nb, 0) + graph.number_of_edges(nb, node)
-        return counts
-
-    max_degree = max(degrees.values(), default=0)
+    max_degree = max(core.values(), default=0)
     bins: list[list[int]] = [[] for _ in range(max_degree + 1)]
-    for node, degree in degrees.items():
+    for node, degree in core.items():
         bins[degree].append(node)
 
+    # Peel the smallest degree first; a node lowered to a new bucket is appended there
+    # and its stale entries are skipped when popped
     removed: set[int] = set()
     for k in range(max_degree + 1):
         bucket = bins[k]
@@ -191,7 +184,7 @@ def _core_number(graph: nx.Graph) -> dict[int, int]:
                 continue
             removed.add(node)
             core[node] = k
-            for neighbor, multiplicity in incident(node).items():
+            for neighbor, multiplicity in adjacency[node].items():
                 if neighbor in removed or core[neighbor] <= k:
                     continue
                 core[neighbor] = max(k, core[neighbor] - multiplicity)
@@ -428,42 +421,5 @@ def find_components_by_shell(
     DecompositionResult
         Updated result with component information
     """
-    components = []
-    component_id = 0
-
-    # Group nodes by shell index
-    shells: dict[int, list[int]] = {}
-    for node, shell_idx in decomposition.node_indices.items():
-        if shell_idx not in shells:
-            shells[shell_idx] = []
-        shells[shell_idx].append(node)
-
-    # Find components within each shell
-    for shell_idx in sorted(shells.keys(), reverse=True):
-        # Create induced subgraph for this shell (copy for performance)
-        shell_nodes = shells[shell_idx]
-
-        # Only process if there are nodes in this shell
-        if not shell_nodes:
-            continue
-
-        # Create subgraph - use copy() to avoid view overhead
-        subgraph = graph.subgraph(shell_nodes).copy()
-
-        # Find connected components
-        components_of = (
-            nx.weakly_connected_components if subgraph.is_directed() else nx.connected_components
-        )
-        for comp_nodes in components_of(subgraph):
-            components.append(
-                Component(
-                    component_id=component_id,
-                    nodes=list(comp_nodes),
-                    shell_index=shell_idx,
-                    size=len(comp_nodes),
-                )
-            )
-            component_id += 1
-
-    decomposition.components = components
+    decomposition.components = components_by_index(graph, decomposition.node_indices)
     return decomposition

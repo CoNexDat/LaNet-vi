@@ -12,14 +12,14 @@ out-degree. ``compute_dcore_table`` gives the full (k, l)-core table of Giatsidi
 """
 
 import heapq
-from collections import defaultdict
 
 import networkx as nx
 
+from lanet_vi.decomposition.components import components_by_index
 from lanet_vi.decomposition.kcores import _without_self_loops
 from lanet_vi.logging_config import get_logger
 from lanet_vi.models.config import DecompositionConfig
-from lanet_vi.models.graph import Component, DecompositionResult
+from lanet_vi.models.graph import DecompositionResult
 
 logger = get_logger(__name__)
 
@@ -327,27 +327,7 @@ def find_components_by_dcore(
     """
     logger.debug("Finding components for d-core decomposition")
 
-    nodes_by_level: dict[int, list[int]] = defaultdict(list)
-    for node, level in decomposition.node_indices.items():
-        nodes_by_level[level].append(node)
-
-    components: list[Component] = []
-    component_id = 0
-
-    for core_level in sorted(nodes_by_level, reverse=True):
-        subgraph = graph.subgraph(nodes_by_level[core_level])
-
-        for comp_nodes in nx.weakly_connected_components(subgraph):
-            components.append(
-                Component(
-                    component_id=component_id,
-                    nodes=list(comp_nodes),
-                    shell_index=core_level,
-                    size=len(comp_nodes),
-                )
-            )
-            component_id += 1
-
+    components = components_by_index(graph, decomposition.node_indices)
     decomposition.components = components
     logger.info(f"Found {len(components)} components in d-core decomposition")
 
