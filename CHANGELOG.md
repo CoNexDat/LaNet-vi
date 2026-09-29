@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- The `polars` runtime dependency (#55). Nothing in the package imports it; it made
+  every install pull a large compiled wheel, and the default polars wheels need
+  x86-64-v2 CPU features, so `import polars` dies with `Illegal instruction` on
+  baseline x86-64 hosts (for example a KVM guest with the "Common KVM processor"
+  model). No change for users of `lanet_vi`; code that imported `polars` only because
+  `lanet-vi` installed it must now depend on it directly.
+
 ## [5.3.0] - 2026-09-21
 
 The last planned port of the C++ tool, the k-connectivity analysis of the shells
