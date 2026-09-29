@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.3.1] - 2026-09-29
+
+A maintenance release: one runtime dependency fewer, nothing else changes for users.
+
 ### Removed
 
 - The `polars` runtime dependency (#55). Nothing in the package imports it; it made
@@ -547,7 +551,8 @@ LaNet-vi 5.x is a complete Python rewrite of the C++ version. Parity was oversta
 
 ---
 
-[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.3.0...HEAD
+[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.3.1...HEAD
+[5.3.1]: https://github.com/CoNexDat/LaNet-vi/compare/v5.3.0...v5.3.1
 [5.3.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.2.0...v5.3.0
 [5.2.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.1.0...v5.2.0
 [5.1.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.0.0...v5.1.0
