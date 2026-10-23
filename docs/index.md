@@ -24,7 +24,7 @@ Busch, New J. Phys. 2008), and since 5.1.0 it follows the original algorithms.
 pip install lanet-vi
 ```
 
-Python 3.10 or newer. The package installs the `lanet-vi` command.
+Python 3.11 or newer. The package installs the `lanet-vi` command.
 
 ## Quick start
 

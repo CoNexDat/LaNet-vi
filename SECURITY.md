@@ -10,9 +10,9 @@ Only the latest 5.x release on PyPI receives security fixes.
 | 5.x (older releases) | No — upgrade to the latest 5.x |
 | < 5.0 (legacy C++)   | No |
 
-LaNet-vi 5.x requires Python 3.10 or newer. Python 3.9 reached end of life in October
-2025 and several dependencies (including Pillow) no longer ship security fixes for it, so
-it is not supported.
+LaNet-vi 5.x requires Python 3.11 or newer (5.3.1 and earlier ran on 3.10). Python 3.10
+reaches end of life in October 2026 and Pillow ships security fixes only for 3.11+
+(Pillow 13), so 3.10 is not supported.
 
 ## Reporting a vulnerability
 

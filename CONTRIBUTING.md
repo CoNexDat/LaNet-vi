@@ -36,8 +36,8 @@ to GitHub Pages by `.github/workflows/docs.yml` on every push to `main`.
 
 ## Project conventions
 
-- Python 3.10+ compatible code (`X | None` unions are fine; ruff's `UP`
-  rules are configured for the 3.10 target).
+- Python 3.11+ compatible code (`X | None` unions are fine; ruff's `UP`
+  rules are configured for the 3.11 target).
 - Line length 100, ruff formatter, imports sorted by ruff (`I`).
 - American English (US spelling) in all identifiers, docstrings, comments and docs:
   `color`, `gray`, `center`, `neighbor`, `initialize`, `analyze`. Reviews check this.

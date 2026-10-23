@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **Python 3.10 support.** `requires-python` is now `>=3.11`. Python 3.10 reaches end of
+  life in October 2026, and Pillow 13.0.0, the first release that fixes the October 2026
+  Pillow advisories, requires 3.11 or newer; there is no 12.x backport. On 3.10, LaNet-vi
+  could only install the vulnerable Pillow 12.3.0 (pulled in by matplotlib). Users on
+  3.10 can stay on LaNet-vi 5.3.1 or upgrade Python.
+
+### Changed
+
+- The option enums in `lanet_vi.models.config` (`DecompositionType`, `ColorScheme`,
+  `BackgroundColor`, `MeasureType`, `KConnectivityType`, `StrengthIntervalMethod`,
+  `CoordDistributionAlgorithm`) are now `enum.StrEnum`. They still compare equal to their
+  string values, and `str()` and f-strings now give the value (`"kcores"`) instead of
+  `"DecompositionType.KCORES"`.
+
 ## [5.3.1] - 2026-09-29
 
 A maintenance release: one runtime dependency fewer, nothing else changes for users.
