@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.4.0] - 2026-10-23
+
+Python 3.11 is now the minimum, so every install gets Pillow 13, which fixes the October
+2026 Pillow advisories. Users on Python 3.10 keep getting 5.3.1 from pip.
+
 ### Removed
 
 - **Python 3.10 support.** `requires-python` is now `>=3.11`. Python 3.10 reaches end of
@@ -567,7 +572,8 @@ LaNet-vi 5.x is a complete Python rewrite of the C++ version. Parity was oversta
 
 ---
 
-[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.3.1...HEAD
+[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.4.0...HEAD
+[5.4.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.3.1...v5.4.0
 [5.3.1]: https://github.com/CoNexDat/LaNet-vi/compare/v5.3.0...v5.3.1
 [5.3.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.2.0...v5.3.0
 [5.2.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.1.0...v5.2.0
