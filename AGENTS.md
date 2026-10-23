@@ -36,7 +36,7 @@ Data flow: `Network.from_edge_list()` → `Network.decompose()` (fills
 ## Commands
 
 ```bash
-uv sync --all-extras                       # environment (Python 3.10–3.13 supported)
+uv sync --all-extras                       # environment (Python 3.11–3.13 supported)
 uv run pre-commit install                  # once per clone
 uv run ruff check src/ tests/ examples/    # lint
 uv run ruff format src/ tests/ examples/   # format (CI checks with --check)
@@ -55,8 +55,9 @@ uv run lanet-vi visualize --input edges.txt --output out.png
   `behavior`, `labeled`). Comments, docstrings, docs and the changelog follow the same
   rule. Renaming a public identifier for spelling needs a deprecation alias for one
   minor release and a `CHANGELOG.md` entry that spells out the migration.
-- Python 3.10 compatible: `X | None` unions are fine, `match` is fine, nothing newer
-  (no `Self`, no `except*`). Ruff target is `py310`; it will flag anything newer.
+- Python 3.11 compatible: `X | None` unions, `match`, `typing.Self` and `except*` are
+  fine; nothing newer (no PEP 695 `type` aliases or `def f[T]` generics, no
+  `typing.override`). Ruff target is `py311`; it will flag anything newer.
 - Line length 100. NumPy-style docstrings on public API (ruff `D`, convention `numpy`).
 - All settings live in Pydantic models in `models/config.py`; the CLI builds a
   `LaNetConfig` from flags. New options go there first, then the CLI, then docs.
@@ -131,5 +132,5 @@ weaken a CI check to get green.
 - Layout is expensive on big graphs; tests must use tiny graphs (karate club is the
   upper bound).
 - `examples/` download real CAIDA data over HTTPS; never run them in tests.
-- `.python-version` pins 3.10 (the floor). Run `uv run --python 3.12 …` when you need a
+- `.python-version` pins 3.11 (the floor). Run `uv run --python 3.12 …` when you need a
   newer interpreter locally.

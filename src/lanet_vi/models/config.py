@@ -1,20 +1,20 @@
 """Configuration models for LaNet-vi using Pydantic."""
 
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
-class BackgroundColor(str, Enum):
+class BackgroundColor(StrEnum):
     """Background color options."""
 
     WHITE = "white"
     BLACK = "black"
 
 
-class ColorScheme(str, Enum):
+class ColorScheme(StrEnum):
     """Color scheme options for visualization."""
 
     COLOR = "col"
@@ -22,7 +22,7 @@ class ColorScheme(str, Enum):
     GRAYSCALE_INTERLACED = "bwi"
 
 
-class DecompositionType(str, Enum):
+class DecompositionType(StrEnum):
     """Type of network decomposition."""
 
     KCORES = "kcores"
@@ -30,7 +30,7 @@ class DecompositionType(str, Enum):
     DCORES = "dcores"
 
 
-class StrengthIntervalMethod(str, Enum):
+class StrengthIntervalMethod(StrEnum):
     """Method for building strength intervals in weighted graphs."""
 
     EQUAL_NODES = "equalNodesPerInterval"
@@ -39,7 +39,7 @@ class StrengthIntervalMethod(str, Enum):
     CUSTOM = "custom"
 
 
-class CoordDistributionAlgorithm(str, Enum):
+class CoordDistributionAlgorithm(StrEnum):
     """Algorithm for distributing components."""
 
     CLASSIC = "classic"
@@ -47,14 +47,14 @@ class CoordDistributionAlgorithm(str, Enum):
     LOG = "log"
 
 
-class MeasureType(str, Enum):
+class MeasureType(StrEnum):
     """Centrality measure type."""
 
     KDENSE = "kdense"
     MCORE = "mcore"
 
 
-class KConnectivityType(str, Enum):
+class KConnectivityType(StrEnum):
     """How the k-connectivity walk treats the clusters it skips (``-kconntype``)."""
 
     WIDE = "wide"

@@ -1,6 +1,6 @@
 # 🧅 LaNet-vi
 
-[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI](https://img.shields.io/pypi/v/lanet-vi)](https://pypi.org/project/lanet-vi/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![CI](https://github.com/CoNexDat/LaNet-vi/actions/workflows/ci.yml/badge.svg)](https://github.com/CoNexDat/LaNet-vi/actions/workflows/ci.yml)
@@ -40,7 +40,7 @@ Busch, New J. Phys. 2008), and since 5.1.0 it follows the original algorithms.
 - 📂 **Plain edge lists** (optionally weighted, directed, compressed) and CAIDA
   AS-relationship snapshots
 - 🐍 **CLI and Python API** with the same settings, also as a YAML file
-- ⚙️ Tested on Python 3.10–3.13; the 78k-node AS graph renders in about a minute
+- ⚙️ Tested on Python 3.11–3.13; the 78k-node AS graph renders in about a minute
 
 ## 📦 Installation
 
@@ -48,7 +48,7 @@ Busch, New J. Phys. 2008), and since 5.1.0 it follows the original algorithms.
 pip install lanet-vi
 ```
 
-(or `uv pip install lanet-vi`). Python 3.10 or newer.
+(or `uv pip install lanet-vi`). Python 3.11 or newer.
 
 ## 🚀 Quick Start
 
