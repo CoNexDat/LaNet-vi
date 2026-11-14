@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.4.1] - 2026-11-14
+
+A security maintenance release. The package and its runtime dependencies are the same as
+5.4.0; what changes is the locked development environment.
+
+### Security
+
+- The lockfile now pins `soupsieve` 4.0 (was 2.9.2), which fixes GHSA-mmhr-3c5m-f64f, and
+  `tornado` 6.6.1 (was 6.6). Both come in only through the `dev` extra (Jupyter tooling),
+  never through `pip install lanet-vi`.
+
+### Changed
+
+- Routine updates to development dependencies and pinned GitHub Actions.
+
 ## [5.4.0] - 2026-10-23
 
 Python 3.11 is now the minimum, so every install gets Pillow 13, which fixes the October
@@ -572,7 +587,8 @@ LaNet-vi 5.x is a complete Python rewrite of the C++ version. Parity was oversta
 
 ---
 
-[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.4.0...HEAD
+[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.4.1...HEAD
+[5.4.1]: https://github.com/CoNexDat/LaNet-vi/compare/v5.4.0...v5.4.1
 [5.4.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.3.1...v5.4.0
 [5.3.1]: https://github.com/CoNexDat/LaNet-vi/compare/v5.3.0...v5.3.1
 [5.3.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.2.0...v5.3.0
