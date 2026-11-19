@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.5.0] - 2026-11-19
+
+LaNet-vi can now be called from NetworkX code like one of NetworkX's own drawing
+functions, on any NetworkX graph, with no export step.
+
 ### Added
 
 - `lanet_vi.draw(G, *, ax=None, config=None)` draws any NetworkX graph with LaNet-vi and
   returns the matplotlib figure, on a new figure or on axes you pass in (subfigures and
   constrained or tight layouts included).
-- `lanet_vi.lanetvi_layout(G, config=None, scale=1, center=None)` returns LaNet-vi's node
+- `lanet_vi.lanetvi_layout(G, config=None, scale=1.0, center=None)` returns LaNet-vi's node
   positions as a NetworkX layout does (a dict from node to an `(x, y)` array), so they can
   be passed to `nx.draw` like `nx.spring_layout`.
 - Both accept node labels of any hashable type (strings, tuples, ...); `Network` itself
@@ -601,7 +606,8 @@ LaNet-vi 5.x is a complete Python rewrite of the C++ version. Parity was oversta
 
 ---
 
-[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.4.1...HEAD
+[Unreleased]: https://github.com/CoNexDat/LaNet-vi/compare/v5.5.0...HEAD
+[5.5.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.4.1...v5.5.0
 [5.4.1]: https://github.com/CoNexDat/LaNet-vi/compare/v5.4.0...v5.4.1
 [5.4.0]: https://github.com/CoNexDat/LaNet-vi/compare/v5.3.1...v5.4.0
 [5.3.1]: https://github.com/CoNexDat/LaNet-vi/compare/v5.3.0...v5.3.1
