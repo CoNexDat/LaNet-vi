@@ -74,6 +74,17 @@ The input is an edge list, one `source target [weight]` per line (`#` comments,
 2 0
 ```
 
+From NetworkX code, `lanet_vi.draw(G)` returns the picture as a matplotlib figure and
+`lanet_vi.lanetvi_layout(G)` returns positions to use like `nx.spring_layout(G)`:
+
+```python
+import lanet_vi
+
+G = nx.les_miserables_graph()         # string node labels work too
+fig = lanet_vi.draw(G)
+nx.draw(G, pos=lanet_vi.lanetvi_layout(G), node_size=20)
+```
+
 ### The Internet topology
 
 ```python

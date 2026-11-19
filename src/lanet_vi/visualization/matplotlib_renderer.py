@@ -15,7 +15,9 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from matplotlib.axes import Axes
 from matplotlib.collections import EllipseCollection, LineCollection, PolyCollection
+from matplotlib.figure import Figure
 
 from lanet_vi.community.base import CommunityResult
 from lanet_vi.decomposition.kdenses import MIN_DENSE_INDEX
@@ -89,22 +91,117 @@ def render_network(
     >>> render_network(G, layout, decomp, config, "output.png")
     """
     output_path = Path(output_path)
+    fig = draw_network(
+        graph,
+        layout,
+        decomposition,
+        config,
+        node_names,
+        custom_colors=custom_colors,
+        measure=measure,
+        communities=communities,
+        community_config=community_config,
+    )
+    background = "white" if config.background == BackgroundColor.WHITE else "black"
+    # fig.savefig, not plt.savefig: the pyplot one redraws the whole figure afterwards
+    fig.savefig(output_path, dpi=_DPI, facecolor=background)
+    plt.close(fig)
+
+
+def draw_network(
+    graph: nx.Graph,
+    layout: VisualizationLayout,
+    decomposition: DecompositionResult,
+    config: VisualizationConfig,
+    node_names: dict[int, str] | None = None,
+    *,
+    ax: Axes | None = None,
+    custom_colors: bool = False,
+    measure: MeasureType = MeasureType.MCORE,
+    communities: CommunityResult | None = None,
+    community_config: CommunityConfig | None = None,
+) -> Figure:
+    """
+    Draw the network on matplotlib axes and return their figure.
+
+    Takes the same arguments as :func:`render_network` but saves nothing: the picture is
+    left on the axes, so it can be shown in a notebook, combined with other plots or
+    saved later with ``fig.savefig``.
+
+    Parameters
+    ----------
+    graph : nx.Graph
+        Network graph
+    layout : VisualizationLayout
+        Layout with node positions and visual properties
+    decomposition : DecompositionResult
+        Decomposition results
+    config : VisualizationConfig
+        Visualization configuration
+    node_names : Optional[Dict[int, str]]
+        Node names for the labels, as in :func:`render_network`
+    ax : Optional[Axes]
+        Axes to draw on. ``None`` creates a new figure of exactly
+        ``config.width x config.height`` pixels whose axes fill it, the picture
+        ``render_network`` saves. Given axes keep their size: the picture is scaled to fit
+        them, and line widths, node outlines and legend text scale with it as they do with
+        the pixel size of a new figure.
+    custom_colors : bool
+        Nodes were colored from a colors file: the color legend is not drawn
+    measure : MeasureType
+        Labels of the k-dense legend: ``mcore`` prints ``k - 2``, ``kdense`` prints ``k``
+    communities : Optional[CommunityResult]
+        Communities to outline under the network
+    community_config : Optional[CommunityConfig]
+        Which overlays to draw and how (defaults when None)
+
+    Returns
+    -------
+    Figure
+        The figure of the axes the network was drawn on
+
+    Examples
+    --------
+    >>> fig = draw_network(G, layout, decomp, config)
+    >>> fig.savefig("output.png")
+    """
     background = "white" if config.background == BackgroundColor.WHITE else "black"
 
-    # The figure is exactly width x height pixels and the axes fill it
-    fig = plt.figure(figsize=(config.width / _DPI, config.height / _DPI), dpi=_DPI)
-    fig.patch.set_facecolor(background)
-    ax = fig.add_axes((0.0, 0.0, 1.0, 1.0))
+    if ax is None:
+        # The figure is exactly width x height pixels and the axes fill it
+        fig = plt.figure(figsize=(config.width / _DPI, config.height / _DPI), dpi=_DPI)
+        fig.patch.set_facecolor(background)
+        ax = fig.add_axes((0.0, 0.0, 1.0, 1.0))
+        ax.axis("off")
+        width, height = float(config.width), float(config.height)
+    else:
+        figure = ax.get_figure()
+        if not isinstance(figure, Figure):
+            raise ValueError("The axes must belong to a matplotlib figure")
+        fig = figure
+        # The size of the axes in the pixels of a _DPI figure, the unit every size below
+        # is computed in, so a picture drawn on given axes looks like a saved one of the
+        # same size in inches
+        bbox = ax.get_window_extent()
+        width = bbox.width / fig.dpi * _DPI
+        height = bbox.height / fig.dpi * _DPI
+        if width <= 0 or height <= 0:
+            raise ValueError("The axes have no area to draw on")
+        # axis("off") would also hide the axes background, which on given axes is the
+        # only background the picture has: hide the ticks and the frame instead
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for spine in ax.spines.values():
+            spine.set_visible(False)
     ax.set_facecolor(background)
     ax.set_aspect("equal")
-    ax.axis("off")
 
     # Viewport: the frame scaled uniformly to fit the picture and centered (the SVG
     # default preserveAspectRatio "meet"), so the pixel size never distorts the layout
     xmin, xmax, ymin, ymax = layout.bounds
-    px_per_unit = min(config.width / (xmax - xmin), config.height / (ymax - ymin))
-    half_w = config.width / px_per_unit / 2.0
-    half_h = config.height / px_per_unit / 2.0
+    px_per_unit = min(width / (xmax - xmin), height / (ymax - ymin))
+    half_w = width / px_per_unit / 2.0
+    half_h = height / px_per_unit / 2.0
     cx, cy = (xmin + xmax) / 2.0, (ymin + ymax) / 2.0
     ax.set_xlim(cx - half_w, cx + half_w)
     ax.set_ylim(cy - half_h, cy + half_h)
@@ -133,9 +230,7 @@ def render_network(
     if config.show_degree_scale:
         _draw_size_legend(ax, graph, config, layout, px_per_unit)
 
-    # fig.savefig, not plt.savefig: the pyplot one redraws the whole figure afterwards
-    fig.savefig(output_path, dpi=_DPI, facecolor=background)
-    plt.close(fig)
+    return fig
 
 
 def _draw_component_circles(

@@ -824,3 +824,45 @@ def test_labels_without_names_are_the_node_numbers(
     net.node_names = {}
     net.visualize(tmp_path / "off2.png")
     assert drawn == []
+
+
+def test_network_draw_returns_figure_without_saving(karate: nx.Graph, tmp_path: Path):
+    """``Network.draw`` leaves the picture on a figure and writes no file."""
+    import matplotlib.pyplot as plt
+    from matplotlib.figure import Figure
+
+    net = Network(karate, _small_config())
+    net.decompose()
+    fig = net.draw()
+    assert isinstance(fig, Figure)
+    assert fig.axes[0].collections
+    assert not list(tmp_path.iterdir())
+    plt.close(fig)
+
+
+def test_network_draw_requires_decomposition(karate: nx.Graph):
+    """``draw`` before ``decompose`` raises, as ``visualize`` does."""
+    with pytest.raises(ValueError, match="decompose"):
+        Network(karate, _small_config()).draw()
+
+
+def test_draw_network_on_given_axes_keeps_their_background(karate: nx.Graph):
+    """On given axes the background stays visible and the frame and ticks are hidden."""
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import to_rgba
+
+    from lanet_vi.visualization.matplotlib_renderer import draw_network
+
+    config = _small_config()
+    net = Network(karate, config)
+    net.decompose()
+    fig, ax = plt.subplots(figsize=(3, 3))
+    returned = draw_network(
+        net.graph, net.compute_layout(), net.decomposition, config.visualization, ax=ax
+    )
+    assert returned is fig
+    assert ax.axison and ax.patch.get_visible()
+    assert ax.get_facecolor() == to_rgba("black")
+    assert not ax.get_xticks().size and not ax.get_yticks().size
+    assert not any(spine.get_visible() for spine in ax.spines.values())
+    plt.close(fig)

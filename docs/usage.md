@@ -330,6 +330,37 @@ write_decomposition_csv(result, "cores.csv")    # node,index
 write_decomposition_json(result, "cores.json")  # indices, components, metadata
 ```
 
+### From NetworkX code
+
+Two functions let NetworkX code use LaNet-vi the way it uses NetworkX's own drawing
+functions. Both take any NetworkX graph as it is: nodes can be strings, tuples or any
+other hashable, and edge weights and direction are detected as `Network` does.
+
+```python
+import matplotlib.pyplot as plt
+import networkx as nx
+import lanet_vi
+
+G = nx.les_miserables_graph()
+
+# The full LaNet-vi picture on a matplotlib figure (nothing is saved)
+fig = lanet_vi.draw(G)
+fig.savefig("les_miserables.png")
+
+# Or on axes of your own, next to other plots
+fig, (left, right) = plt.subplots(1, 2, figsize=(12, 6))
+lanet_vi.draw(G, ax=left)
+
+# Only the positions, like nx.spring_layout, for NetworkX's own drawing functions
+pos = lanet_vi.lanetvi_layout(G)
+nx.draw(G, pos, ax=right, node_size=20)
+```
+
+`lanetvi_layout` returns a dict from node to an `(x, y)` array scaled to `[-1, 1]` like
+NetworkX layouts (`scale` and `center` work as in `nx.spring_layout`; `scale=None` keeps
+LaNet-vi's units). Both functions take a `LaNetConfig` as `config`. With an existing
+`Network`, `net.draw(ax=None)` returns the figure that `net.visualize(path)` would save.
+
 ### Community detection
 
 `lanet_vi.community` wraps NetworkX's Louvain and greedy-modularity algorithms and

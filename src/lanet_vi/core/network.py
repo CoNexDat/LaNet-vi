@@ -8,6 +8,8 @@ from typing import Any
 
 import networkx as nx
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 from lanet_vi.community import CommunityResult, detect_communities
 from lanet_vi.decomposition.dcores import compute_dcores, find_components_by_dcore
@@ -38,7 +40,11 @@ from lanet_vi.visualization.lanet_layout import (
     component_tree,
     compute_lanet_layout,
 )
-from lanet_vi.visualization.matplotlib_renderer import render_network, select_visible_edges
+from lanet_vi.visualization.matplotlib_renderer import (
+    draw_network,
+    render_network,
+    select_visible_edges,
+)
 
 logger = get_logger(__name__)
 
@@ -703,6 +709,54 @@ class Network:
             output_path,
             # None (no names at all) labels every node with its number when labels are on
             self.node_names if self.custom_names or self.node_names else None,
+            custom_colors=self.custom_colors or bool(self.node_colors) or self.colors_by_community,
+            measure=MeasureType(self.config.decomposition.measure),
+            communities=self.communities,
+            community_config=self.config.community,
+        )
+
+    def draw(
+        self,
+        ax: Axes | None = None,
+        layout: VisualizationLayout | None = None,
+    ) -> Figure:
+        """
+        Draw the visualization on matplotlib axes and return the figure.
+
+        The picture is the one :meth:`visualize` saves, left on the axes instead of
+        written to a file, so it can be shown in a notebook or combined with other plots.
+
+        Parameters
+        ----------
+        ax : Optional[Axes]
+            Axes to draw on; a new figure of ``config.visualization.width x height``
+            pixels when None
+        layout : Optional[VisualizationLayout]
+            Pre-computed layout (computes if None)
+
+        Returns
+        -------
+        Figure
+            The figure of the axes the network was drawn on
+
+        Examples
+        --------
+        >>> fig = net.draw()
+        >>> fig.savefig("network.png")
+        """
+        if self.decomposition is None:
+            raise ValueError("Must call decompose() before drawing")
+
+        if layout is None:
+            layout = self.compute_layout()
+
+        return draw_network(
+            self.graph,
+            layout,
+            self.decomposition,
+            self.config.visualization,
+            self.node_names if self.custom_names or self.node_names else None,
+            ax=ax,
             custom_colors=self.custom_colors or bool(self.node_colors) or self.colors_by_community,
             measure=MeasureType(self.config.decomposition.measure),
             communities=self.communities,
