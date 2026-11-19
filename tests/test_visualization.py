@@ -907,21 +907,50 @@ def test_draw_network_measures_axes_after_the_layout_engine():
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(4, 4), layout="constrained")
+    ax.set_title("a title the engine makes room for")
     _draw_karate_on(fig, ax)
     constrained = _edge_linewidths_on(ax)
+    fig.draw_without_rendering()
+    final_position = ax.get_position()
     plt.close(fig)
 
-    # Plain axes of the size the engine gives them
-    fig, ax = plt.subplots(figsize=(4, 4), layout="constrained")
-    fig.draw_without_rendering()
-    position = ax.get_position()
-    plt.close(fig)
+    # Plain axes of the final size the engine gave them
     fig = plt.figure(figsize=(4, 4))
-    ax = fig.add_axes(position)
+    ax = fig.add_axes(final_position)
     _draw_karate_on(fig, ax)
     plain = _edge_linewidths_on(ax)
     plt.close(fig)
     assert constrained == pytest.approx(plain)
+
+
+def test_draw_network_refuses_non_rectilinear_axes():
+    """Polar and 3D axes are refused with a clear error."""
+    import matplotlib.pyplot as plt
+
+    for projection in ("polar", "3d"):
+        fig = plt.figure()
+        ax = fig.add_subplot(projection=projection)
+        with pytest.raises(ValueError, match="plain 2D"):
+            _draw_karate_on(fig, ax)
+        plt.close(fig)
+
+
+def test_draw_network_resets_axes_it_takes_over():
+    """Switched-off axes show the background again; log scales become linear."""
+    import warnings
+
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots()
+    ax.set_axis_off()
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        _draw_karate_on(fig, ax)
+    assert ax.axison and ax.patch.get_visible()
+    assert ax.get_xscale() == ax.get_yscale() == "linear"
+    plt.close(fig)
 
 
 def test_draw_network_refuses_axes_with_no_area():

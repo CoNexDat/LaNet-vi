@@ -361,8 +361,9 @@ NetworkX layouts (`scale` and `center` work as in `nx.spring_layout`; `scale=Non
 LaNet-vi's units). Both functions take a `LaNetConfig` as `config`. Unlike `nx.draw`,
 `lanet_vi.draw` computes its own positions and returns the figure; `ax` and `config` are
 keyword arguments. A figure it creates stays open in pyplot like any `plt.figure()`, so
-call `plt.close(fig)` when drawing many graphs in a loop. Given axes are taken over for
-the picture (ticks and frame hidden, background, aspect and limits set). With an existing
+call `plt.close(fig)` when drawing many graphs in a loop. Given axes must be plain 2D axes
+and are taken over for the picture (linear scales, ticks and frame hidden, background,
+aspect and limits set). With an existing
 `Network`, `net.draw()` returns the figure that `net.visualize(path)` would save.
 
 ### Community detection

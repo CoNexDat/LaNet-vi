@@ -17,8 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   be passed to `nx.draw` like `nx.spring_layout`.
 - Both accept node labels of any hashable type (strings, tuples, ...); `Network` itself
   still numbers nodes with integers.
-- `Network.draw(ax=None, layout=None)` and `visualization.matplotlib_renderer.draw_network` return the
-  figure `visualize` / `render_network` would save, without writing a file.
+- `Network.draw(ax=None, layout=None)` and
+  `visualization.matplotlib_renderer.draw_network` return the figure `visualize` /
+  `render_network` would save, without writing a file.
 
 ## [5.4.1] - 2026-11-14
 

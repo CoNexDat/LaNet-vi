@@ -148,8 +148,9 @@ def draw_network(
         the pixel size of a new figure. Those point sizes are computed for the size the
         axes have when this is called (after a layout engine, if the figure has one, has
         placed them); resizing the figure afterwards rescales the network but not them.
-        The axes are changed for the picture: ticks and frame hidden, background color,
-        equal aspect and limits set. Drawing twice on the same axes stacks both pictures;
+        Only plain 2D axes are accepted. The axes are changed for the picture: turned on
+        with linear scales, ticks and frame hidden, background color, equal aspect and
+        limits set. Drawing twice on the same axes stacks both pictures;
         call ``ax.clear()`` first to replace one.
     custom_colors : bool
         Nodes were colored from a colors file: the color legend is not drawn
@@ -181,6 +182,8 @@ def draw_network(
         ax.axis("off")
         width, height = float(config.width), float(config.height)
     else:
+        if ax.name != "rectilinear":
+            raise ValueError(f"The axes must be plain 2D axes, not {ax.name!r} axes")
         parent = ax.get_figure()
         # Axes of a subfigure belong to the SubFigure; its root Figure (a Figure is its
         # own root) is the one that has the dpi, is saved and is returned
@@ -188,9 +191,20 @@ def draw_network(
         if not isinstance(root, Figure):
             raise ValueError("The axes must belong to a matplotlib figure")
         fig = root
+        # axis("off") would also hide the axes background, which on given axes is the
+        # only background the picture has: hide the ticks and the frame instead, on
+        # linear scales so the limits below apply
+        ax.set_axis_on()
+        ax.set_xscale("linear")
+        ax.set_yscale("linear")
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for spine in ax.spines.values():
+            spine.set_visible(False)
         if fig.get_layout_engine() is not None:
             # A layout engine (constrained, tight) resizes the axes when the figure is
-            # drawn: resolve it first so the sizes below are computed for the final axes
+            # drawn: resolve it, with the ticks already gone, so the sizes below are
+            # computed for the final axes
             fig.draw_without_rendering()
         # The size of the axes in the pixels of a _DPI figure, the unit every size below
         # is computed in, so a picture drawn on given axes looks like a saved one of the
@@ -200,12 +214,6 @@ def draw_network(
         height = bbox.height / fig.dpi * _DPI
         if width <= 0 or height <= 0:
             raise ValueError("The axes have no area to draw on")
-        # axis("off") would also hide the axes background, which on given axes is the
-        # only background the picture has: hide the ticks and the frame instead
-        ax.set_xticks([])
-        ax.set_yticks([])
-        for spine in ax.spines.values():
-            spine.set_visible(False)
     ax.set_facecolor(background)
     ax.set_aspect("equal")
 
