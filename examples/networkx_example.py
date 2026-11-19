@@ -5,8 +5,8 @@ topology with ``nx.random_internet_as_graph`` (2,000 autonomous systems) and dra
 on one matplotlib figure:
 
 1. With NetworkX's own ``nx.spring_layout``, nodes colored by ``nx.core_number``.
-2. With ``lanet_vi.draw``, which places every node in a ring by its shell index, so the
-   hierarchy from the periphery to the densest core shows at a glance.
+2. With ``lanet_vi.draw``, which places nodes by shell index: the densest core (the
+   5-shell) in the middle and lower shells further out, down to the 1-shell on the edge.
 
 It also checks that LaNet-vi's shells are the k-cores that ``nx.core_number`` finds.
 
@@ -28,12 +28,13 @@ OUTPUT = Path(__file__).parent / "outputs" / "networkx_internet_as.png"
 
 def check_shells(graph: nx.Graph) -> int:
     """Check that LaNet-vi's k-core shells match ``nx.core_number``; return the top shell."""
+    # Network numbers nodes with integers (lanet_vi.draw relabels any graph the same way)
     integer_graph = nx.convert_node_labels_to_integers(graph)
     network = Network(integer_graph)
-    network.decompose()
-    assert network.decomposition is not None
-    assert network.decomposition.node_indices == nx.core_number(integer_graph)
-    return network.decomposition.max_index
+    decomposition = network.decompose()
+    if decomposition.node_indices != nx.core_number(integer_graph):
+        raise AssertionError("LaNet-vi's shells differ from nx.core_number")
+    return decomposition.max_index
 
 
 def main(output: Path = OUTPUT) -> Path:
