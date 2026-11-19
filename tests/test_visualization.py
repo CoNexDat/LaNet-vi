@@ -824,3 +824,141 @@ def test_labels_without_names_are_the_node_numbers(
     net.node_names = {}
     net.visualize(tmp_path / "off2.png")
     assert drawn == []
+
+
+def test_network_draw_returns_figure_without_saving(karate: nx.Graph, tmp_path: Path):
+    """``Network.draw`` leaves the picture on a figure and writes no file."""
+    import matplotlib.pyplot as plt
+    from matplotlib.figure import Figure
+
+    net = Network(karate, _small_config())
+    net.decompose()
+    fig = net.draw()
+    assert isinstance(fig, Figure)
+    assert fig.axes[0].collections
+    assert not list(tmp_path.iterdir())
+    plt.close(fig)
+
+
+def test_network_draw_requires_decomposition(karate: nx.Graph):
+    """``draw`` before ``decompose`` raises, as ``visualize`` does."""
+    with pytest.raises(ValueError, match="decompose"):
+        Network(karate, _small_config()).draw()
+
+
+def test_draw_network_on_given_axes_keeps_their_background(karate: nx.Graph):
+    """On given axes the background stays visible and the frame and ticks are hidden."""
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import to_rgba
+
+    from lanet_vi.visualization.matplotlib_renderer import draw_network
+
+    config = _small_config()
+    net = Network(karate, config)
+    net.decompose()
+    fig, ax = plt.subplots(figsize=(3, 3))
+    returned = draw_network(
+        net.graph, net.compute_layout(), net.decomposition, config.visualization, ax=ax
+    )
+    assert returned is fig
+    assert ax.axison and ax.patch.get_visible()
+    assert ax.get_facecolor() == to_rgba("black")
+    assert not ax.get_xticks().size and not ax.get_yticks().size
+    assert not any(spine.get_visible() for spine in ax.spines.values())
+    plt.close(fig)
+
+
+def _edge_linewidths_on(ax) -> list[float]:
+    from matplotlib.collections import LineCollection
+
+    return [
+        float(width)
+        for collection in ax.collections
+        if isinstance(collection, LineCollection)
+        for width in collection.get_linewidths()
+    ]
+
+
+def _draw_karate_on(fig, ax) -> None:
+    from lanet_vi.visualization.matplotlib_renderer import draw_network
+
+    config = _small_config()
+    net = Network(nx.Graph(nx.karate_club_graph().edges()), config)
+    net.decompose()
+    draw_network(net.graph, net.compute_layout(), net.decomposition, config.visualization, ax=ax)
+
+
+def test_draw_network_sizes_follow_axes_inches_not_dpi():
+    """The same axes size in inches gives the same point sizes at any figure dpi."""
+    import matplotlib.pyplot as plt
+
+    widths = []
+    for dpi in (50, 100, 200):
+        fig, ax = plt.subplots(figsize=(4, 4), dpi=dpi)
+        _draw_karate_on(fig, ax)
+        widths.append(_edge_linewidths_on(ax))
+        plt.close(fig)
+    assert widths[0] == pytest.approx(widths[1])
+    assert widths[1] == pytest.approx(widths[2])
+
+
+def test_draw_network_measures_axes_after_the_layout_engine():
+    """With a constrained layout, sizes are computed for the axes as the engine sizes them."""
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(4, 4), layout="constrained")
+    ax.set_title("a title the engine makes room for")
+    _draw_karate_on(fig, ax)
+    constrained = _edge_linewidths_on(ax)
+    fig.draw_without_rendering()
+    final_position = ax.get_position()
+    plt.close(fig)
+
+    # Plain axes of the final size the engine gave them
+    fig = plt.figure(figsize=(4, 4))
+    ax = fig.add_axes(final_position)
+    _draw_karate_on(fig, ax)
+    plain = _edge_linewidths_on(ax)
+    plt.close(fig)
+    assert constrained == pytest.approx(plain)
+
+
+def test_draw_network_refuses_non_rectilinear_axes():
+    """Polar and 3D axes are refused with a clear error."""
+    import matplotlib.pyplot as plt
+
+    for projection in ("polar", "3d"):
+        fig = plt.figure()
+        ax = fig.add_subplot(projection=projection)
+        with pytest.raises(ValueError, match="plain 2D"):
+            _draw_karate_on(fig, ax)
+        plt.close(fig)
+
+
+def test_draw_network_resets_axes_it_takes_over():
+    """Switched-off axes show the background again; log scales become linear."""
+    import warnings
+
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots()
+    ax.set_axis_off()
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        _draw_karate_on(fig, ax)
+    assert ax.axison and ax.patch.get_visible()
+    assert ax.get_xscale() == ax.get_yscale() == "linear"
+    plt.close(fig)
+
+
+def test_draw_network_refuses_axes_with_no_area():
+    """Axes of zero size cannot hold the picture."""
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure()
+    ax = fig.add_axes((0.0, 0.0, 0.0, 0.0))
+    with pytest.raises(ValueError, match="no area"):
+        _draw_karate_on(fig, ax)
+    plt.close(fig)

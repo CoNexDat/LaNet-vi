@@ -6,12 +6,17 @@ is a field of `LaNetConfig`, the same model the CLI fills from its flags. The
 [usage guide](usage.md#python-api) walks through a complete example.
 
 `Network`, `LaNetConfig` and its sub-models, `DecompositionType`, `ColorScheme`,
-`BackgroundColor`, `load_config_from_yaml` and `save_config_to_yaml` are re-exported
+`BackgroundColor`, `load_config_from_yaml`, `save_config_to_yaml`, `draw` and
+`lanetvi_layout` are re-exported
 from the top-level `lanet_vi` package; everything else is imported from its module.
 
 ## Network
 
 ::: lanet_vi.core.network
+
+## From NetworkX
+
+::: lanet_vi.drawing
 
 ## Configuration
 
