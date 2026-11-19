@@ -356,10 +356,14 @@ pos = lanet_vi.lanetvi_layout(G)
 nx.draw(G, pos, ax=right, node_size=20)
 ```
 
-`lanetvi_layout` returns a dict from node to an `(x, y)` array scaled to `[-1, 1]` like
+`lanetvi_layout` returns a dict from node to an `(x, y)` array, centered and scaled like
 NetworkX layouts (`scale` and `center` work as in `nx.spring_layout`; `scale=None` keeps
-LaNet-vi's units). Both functions take a `LaNetConfig` as `config`. With an existing
-`Network`, `net.draw(ax=None)` returns the figure that `net.visualize(path)` would save.
+LaNet-vi's units). Both functions take a `LaNetConfig` as `config`. Unlike `nx.draw`,
+`lanet_vi.draw` computes its own positions and returns the figure; `ax` and `config` are
+keyword arguments. A figure it creates stays open in pyplot like any `plt.figure()`, so
+call `plt.close(fig)` when drawing many graphs in a loop. Given axes are taken over for
+the picture (ticks and frame hidden, background, aspect and limits set). With an existing
+`Network`, `net.draw()` returns the figure that `net.visualize(path)` would save.
 
 ### Community detection
 

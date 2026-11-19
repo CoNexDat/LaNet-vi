@@ -78,6 +78,7 @@ From NetworkX code, `lanet_vi.draw(G)` returns the picture as a matplotlib figur
 `lanet_vi.lanetvi_layout(G)` returns positions to use like `nx.spring_layout(G)`:
 
 ```python
+import networkx as nx
 import lanet_vi
 
 G = nx.les_miserables_graph()         # string node labels work too

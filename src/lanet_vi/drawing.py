@@ -81,8 +81,9 @@ def lanetvi_layout(
     config : Optional[LaNetConfig]
         LaNet-vi settings (defaults when None)
     scale : Optional[float]
-        Rescale the positions so they span ``[-scale, scale]`` around the center, as
-        NetworkX layouts do (``nx.rescale_layout``); None keeps LaNet-vi's own units
+        Center the positions on their mean and scale them uniformly so the largest
+        absolute coordinate is ``scale``, as NetworkX layouts do (``nx.rescale_layout``);
+        None keeps LaNet-vi's own units
     center : Optional[Tuple[float, float]]
         Center of the layout; the origin when None
 
@@ -116,6 +117,7 @@ def lanetvi_layout(
 
 def draw(
     G: nx.Graph,
+    *,
     ax: Axes | None = None,
     config: LaNetConfig | None = None,
 ) -> Figure:
@@ -126,26 +128,35 @@ def draw(
     k-core (or the decomposition chosen in ``config``), colored by index, with the
     legends. It is drawn on matplotlib axes and nothing is saved.
 
+    Unlike ``nx.draw``, it computes its own positions (there is no ``pos`` argument) and
+    returns the figure. A new figure is registered with pyplot like any ``plt.figure()``:
+    close it with ``plt.close(fig)`` when drawing many graphs in a loop.
+
     Parameters
     ----------
     G : nx.Graph
         Any NetworkX graph (``Graph``, ``DiGraph``, ``MultiGraph``); node labels can be
         any hashable, and node labels in the picture show them as text
     ax : Optional[Axes]
-        Axes to draw on; a new figure of ``config.visualization.width x height`` pixels
-        when None
+        Axes to draw on (keyword only); a new figure of
+        ``config.visualization.width x height`` pixels when None. See
+        :func:`~lanet_vi.visualization.matplotlib_renderer.draw_network` for what is
+        changed on given axes.
     config : Optional[LaNetConfig]
-        LaNet-vi settings (defaults when None)
+        LaNet-vi settings (keyword only; defaults when None)
 
     Returns
     -------
     Figure
-        The figure of the axes the graph was drawn on
+        The figure of the axes the graph was drawn on (the root figure when the axes are
+        in a subfigure)
 
     Raises
     ------
     ValueError
         If the graph has no nodes
+    TypeError
+        If ``ax`` is not matplotlib axes
 
     Examples
     --------
@@ -153,5 +164,7 @@ def draw(
     >>> fig = draw(G)
     >>> fig.savefig("les_miserables.png")
     """
+    if ax is not None and not isinstance(ax, Axes):
+        raise TypeError(f"ax must be matplotlib Axes, not {type(ax).__name__}")
     network, _ = _network(G, config)
     return network.draw(ax=ax)

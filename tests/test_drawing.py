@@ -143,3 +143,24 @@ def test_draw_labels_show_original_names():
     texts = {text.get_text() for text in fig.axes[0].texts}
     assert {"a", "b", "c", "d", "e", "f"} <= texts
     plt.close(fig)
+
+
+def test_draw_rejects_positions_in_place_of_axes():
+    """Passing positions as ``nx.draw(G, pos)`` does fails clearly."""
+    graph = _named_graph()
+    pos = nx.spring_layout(graph, seed=1)
+    with pytest.raises(TypeError):
+        lanet_vi.draw(graph, pos)  # type: ignore[misc]
+    with pytest.raises(TypeError, match="Axes"):
+        lanet_vi.draw(graph, ax=pos)  # type: ignore[arg-type]
+
+
+def test_draw_in_a_subfigure():
+    """Axes of a subfigure are accepted and the root figure is returned."""
+    fig = plt.figure(figsize=(6, 3))
+    left, right = fig.subfigures(1, 2)
+    ax = right.subplots()
+    returned = lanet_vi.draw(_named_graph(), ax=ax, config=_small_config())
+    assert returned is fig
+    assert ax.collections
+    plt.close(fig)

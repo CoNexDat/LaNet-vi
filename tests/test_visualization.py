@@ -866,3 +866,70 @@ def test_draw_network_on_given_axes_keeps_their_background(karate: nx.Graph):
     assert not ax.get_xticks().size and not ax.get_yticks().size
     assert not any(spine.get_visible() for spine in ax.spines.values())
     plt.close(fig)
+
+
+def _edge_linewidths_on(ax) -> list[float]:
+    from matplotlib.collections import LineCollection
+
+    return [
+        float(width)
+        for collection in ax.collections
+        if isinstance(collection, LineCollection)
+        for width in collection.get_linewidths()
+    ]
+
+
+def _draw_karate_on(fig, ax) -> None:
+    from lanet_vi.visualization.matplotlib_renderer import draw_network
+
+    config = _small_config()
+    net = Network(nx.Graph(nx.karate_club_graph().edges()), config)
+    net.decompose()
+    draw_network(net.graph, net.compute_layout(), net.decomposition, config.visualization, ax=ax)
+
+
+def test_draw_network_sizes_follow_axes_inches_not_dpi():
+    """The same axes size in inches gives the same point sizes at any figure dpi."""
+    import matplotlib.pyplot as plt
+
+    widths = []
+    for dpi in (50, 100, 200):
+        fig, ax = plt.subplots(figsize=(4, 4), dpi=dpi)
+        _draw_karate_on(fig, ax)
+        widths.append(_edge_linewidths_on(ax))
+        plt.close(fig)
+    assert widths[0] == pytest.approx(widths[1])
+    assert widths[1] == pytest.approx(widths[2])
+
+
+def test_draw_network_measures_axes_after_the_layout_engine():
+    """With a constrained layout, sizes are computed for the axes as the engine sizes them."""
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(4, 4), layout="constrained")
+    _draw_karate_on(fig, ax)
+    constrained = _edge_linewidths_on(ax)
+    plt.close(fig)
+
+    # Plain axes of the size the engine gives them
+    fig, ax = plt.subplots(figsize=(4, 4), layout="constrained")
+    fig.draw_without_rendering()
+    position = ax.get_position()
+    plt.close(fig)
+    fig = plt.figure(figsize=(4, 4))
+    ax = fig.add_axes(position)
+    _draw_karate_on(fig, ax)
+    plain = _edge_linewidths_on(ax)
+    plt.close(fig)
+    assert constrained == pytest.approx(plain)
+
+
+def test_draw_network_refuses_axes_with_no_area():
+    """Axes of zero size cannot hold the picture."""
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure()
+    ax = fig.add_axes((0.0, 0.0, 0.0, 0.0))
+    with pytest.raises(ValueError, match="no area"):
+        _draw_karate_on(fig, ax)
+    plt.close(fig)

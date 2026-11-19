@@ -145,7 +145,12 @@ def draw_network(
         ``config.width x config.height`` pixels whose axes fill it, the picture
         ``render_network`` saves. Given axes keep their size: the picture is scaled to fit
         them, and line widths, node outlines and legend text scale with it as they do with
-        the pixel size of a new figure.
+        the pixel size of a new figure. Those point sizes are computed for the size the
+        axes have when this is called (after a layout engine, if the figure has one, has
+        placed them); resizing the figure afterwards rescales the network but not them.
+        The axes are changed for the picture: ticks and frame hidden, background color,
+        equal aspect and limits set. Drawing twice on the same axes stacks both pictures;
+        call ``ax.clear()`` first to replace one.
     custom_colors : bool
         Nodes were colored from a colors file: the color legend is not drawn
     measure : MeasureType
@@ -158,7 +163,8 @@ def draw_network(
     Returns
     -------
     Figure
-        The figure of the axes the network was drawn on
+        The figure of the axes the network was drawn on (the root figure when the axes
+        are in a subfigure)
 
     Examples
     --------
@@ -175,10 +181,17 @@ def draw_network(
         ax.axis("off")
         width, height = float(config.width), float(config.height)
     else:
-        figure = ax.get_figure()
-        if not isinstance(figure, Figure):
+        parent = ax.get_figure()
+        # Axes of a subfigure belong to the SubFigure; its root Figure (a Figure is its
+        # own root) is the one that has the dpi, is saved and is returned
+        root = parent.figure if parent is not None else None
+        if not isinstance(root, Figure):
             raise ValueError("The axes must belong to a matplotlib figure")
-        fig = figure
+        fig = root
+        if fig.get_layout_engine() is not None:
+            # A layout engine (constrained, tight) resizes the axes when the figure is
+            # drawn: resolve it first so the sizes below are computed for the final axes
+            fig.draw_without_rendering()
         # The size of the axes in the pixels of a _DPI figure, the unit every size below
         # is computed in, so a picture drawn on given axes looks like a saved one of the
         # same size in inches
