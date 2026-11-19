@@ -12,6 +12,7 @@ copyright: MIT license. Python version of the C++ LaNet-vi (AFL 3.0).
 nav:
   - Home: index.md
   - Usage guide: usage.md
+  - Using LaNet-vi from NetworkX: networkx.md
   - Visualization guide: visualization.md
   - Concepts: concepts.md
   - Coming from the C++ LaNet-vi: cpp-migration.md

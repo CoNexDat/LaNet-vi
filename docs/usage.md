@@ -366,6 +366,9 @@ and are taken over for the picture (linear scales, ticks and frame hidden, backg
 aspect and limits set). With an existing
 `Network`, `net.draw()` returns the figure that `net.visualize(path)` would save.
 
+[Using LaNet-vi from NetworkX](networkx.md) has a complete example that compares
+`nx.spring_layout` with `lanet_vi.draw` on a 2,000-node graph.
+
 ### Community detection
 
 `lanet_vi.community` wraps NetworkX's Louvain and greedy-modularity algorithms and

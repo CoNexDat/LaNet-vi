@@ -2,6 +2,23 @@
 
 This directory contains examples demonstrating LaNet-vi usage.
 
+## NetworkX Example
+
+**File:** `networkx_example.py`
+
+Draws a synthetic Internet topology of 2,000 autonomous systems
+(`nx.random_internet_as_graph`) twice on one figure: with NetworkX's `nx.spring_layout`,
+nodes colored by `nx.core_number`, and with `lanet_vi.draw`, rings by shell index. It also
+checks that LaNet-vi's shells match `nx.core_number`. No download is needed.
+
+```bash
+uv run python examples/networkx_example.py
+```
+
+![A synthetic Internet AS graph drawn with nx.spring_layout and with lanet_vi.draw](outputs/networkx_internet_as.png)
+
+The same example is on the docs site, under "Using LaNet-vi from NetworkX".
+
 ## CAIDA AS-Relationships Example
 
 **File:** `caida_example.py`
