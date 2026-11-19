@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A NetworkX example, `examples/networkx_example.py`, and a docs page, "Using LaNet-vi
+  from NetworkX", that draw a 2,000-node `nx.random_internet_as_graph` with
+  `nx.spring_layout` and with `lanet_vi.draw` side by side, and check that LaNet-vi's
+  shells match `nx.core_number`.
+
 ## [5.5.0] - 2026-11-19
 
 LaNet-vi can now be called from NetworkX code like one of NetworkX's own drawing
